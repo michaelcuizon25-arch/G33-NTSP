@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name_note">NOTE</string>
+    <string name="app_name_2">2</string>
+    <string name="app_name_snap">SNAP</string>
+    <string name="greeting_welcome">Welcome back</string>
+    <string name="greeting_ready">Ready to scan your notes today?</string>
+    <string name="stat_total_notes">Total Notes</string>
+</resources>

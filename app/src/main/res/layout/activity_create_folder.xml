@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/btnBackCreateFolder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="← Back"
+        android:textColor="@color/accent"
+        android:textSize="16sp" />
+
+    <ImageView
+        android:id="@+id/ivFolderPreview"
+        android:layout_width="100dp"
+        android:layout_height="80dp"
+        android:layout_gravity="center"
+        android:layout_marginTop="20dp"
+        android:src="@android:drawable/ic_menu_agenda" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Color Picker"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <View android:id="@+id/colorBlue" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_blue" />
+        <View android:id="@+id/colorGreen" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_green" />
+        <View android:id="@+id/colorYellow" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_yellow" />
+        <View android:id="@+id/colorPurple" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_purple" />
+        <View android:id="@+id/colorPink" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_pink" />
+        <View android:id="@+id/colorOrange" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_orange" />
+        <View android:id="@+id/colorRed" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_red" />
+        <View android:id="@+id/colorGray" android:layout_width="30dp" android:layout_height="30dp" android:layout_margin="4dp" android:background="@color/color_gray" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="File Name"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/etFolderName"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:hint="Enter name"
+        android:paddingHorizontal="12dp" />
+
+    <Button
+        android:id="@+id/btnCreateFolder"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="32dp"
+        android:backgroundTint="@color/secondary"
+        android:text="Create"
+        android:textColor="@color/text_main"
+        android:textStyle="bold" />
+</LinearLayout>
