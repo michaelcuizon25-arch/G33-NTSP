@@ -30,9 +30,7 @@ object WhiteboardRuleEngine {
         visionText: Text
     ): StructuredNote {
 
-        val lines =
-            visionText.textBlocks
-                .flatMap { it.lines }
+        val lines = visionText.textBlocks.flatMap { it.lines }
 
         if (lines.isEmpty()) {
             return StructuredNote(
@@ -41,31 +39,22 @@ object WhiteboardRuleEngine {
             )
         }
 
-        val items =
-            lines.mapNotNull { line ->
+        val items = lines.mapNotNull { line ->
+            val box = line.boundingBox ?: return@mapNotNull null
+            val text = line.text.trim()
 
-                val box =
-                    line.boundingBox
-                        ?: return@mapNotNull null
+            if (text.isBlank()) return@mapNotNull null
 
-                val text =
-                    line.text.trim()
-
-                if (text.isBlank()) {
-                    return@mapNotNull null
-                }
-
-                SpatialCell(
-                    text = text,
-                    box = Rect(box)
-                )
-            }
-                .sortedWith(
-                    compareBy(
-                        { it.box.top },
-                        { it.box.left }
-                    )
-                )
+            SpatialCell(
+                text = text,
+                box = Rect(box)
+            )
+        }.sortedWith(
+            compareBy(
+                { it.box.top },
+                { it.box.left }
+            )
+        )
 
         if (items.isEmpty()) {
             return StructuredNote(
@@ -74,132 +63,115 @@ object WhiteboardRuleEngine {
             )
         }
 
-        // First meaningful line is treated as the note title.
-        val titleCell =
-            items.first()
+        // First meaningful line is treated as note title
+        val titleCell = items.first()
+        val rawTitle = cleanTitle(titleCell.text)
 
-        val rawTitle =
-            cleanTitle(titleCell.text)
-
-        val rows =
-            clusterIntoRows(items)
-
-        val blocks =
-            mutableListOf<NoteBlock>()
+        val rows = clusterIntoRows(items)
+        val blocks = mutableListOf<NoteBlock>()
 
         var index = 0
         var titleSkipped = false
 
+        // Determine column split for Cornell-style left column questions (approx 32% of page width)
+        val maxRight = items.maxOfOrNull { it.box.right } ?: 1000
+        val cueColumnSplitX = (maxRight * 0.32).toInt()
+        val minBodyLeftX = items.filter { it.box.left > cueColumnSplitX }.minOfOrNull { it.box.left } ?: cueColumnSplitX
+
         while (index < rows.size) {
-
-            val row =
-                rows[index]
-
-            val rowText =
-                row.cells
-                    .joinToString(" ") {
-                        it.text
-                    }
-                    .trim()
+            val row = rows[index]
+            val rowText = row.cells.joinToString(" ") { it.text }.trim()
 
             if (rowText.isBlank()) {
                 index++
                 continue
             }
 
-            val rowBox =
-                getRowBoundingBox(row)
+            val rowBox = getRowBoundingBox(row)
 
-            // Skip title from body.
-            if (
-                !titleSkipped &&
-                approximatelySameText(
-                    cleanTitle(rowText),
-                    rawTitle
-                )
-            ) {
+            // Skip main title from body
+            if (!titleSkipped && approximatelySameText(cleanTitle(rowText), rawTitle)) {
                 titleSkipped = true
                 index++
                 continue
             }
 
             // -------------------------------------------------
-            // TABLE DETECTION
+            // CORNELL NOTE / TWO-COLUMN CUE CHECK
             // -------------------------------------------------
+            val leftCueCell = row.cells.find {
+                it.box.right <= cueColumnSplitX || isCueQuestion(it.text, cueColumnSplitX, it.box)
+            }
+            val rightBodyCells = row.cells.filter { it != leftCueCell }
 
-            if (isStrongTableRowCandidate(row)) {
+            // Emit left-side cue question if present
+            if (leftCueCell != null && leftCueCell.text.isNotBlank()) {
+                blocks += NoteBlock(
+                    rawText = leftCueCell.text,
+                    type = BlockType.SECTION_HEADER,
+                    formattedText = "<b>${leftCueCell.text}</b>",
+                    boundingBox = leftCueCell.box
+                )
+            }
 
-                val tableRows =
-                    mutableListOf<TableRow>()
+            // Process right-side body text
+            val bodyText = if (rightBodyCells.isNotEmpty()) {
+                rightBodyCells.joinToString(" ") { it.text }.trim()
+            } else if (leftCueCell == null) {
+                rowText
+            } else {
+                ""
+            }
 
-                var tableIndex =
-                    index
+            if (bodyText.isNotBlank()) {
+                // Calculate horizontal indentation offset relative to main column
+                val firstCellLeft = rightBodyCells.firstOrNull()?.box?.left ?: row.cells.first().box.left
+                val indentOffset = max(0, firstCellLeft - minBodyLeftX)
 
-                while (
-                    tableIndex < rows.size &&
-                    isStrongTableRowCandidate(
-                        rows[tableIndex]
-                    )
-                ) {
-                    tableRows +=
-                        rows[tableIndex]
+                // -------------------------------------------------
+                // TABLE DETECTION
+                // -------------------------------------------------
+                if (isStrongTableRowCandidate(row)) {
+                    val tableRows = mutableListOf<TableRow>()
+                    var tableIndex = index
 
-                    tableIndex++
-                }
+                    while (tableIndex < rows.size && isStrongTableRowCandidate(rows[tableIndex])) {
+                        tableRows += rows[tableIndex]
+                        tableIndex++
+                    }
 
-                if (tableRows.size >= 2) {
-
-                    val htmlTable =
-                        buildHtmlTableFromRows(
-                            tableRows
-                        )
-
-                    val rawTableText =
-                        tableRows.joinToString("\n") { tableRow ->
-
-                            tableRow.cells
-                                .joinToString(" | ") {
-                                    it.text
-                                }
+                    if (tableRows.size >= 2) {
+                        val htmlTable = buildHtmlTableFromRows(tableRows)
+                        val rawTableText = tableRows.joinToString("\n") { r ->
+                            r.cells.joinToString(" | ") { it.text }
                         }
+                        val tableBox = getRowsBoundingBox(tableRows)
 
-                    val tableBox =
-                        getRowsBoundingBox(
-                            tableRows
-                        )
-
-                    blocks +=
-                        NoteBlock(
+                        blocks += NoteBlock(
                             rawText = rawTableText,
                             type = BlockType.REGULAR_TEXT,
                             formattedText = htmlTable,
                             boundingBox = tableBox
                         )
 
-                    index =
-                        tableIndex
-
-                    continue
+                        index = tableIndex
+                        continue
+                    }
                 }
-            }
 
-            // -------------------------------------------------
-            // NORMAL TEXT LINE
-            // -------------------------------------------------
-
-            blocks +=
-                parseSingleLineBlock(
-                    text = rowText,
-                    boundingBox = rowBox
+                // Normal structured text line
+                blocks += parseSingleLineBlock(
+                    text = bodyText,
+                    boundingBox = rowBox,
+                    indentOffset = indentOffset
                 )
+            }
 
             index++
         }
 
         return StructuredNote(
-            title = rawTitle.ifBlank {
-                "Untitled Scan"
-            },
+            title = rawTitle.ifBlank { "Untitled Scan" },
             blocks = blocks
         )
     }
@@ -212,191 +184,132 @@ object WhiteboardRuleEngine {
         rawLines: List<String>
     ): StructuredNote {
 
-        val cleanedLines =
-            rawLines
-                .map {
-                    it.trim()
-                }
-                .filter {
-                    it.isNotBlank()
-                }
+        val cleanedLines = rawLines.map { it.trim() }.filter { it.isNotBlank() }
 
         if (cleanedLines.isEmpty()) {
-
             return StructuredNote(
                 title = "Untitled Scan",
                 blocks = emptyList()
             )
         }
 
-        val title =
-            cleanTitle(
-                cleanedLines.first()
-            )
-
-        val blocks =
-            cleanedLines
-                .drop(1)
-                .map {
-                    parseSingleLineBlock(
-                        text = it,
-                        boundingBox = null
-                    )
-                }
+        val title = cleanTitle(cleanedLines.first())
+        val blocks = cleanedLines.drop(1).map {
+            parseSingleLineBlock(text = it, boundingBox = null, indentOffset = 0)
+        }
 
         return StructuredNote(
-            title = title.ifBlank {
-                "Untitled Scan"
-            },
+            title = title.ifBlank { "Untitled Scan" },
             blocks = blocks
         )
     }
 
     // =========================================================
-    // SINGLE-LINE CLASSIFICATION
+    // SINGLE-LINE CLASSIFICATION & HIERARCHICAL BULLETS
     // =========================================================
 
     private fun parseSingleLineBlock(
         text: String,
-        boundingBox: Rect?
+        boundingBox: Rect?,
+        indentOffset: Int = 0
     ): NoteBlock {
 
-        val trimmed =
-            text.trim()
+        val trimmed = text.trim()
 
         return when {
 
-            // 1. Bullets
-            isBulletRule(trimmed) -> {
-
-                val cleanText =
-                    trimmed.replace(
-                        Regex(
-                            "^([\\-*•●○▪◦])\\s*"
-                        ),
-                        ""
-                    )
-
-                NoteBlock(
-                    rawText = trimmed,
-                    type = BlockType.BULLET_ITEM,
-                    formattedText = "• $cleanText",
-                    boundingBox = boundingBox
-                )
-            }
-
-            // 2. Numbered list
-            isNumberedItemRule(trimmed) -> {
-
-                val match =
-                    Regex(
-                        "^(\\d+)[.)]\\s*(.*)$"
-                    ).find(trimmed)
-
-                val number =
-                    match
-                        ?.groupValues
-                        ?.getOrNull(1)
-                        ?: ""
-
-                val content =
-                    match
-                        ?.groupValues
-                        ?.getOrNull(2)
-                        ?.trim()
-                        ?: trimmed
-
-                NoteBlock(
-                    rawText = trimmed,
-                    type = BlockType.NUMBERED_ITEM,
-                    formattedText =
-                        "$number. $content",
-                    boundingBox = boundingBox
-                )
-            }
-
-            // 3. Headers such as:
-            // Properties:
-            // Traversals:
-            isSectionHeaderRule(trimmed) -> {
-
-                val cleanHeader =
-                    trimmed
-                        .removePrefix("##")
-                        .trim()
-
+            // 1. Bottom Callout / NOTE
+            isCalloutRule(trimmed) -> {
+                val content = trimmed.removePrefix("NOTE:").removePrefix("Note:").trim()
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.SECTION_HEADER,
-                    formattedText =
-                        "<b>$cleanHeader</b>",
+                    formattedText = "<b>NOTE:</b> $content",
                     boundingBox = boundingBox
                 )
             }
 
-            // 4. Smaller heading style
-            isSubheadingRule(trimmed) -> {
-
-                val cleanText =
-                    trimmed
-                        .removePrefix("###")
-                        .trim()
-
-                NoteBlock(
-                    rawText = trimmed,
-                    type = BlockType.SUBHEADING,
-                    formattedText =
-                        "<b>$cleanText</b>",
-                    boundingBox = boundingBox
-                )
-            }
-
-            // 5. Definition:
-            // Binary Tree: A hierarchical...
+            // 2. Key Definitions (e.g. "Population data (N): info gathered")
             isKeyDefinitionRule(trimmed) -> {
+                val colonIndex = trimmed.indexOf(":")
+                val key = trimmed.substring(0, colonIndex).trim()
+                val value = trimmed.substring(colonIndex + 1).trim()
 
-                val parts =
-                    trimmed.split(
-                        ":",
-                        limit = 2
-                    )
-
-                val key =
-                    parts
-                        .getOrNull(0)
-                        ?.trim()
-                        .orEmpty()
-
-                val value =
-                    parts
-                        .getOrNull(1)
-                        ?.trim()
-                        .orEmpty()
+                // Check if key definition is inside a bullet
+                val bulletPrefix = getBulletSymbol(key)
+                val cleanKey = if (bulletPrefix != null) key.removePrefix(bulletPrefix).trim() else key
+                val indentPrefix = getIndentSpaces(bulletPrefix, indentOffset)
 
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.KEY_DEFINITION,
-                    formattedText =
-                        "<b>$key</b>: $value",
+                    formattedText = "$indentPrefix<b>$cleanKey</b>: $value",
                     boundingBox = boundingBox
                 )
             }
 
-            // 6. Formula / equation
-            isMathRule(trimmed) -> {
+            // 3. Bullets (Hierarchical •, ◦, ▸)
+            isBulletRule(trimmed) -> {
+                val symbol = getBulletSymbol(trimmed) ?: "•"
+                val cleanText = trimmed.replace(Regex("^([\\-*•●○▪◦▸►])\\s*"), "")
+                val indentPrefix = getIndentSpaces(symbol, indentOffset)
 
                 NoteBlock(
                     rawText = trimmed,
-                    type = BlockType.MATHEMATICAL,
-                    formattedText =
-                        "<i>[Formula]</i> $trimmed",
+                    type = BlockType.BULLET_ITEM,
+                    formattedText = "$indentPrefix$symbol $cleanText",
                     boundingBox = boundingBox
                 )
             }
 
-            // 7. Normal sentence
-            else -> {
+            // 4. Numbered list (e.g. "1. Pose a question")
+            isNumberedItemRule(trimmed) -> {
+                val match = Regex("^(\\d+)[.)]\\s*(.*)$").find(trimmed)
+                val number = match?.groupValues?.getOrNull(1) ?: ""
+                val content = match?.groupValues?.getOrNull(2)?.trim() ?: trimmed
 
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.NUMBERED_ITEM,
+                    formattedText = "$number. $content",
+                    boundingBox = boundingBox
+                )
+            }
+
+            // 5. Section Headers & Term Headings
+            isSectionHeaderRule(trimmed) -> {
+                val cleanHeader = trimmed.removePrefix("##").trim()
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.SECTION_HEADER,
+                    formattedText = "<b>$cleanHeader</b>",
+                    boundingBox = boundingBox
+                )
+            }
+
+            // 6. Subheading
+            isSubheadingRule(trimmed) -> {
+                val cleanText = trimmed.removePrefix("###").trim()
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.SUBHEADING,
+                    formattedText = "<b>$cleanText</b>",
+                    boundingBox = boundingBox
+                )
+            }
+
+            // 7. Math Equation
+            isMathRule(trimmed) -> {
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.MATHEMATICAL,
+                    formattedText = "<i>[Formula]</i> $trimmed",
+                    boundingBox = boundingBox
+                )
+            }
+
+            // 8. Regular text
+            else -> {
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.REGULAR_TEXT,
@@ -408,684 +321,234 @@ object WhiteboardRuleEngine {
     }
 
     // =========================================================
-    // BULLET RULE
+    // HELPER RULES & PATTERNS
     // =========================================================
 
-    private fun isBulletRule(
-        text: String
-    ): Boolean {
-
-        return text.matches(
-            Regex(
-                "^([\\-*•●○▪◦])\\s*.+"
-            )
-        )
+    private fun isCueQuestion(text: String, splitX: Int, box: Rect): Boolean {
+        if (box.left > splitX * 1.3) return false
+        val trimmed = text.trim()
+        return trimmed.endsWith("?") ||
+                trimmed.startsWith("What is", ignoreCase = true) ||
+                trimmed.startsWith("Define", ignoreCase = true) ||
+                trimmed.startsWith("How ", ignoreCase = true)
     }
 
-    // =========================================================
-    // NUMBERED ITEM RULE
-    // =========================================================
-
-    private fun isNumberedItemRule(
-        text: String
-    ): Boolean {
-
-        return text.matches(
-            Regex(
-                "^\\d+[.)]\\s*.+"
-            )
-        )
+    private fun isCalloutRule(text: String): Boolean {
+        return text.startsWith("NOTE:", ignoreCase = true) || text.startsWith("Note:", ignoreCase = true)
     }
 
-    // =========================================================
-    // SECTION HEADER
-    // =========================================================
-
-    private fun isSectionHeaderRule(
-        text: String
-    ): Boolean {
-
-        val trimmed =
-            text.trim()
-
-        // Explicit markdown-style header.
-        if (trimmed.startsWith("##")) {
-            return true
+    private fun getBulletSymbol(text: String): String? {
+        val trimmed = text.trim()
+        return when {
+            trimmed.startsWith("◦") || trimmed.startsWith("○") -> "◦"
+            trimmed.startsWith("▸") || trimmed.startsWith("►") -> "▸"
+            trimmed.startsWith("•") || trimmed.startsWith("●") || trimmed.startsWith("-") || trimmed.startsWith("*") -> "•"
+            else -> null
         }
+    }
 
-        /*
-         * Short line ending in ":" with no definition body.
-         *
-         * Examples:
-         * Properties:
-         * Traversals:
-         * Advantages:
-         */
-        if (
-            trimmed.endsWith(":") &&
-            trimmed.count { it == ':' } == 1 &&
-            trimmed.length in 2..45
-        ) {
-            return true
+    private fun getIndentSpaces(symbol: String?, indentOffset: Int): String {
+        return when {
+            symbol == "▸" || indentOffset > 50 -> "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+            symbol == "◦" || indentOffset > 25 -> "&nbsp;&nbsp;&nbsp;&nbsp;"
+            else -> ""
         }
+    }
 
-        /*
-         * Short ALL-CAPS line.
-         *
-         * Example:
-         * PROPERTIES
-         */
-        if (
-            trimmed.length in 3..40 &&
-            trimmed == trimmed.uppercase() &&
-            trimmed.any {
-                it.isLetter()
-            }
-        ) {
+    private fun isBulletRule(text: String): Boolean {
+        return text.matches(Regex("^([\\-*•●○▪◦▸►])\\s*.+"))
+    }
+
+    private fun isNumberedItemRule(text: String): Boolean {
+        return text.matches(Regex("^\\d+[.)]\\s*.+"))
+    }
+
+    private fun isSectionHeaderRule(text: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.startsWith("##")) return true
+        if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && trimmed.length in 2..45) return true
+        if (trimmed.length in 3..40 && trimmed == trimmed.uppercase() && trimmed.any { it.isLetter() }) return true
+
+        // Term headings (short line with capitalized title, e.g. "Scientific Method", "Population (N)")
+        if (trimmed.length in 3..35 && !trimmed.endsWith(".") && !trimmed.contains(":") && trimmed.first().isUpperCase() && !isBulletRule(trimmed)) {
             return true
         }
 
         return false
     }
 
-    // =========================================================
-    // SUBHEADING
-    // =========================================================
+    private fun isSubheadingRule(text: String): Boolean {
+        return text.trim().startsWith("###")
+    }
 
-    private fun isSubheadingRule(
-        text: String
-    ): Boolean {
+    private fun isKeyDefinitionRule(text: String): Boolean {
+        if (text.startsWith("http", ignoreCase = true)) return false
+        if (!text.contains(":")) return false
+        if (text.trim().endsWith(":")) return false
 
-        val trimmed =
-            text.trim()
+        val colonIndex = text.indexOf(":")
+        if (colonIndex !in 2..45) return false
 
-        if (trimmed.startsWith("###")) {
-            return true
-        }
+        val beforeColon = text.substring(0, colonIndex).trim()
+        val afterColon = text.substring(colonIndex + 1).trim()
 
-        /*
-         * Avoid guessing too aggressively.
-         *
-         * A normal sentence should not suddenly become
-         * a heading just because it is short.
-         */
-        return false
+        return beforeColon.isNotBlank() && afterColon.isNotBlank()
+    }
+
+    private fun isMathRule(text: String): Boolean {
+        val containsOperator = text.contains(Regex("[=≠≈±<>]"))
+        val containsNumber = text.any { it.isDigit() }
+        return containsOperator && containsNumber
     }
 
     // =========================================================
-    // KEY DEFINITION
+    // ROW CLUSTERING & TABLE HELPERS (PRESERVED)
     // =========================================================
 
-    private fun isKeyDefinitionRule(
-        text: String
-    ): Boolean {
-
-        if (
-            text.startsWith(
-                "http",
-                ignoreCase = true
-            )
-        ) {
-            return false
-        }
-
-        if (!text.contains(":")) {
-            return false
-        }
-
-        // A line ending in ":" is a header, not a definition.
-        if (text.trim().endsWith(":")) {
-            return false
-        }
-
-        val colonIndex =
-            text.indexOf(":")
-
-        if (colonIndex !in 2..35) {
-            return false
-        }
-
-        val beforeColon =
-            text.substring(
-                0,
-                colonIndex
-            ).trim()
-
-        val afterColon =
-            text.substring(
-                colonIndex + 1
-            ).trim()
-
-        return beforeColon.isNotBlank() &&
-                afterColon.isNotBlank()
-    }
-
-    // =========================================================
-    // MATH
-    // =========================================================
-
-    private fun isMathRule(
-        text: String
-    ): Boolean {
-
-        val containsOperator =
-            text.contains(
-                Regex(
-                    "[=≠≈±<>]"
-                )
-            )
-
-        val containsNumber =
-            text.any {
-                it.isDigit()
-            }
-
-        return containsOperator &&
-                containsNumber
-    }
-
-    // =========================================================
-    // ROW CLUSTERING
-    // =========================================================
-
-    private fun clusterIntoRows(
-        items: List<SpatialCell>
-    ): List<TableRow> {
-
-        val rows =
-            mutableListOf<TableRow>()
+    private fun clusterIntoRows(items: List<SpatialCell>): List<TableRow> {
+        val rows = mutableListOf<TableRow>()
 
         for (item in items) {
-
-            val matchingRow =
-                rows
-                    .filter { row ->
-
-                        val overlapTop =
-                            max(
-                                row.top,
-                                item.box.top
-                            )
-
-                        val overlapBottom =
-                            min(
-                                row.bottom,
-                                item.box.bottom
-                            )
-
-                        val overlap =
-                            max(
-                                0,
-                                overlapBottom -
-                                        overlapTop
-                            )
-
-                        val smallerHeight =
-                            min(
-                                max(
-                                    1,
-                                    row.bottom -
-                                            row.top
-                                ),
-                                max(
-                                    1,
-                                    item.box.height()
-                                )
-                            )
-
-                        val overlapRatio =
-                            overlap.toFloat() /
-                                    smallerHeight.toFloat()
-
-                        overlapRatio >= 0.35f
-                    }
-                    .minByOrNull { row ->
-
-                        abs(
-                            (
-                                    row.top +
-                                            row.bottom
-                                    ) / 2 -
-                                    item.box.centerY()
-                        )
-                    }
+            val matchingRow = rows.filter { row ->
+                val overlapTop = max(row.top, item.box.top)
+                val overlapBottom = min(row.bottom, item.box.bottom)
+                val overlap = max(0, overlapBottom - overlapTop)
+                val smallerHeight = min(max(1, row.bottom - row.top), max(1, item.box.height()))
+                val overlapRatio = overlap.toFloat() / smallerHeight.toFloat()
+                overlapRatio >= 0.35f
+            }.minByOrNull { row ->
+                abs((row.top + row.bottom) / 2 - item.box.centerY())
+            }
 
             if (matchingRow != null) {
-
-                matchingRow.cells +=
-                    item
-
-                matchingRow.top =
-                    min(
-                        matchingRow.top,
-                        item.box.top
-                    )
-
-                matchingRow.bottom =
-                    max(
-                        matchingRow.bottom,
-                        item.box.bottom
-                    )
-
+                matchingRow.cells += item
+                matchingRow.top = min(matchingRow.top, item.box.top)
+                matchingRow.bottom = max(matchingRow.bottom, item.box.bottom)
             } else {
-
-                rows +=
-                    TableRow(
-                        cells =
-                            mutableListOf(
-                                item
-                            ),
-                        top =
-                            item.box.top,
-                        bottom =
-                            item.box.bottom
-                    )
+                rows += TableRow(
+                    cells = mutableListOf(item),
+                    top = item.box.top,
+                    bottom = item.box.bottom
+                )
             }
         }
 
-        rows.forEach { row ->
-
-            row.cells.sortBy {
-                it.box.left
-            }
-        }
-
-        return rows.sortedBy {
-            it.top
-        }
+        rows.forEach { row -> row.cells.sortBy { it.box.left } }
+        return rows.sortedBy { it.top }
     }
 
-    // =========================================================
-    // TABLE DETECTION
-    // =========================================================
-
-    private fun isStrongTableRowCandidate(
-        row: TableRow
-    ): Boolean {
-
-        /*
-         * Do NOT assume that 2 ML Kit cells automatically
-         * means a table.
-         *
-         * OCR can split one sentence into several cells.
-         */
-
-        if (row.cells.size < 2) {
-            return false
-        }
-
-        val sorted =
-            row.cells.sortedBy {
-                it.box.left
-            }
-
+    private fun isStrongTableRowCandidate(row: TableRow): Boolean {
+        if (row.cells.size < 2) return false
+        val sorted = row.cells.sortedBy { it.box.left }
         var largeGapCount = 0
 
         for (i in 0 until sorted.lastIndex) {
-
-            val gap =
-                sorted[i + 1].box.left -
-                        sorted[i].box.right
-
-            val averageHeight =
-                (
-                        sorted[i].box.height() +
-                                sorted[i + 1]
-                                    .box
-                                    .height()
-                        ) / 2
-
-            if (
-                gap >
-                max(
-                    80,
-                    averageHeight * 3
-                )
-            ) {
+            val gap = sorted[i + 1].box.left - sorted[i].box.right
+            val averageHeight = (sorted[i].box.height() + sorted[i + 1].box.height()) / 2
+            if (gap > max(80, averageHeight * 3)) {
                 largeGapCount++
             }
         }
-
         return largeGapCount > 0
     }
 
-    private fun buildHtmlTableFromRows(
-        rows: List<TableRow>
-    ): String {
-
-        val allCells =
-            rows.flatMap {
-                it.cells
-            }
-
-        val columnBounds =
-            detectColumnBounds(
-                allCells
-            )
+    private fun buildHtmlTableFromRows(rows: List<TableRow>): String {
+        val allCells = rows.flatMap { it.cells }
+        val columnBounds = detectColumnBounds(allCells)
 
         if (columnBounds.isEmpty()) {
-            return rows.joinToString("<br/>") { row ->
-
-                row.cells.joinToString(" ") {
-                    it.text
-                }
-            }
+            return rows.joinToString("<br/>") { row -> row.cells.joinToString(" ") { it.text } }
         }
 
-        val builder =
-            StringBuilder()
-
-        builder.append(
-            "<table border='1' " +
-                    "style='width:100%;" +
-                    "border-collapse:collapse;" +
-                    "margin:8px 0;'>"
-        )
+        val builder = StringBuilder()
+        builder.append("<table border='1' style='width:100%;border-collapse:collapse;margin:8px 0;'>")
 
         rows.forEachIndexed { rowIndex, row ->
-
             builder.append("<tr>")
-
-            val isHeader =
-                rowIndex == 0
-
-            val rowGrid =
-                Array(
-                    columnBounds.size
-                ) {
-                    StringBuilder()
-                }
+            val isHeader = rowIndex == 0
+            val rowGrid = Array(columnBounds.size) { StringBuilder() }
 
             for (cell in row.cells) {
-
-                val columnIndex =
-                    getBestColumnIndex(
-                        cell.box,
-                        columnBounds
-                    )
-
-                if (
-                    rowGrid[
-                        columnIndex
-                    ].isNotEmpty()
-                ) {
-                    rowGrid[
-                        columnIndex
-                    ].append(" ")
-                }
-
-                rowGrid[
-                    columnIndex
-                ].append(
-                    cell.text
-                )
+                val columnIndex = getBestColumnIndex(cell.box, columnBounds)
+                if (rowGrid[columnIndex].isNotEmpty()) rowGrid[columnIndex].append(" ")
+                rowGrid[columnIndex].append(cell.text)
             }
 
             for (cellText in rowGrid) {
-
-                val value =
-                    cellText
-                        .toString()
-                        .trim()
-                        .ifEmpty {
-                            "-"
-                        }
-
-                val tag =
-                    if (isHeader) {
-                        "th"
-                    } else {
-                        "td"
-                    }
-
-                val style =
-                    if (isHeader) {
-
-                        "style='" +
-                                "background-color:#F2F2F7;" +
-                                "padding:8px;" +
-                                "font-weight:bold;" +
-                                "text-align:left;" +
-                                "color:#000000;'"
-
-                    } else {
-
-                        "style='" +
-                                "padding:6px;" +
-                                "color:#000000;'"
-                    }
-
-                builder.append(
-                    "<$tag $style>" +
-                            value +
-                            "</$tag>"
-                )
+                val value = cellText.toString().trim().ifEmpty { "-" }
+                val tag = if (isHeader) "th" else "td"
+                val style = if (isHeader) "style='background-color:#F2F2F7;padding:8px;font-weight:bold;text-align:left;color:#000000;'"
+                else "style='padding:6px;color:#000000;'"
+                builder.append("<$tag $style>$value</$tag>")
             }
-
             builder.append("</tr>")
         }
-
         builder.append("</table>")
-
         return builder.toString()
     }
 
-    private fun detectColumnBounds(
-        cells: List<SpatialCell>
-    ): List<Pair<Int, Int>> {
-
-        val sortedLefts =
-            cells
-                .map {
-                    it.box.left
-                }
-                .sorted()
-
-        val clusters =
-            mutableListOf<
-                    MutableList<Int>
-                    >()
+    private fun detectColumnBounds(cells: List<SpatialCell>): List<Pair<Int, Int>> {
+        val sortedLefts = cells.map { it.box.left }.sorted()
+        val clusters = mutableListOf<MutableList<Int>>()
 
         for (left in sortedLefts) {
-
-            val cluster =
-                clusters.find { values ->
-
-                    abs(
-                        values.average() -
-                                left
-                    ) < 140
-                }
-
+            val cluster = clusters.find { values -> abs(values.average() - left) < 140 }
             if (cluster != null) {
-
-                cluster +=
-                    left
-
+                cluster += left
             } else {
-
-                clusters +=
-                    mutableListOf(
-                        left
-                    )
+                clusters += mutableListOf(left)
             }
         }
 
-        return clusters
-            .map { cluster ->
-
-                val minimum =
-                    cluster.minOrNull()
-                        ?: 0
-
-                val maximum =
-                    cluster.maxOrNull()
-                        ?: minimum
-
-                Pair(
-                    minimum - 20,
-                    maximum + 120
-                )
-            }
-            .sortedBy {
-                it.first
-            }
+        return clusters.map { cluster ->
+            val minimum = cluster.minOrNull() ?: 0
+            val maximum = cluster.maxOrNull() ?: minimum
+            Pair(minimum - 20, maximum + 120)
+        }.sortedBy { it.first }
     }
 
-    private fun getBestColumnIndex(
-        box: Rect,
-        columns: List<Pair<Int, Int>>
-    ): Int {
-
-        if (columns.isEmpty()) {
-            return 0
-        }
-
-        val center =
-            box.centerX()
-
+    private fun getBestColumnIndex(box: Rect, columns: List<Pair<Int, Int>>): Int {
+        if (columns.isEmpty()) return 0
+        val center = box.centerX()
         columns.forEachIndexed { index, column ->
-
-            if (
-                center in
-                column.first..
-                column.second
-            ) {
-                return index
-            }
+            if (center in column.first..column.second) return index
         }
-
-        return columns.indices
-            .minByOrNull { index ->
-
-                abs(
-                    columns[index].first -
-                            box.left
-                )
-            }
-            ?: 0
+        return columns.indices.minByOrNull { abs(columns[it].first - box.left) } ?: 0
     }
 
-    // =========================================================
-    // BOUNDING BOX HELPERS
-    // =========================================================
-
-    private fun getRowBoundingBox(
-        row: TableRow
-    ): Rect? {
-
-        if (row.cells.isEmpty()) {
-            return null
-        }
-
+    private fun getRowBoundingBox(row: TableRow): Rect? {
+        if (row.cells.isEmpty()) return null
         return Rect(
-            row.cells.minOf {
-                it.box.left
-            },
-
-            row.cells.minOf {
-                it.box.top
-            },
-
-            row.cells.maxOf {
-                it.box.right
-            },
-
-            row.cells.maxOf {
-                it.box.bottom
-            }
+            row.cells.minOf { it.box.left },
+            row.cells.minOf { it.box.top },
+            row.cells.maxOf { it.box.right },
+            row.cells.maxOf { it.box.bottom }
         )
     }
 
-    private fun getRowsBoundingBox(
-        rows: List<TableRow>
-    ): Rect? {
-
-        val cells =
-            rows.flatMap {
-                it.cells
-            }
-
-        if (cells.isEmpty()) {
-            return null
-        }
-
+    private fun getRowsBoundingBox(rows: List<TableRow>): Rect? {
+        val cells = rows.flatMap { it.cells }
+        if (cells.isEmpty()) return null
         return Rect(
-            cells.minOf {
-                it.box.left
-            },
-
-            cells.minOf {
-                it.box.top
-            },
-
-            cells.maxOf {
-                it.box.right
-            },
-
-            cells.maxOf {
-                it.box.bottom
-            }
+            cells.minOf { it.box.left },
+            cells.minOf { it.box.top },
+            cells.maxOf { it.box.right },
+            cells.maxOf { it.box.bottom }
         )
     }
 
-    // =========================================================
-    // TEXT HELPERS
-    // =========================================================
-
-    private fun cleanTitle(
-        text: String
-    ): String {
-
-        return text
-            .replace(
-                Regex(
-                    "^[#*\\-•]+\\s*"
-                ),
-                ""
-            )
-            .trim()
+    private fun cleanTitle(text: String): String {
+        return text.replace(Regex("^[#*\\-•]+\\s*"), "").trim()
     }
 
-    private fun approximatelySameText(
-        first: String,
-        second: String
-    ): Boolean {
-
-        val a =
-            normalizeForComparison(
-                first
-            )
-
-        val b =
-            normalizeForComparison(
-                second
-            )
-
-        if (
-            a.isBlank() ||
-            b.isBlank()
-        ) {
-            return false
-        }
-
-        return a == b ||
-                a.contains(b) ||
-                b.contains(a)
+    private fun approximatelySameText(first: String, second: String): Boolean {
+        val a = normalizeForComparison(first)
+        val b = normalizeForComparison(second)
+        if (a.isBlank() || b.isBlank()) return false
+        return a == b || a.contains(b) || b.contains(a)
     }
 
-    private fun normalizeForComparison(
-        text: String
-    ): String {
-
-        return text
-            .lowercase()
-            .replace(
-                Regex(
-                    "[^a-z0-9]+"
-                ),
-                " "
-            )
-            .trim()
+    private fun normalizeForComparison(text: String): String {
+        return text.lowercase().replace(Regex("[^a-z0-9]+"), " ").trim()
     }
 }

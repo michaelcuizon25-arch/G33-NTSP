@@ -22,4 +22,8 @@
     <color name="text_primary">#111111</color>
     <color name="text_secondary">#757575</color>
     <color name="search_bg">#F0F0F0</color>
+    <color name="nav_wave_color">#2563EB</color>
+    <color name="nav_item_color">#FFFFFF</color>
+    <color name="fab_bg_color">#FFFFFF</color>
+    <color name="fab_icon_tint">#2563EB</color>
 </resources>

@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
+import android.graphics.Rect // CHANGE: Imported Rect for bounding box spatial positioning
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
@@ -38,10 +39,12 @@ import androidx.lifecycle.lifecycleScope
 import com.example.note2snap.R
 import com.example.note2snap.ccl.Region
 import com.example.note2snap.data.AppDatabase
-import com.example.note2snap.model.Note
+import com.example.note2snap.model.BlockType // CHANGE: Imported BlockType for visual vs text block classification
+import com.example.note2snap.model.Note // CHANGE: Imported Note database entity
+import com.example.note2snap.model.NoteBlock // CHANGE: Imported NoteBlock model for structured note output
 import com.example.note2snap.model.ScanHistory
 import com.example.note2snap.recognition.WhiteboardRecognitionPipeline
-import com.example.note2snap.utils.WhiteboardRuleEngine
+import com.example.note2snap.utils.WhiteboardRuleEngine // CHANGE: Imported offline spatial rule engine
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -54,9 +57,6 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.graphics.Rect
-import com.example.note2snap.model.BlockType
-import com.example.note2snap.model.NoteBlock
 
 class ScanFragment : Fragment() {
 
@@ -289,111 +289,49 @@ class ScanFragment : Fragment() {
                             )
                 ) {
 
-                    val structuredNote =
-                        pipelineResult.structuredNote
+                    val structuredNote = pipelineResult.structuredNote
 
-                    val visualBlocks =
-                        saveDetectedDiagrams(
-                            pipelineResult.diagramRegions
-                        )
+                    // CHANGE: Save detected diagram/visual bounding regions into file storage and return as visual blocks
+                    val visualBlocks = saveDetectedDiagrams(pipelineResult.diagramRegions)
 
                     /*
-                     * IMPORTANT:
-                     *
-                     * Do NOT globally sort text + visual blocks by
-                     * boundingBox.top / left here.
-                     *
-                     * PipelineTextStructurer already decides the logical
-                     * reading order of the text. Re-sorting everything
-                     * spatially here can scramble sections on multi-column
-                     * whiteboards, for example:
-                     *
-                     * Properties -> Traversals -> remaining Properties
-                     *
-                     * Keep text blocks in the exact logical order returned
-                     * by the structurer. Visuals are ordered only among
-                     * themselves, then displayed before the body text.
+                     * CHANGE: Avoid re-sorting text blocks spatially to preserve multi-column logical reading order.
+                     * Only visual blocks are ordered among themselves before placing them at the top of body text.
                      */
-                    val orderedVisualBlocks =
-                        visualBlocks.sortedWith(
-                            compareBy<NoteBlock>(
-                                {
-                                    it.boundingBox?.top
-                                        ?: Int.MAX_VALUE
-                                },
-                                {
-                                    it.boundingBox?.left
-                                        ?: Int.MAX_VALUE
-                                }
-                            )
+                    val orderedVisualBlocks = visualBlocks.sortedWith(
+                        compareBy<NoteBlock>(
+                            { it.boundingBox?.top ?: Int.MAX_VALUE },
+                            { it.boundingBox?.left ?: Int.MAX_VALUE }
                         )
-
-                    val allBlocks =
-                        orderedVisualBlocks +
-                                structuredNote.blocks
-
-                    val formattedContent =
-                        allBlocks
-                            .map {
-                                renderNoteBlock(it)
-                            }
-                            .filter {
-                                it.isNotBlank()
-                            }
-                            .joinToString("<br/>")
-
-                    val finalTitle =
-                        structuredNote.title
-                            .takeIf {
-                                it.isNotBlank() &&
-                                        it != "Untitled Scan"
-                            }
-                            ?: fallbackTitle
-
-                    saveNoteToDatabase(
-                        finalTitle,
-                        formattedContent,
-                        imagePath
                     )
 
-                    saveScanHistory(
-                        finalTitle,
-                        imagePath
-                    )
+                    // CHANGE: Merge visual blocks ahead of text blocks while maintaining structuredNote logical sequence
+                    val allBlocks = orderedVisualBlocks + structuredNote.blocks
 
-                    val elapsedTime =
-                        System.currentTimeMillis() -
-                                scanStartTime
+                    // CHANGE: Convert blocks into HTML formatted content string for rendering in PdfViewerActivity
+                    val formattedContent = allBlocks
+                        .map { renderNoteBlock(it) }
+                        .filter { it.isNotBlank() }
+                        .joinToString("<br/>")
 
-                    delay(
-                        (5000L - elapsedTime)
-                            .coerceAtLeast(0L)
-                    )
+                    val finalTitle = structuredNote.title
+                        .takeIf { it.isNotBlank() && it != "Untitled Scan" }
+                        ?: fallbackTitle
+
+                    saveNoteToDatabase(finalTitle, formattedContent, imagePath)
+                    saveScanHistory(finalTitle, imagePath)
+
+                    val elapsedTime = System.currentTimeMillis() - scanStartTime
+                    delay((5000L - elapsedTime).coerceAtLeast(0L))
 
                     withContext(Dispatchers.Main) {
-
                         hideLoadingDialog()
 
                         startActivity(
-                            Intent(
-                                requireContext(),
-                                PdfViewerActivity::class.java
-                            ).apply {
-
-                                putExtra(
-                                    "TITLE",
-                                    finalTitle
-                                )
-
-                                putExtra(
-                                    "CONTENT",
-                                    formattedContent
-                                )
-
-                                putExtra(
-                                    "IMAGE_PATH",
-                                    imagePath
-                                )
+                            Intent(requireContext(), PdfViewerActivity::class.java).apply {
+                                putExtra("TITLE", finalTitle)
+                                putExtra("CONTENT", formattedContent)
+                                putExtra("IMAGE_PATH", imagePath)
                             }
                         )
                     }
@@ -401,14 +339,14 @@ class ScanFragment : Fragment() {
                     return@launch
                 }
 
-                // Safe fallback while the custom .tflite model is not present or yields no lines.
+                // CHANGE: Safe fallback using ML Kit TextRecognizer when the custom pipeline produces no results
                 val inputImage = InputImage.fromBitmap(processedBitmap, 0)
                 val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
                 withContext(Dispatchers.Main) {
                     recognizer.process(inputImage)
                         .addOnSuccessListener { visionText ->
-                            // Pass ML Kit Text object directly to preserve bounding box spatial coordinates
+                            // CHANGE: Pass ML Kit 'visionText' object directly to WhiteboardRuleEngine to preserve bounding box spatial coordinates
                             val structuredNote = WhiteboardRuleEngine.process(visionText)
                             val formattedContent = structuredNote.blocks.joinToString("<br/>") { it.formattedText }
 
@@ -506,39 +444,22 @@ class ScanFragment : Fragment() {
         }
     }
 
-    private fun saveDetectedDiagrams(
-        regions: List<Region>
-    ): List<NoteBlock> {
-
+    // CHANGE: Added helper function to save diagram regions to PNGs and return NoteBlock items with image paths and bounding boxes
+    private fun saveDetectedDiagrams(regions: List<Region>): List<NoteBlock> {
         if (regions.isEmpty()) {
             return emptyList()
         }
 
-        val directory =
-            File(
-                requireContext().filesDir,
-                "recognized_diagrams"
-            ).apply {
-                mkdirs()
-            }
+        val directory = File(requireContext().filesDir, "recognized_diagrams").apply {
+            mkdirs()
+        }
 
         return regions.mapIndexedNotNull { index, region ->
-
             runCatching {
-
-                val file =
-                    File(
-                        directory,
-                        "diagram_${System.currentTimeMillis()}_$index.png"
-                    )
+                val file = File(directory, "diagram_${System.currentTimeMillis()}_$index.png")
 
                 FileOutputStream(file).use { stream ->
-
-                    region.croppedBitmap.compress(
-                        Bitmap.CompressFormat.PNG,
-                        100,
-                        stream
-                    )
+                    region.croppedBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
                 }
 
                 NoteBlock(
@@ -546,49 +467,28 @@ class ScanFragment : Fragment() {
                     type = BlockType.VISUAL,
                     formattedText = "",
                     imagePath = file.absolutePath,
-                    boundingBox =
-                        Rect(region.boundingBox)
+                    boundingBox = Rect(region.boundingBox)
                 )
-
             }.getOrNull()
         }
     }
 
-    private fun renderNoteBlock(
-        block: NoteBlock
-    ): String {
-
+    // CHANGE: Added block rendering helper to format visual blocks into <img> HTML elements and text blocks into styled HTML
+    private fun renderNoteBlock(block: NoteBlock): String {
         return when (block.type) {
-
             BlockType.VISUAL -> {
-
-                val path =
-                    block.imagePath
-                        ?: return ""
-
-                val file =
-                    File(path)
-
-                val imageUri =
-                    Uri.fromFile(file)
+                val path = block.imagePath ?: return ""
+                val file = File(path)
+                val imageUri = Uri.fromFile(file)
 
                 """
-            <p>
-                <img
-                    src='$imageUri'
-                    alt='Whiteboard diagram'
-                />
-            </p>
-            """.trimIndent()
+                <p>
+                    <img src='$imageUri' alt='Whiteboard diagram' />
+                </p>
+                """.trimIndent()
             }
-
             else -> {
-
-                block.formattedText
-                    .takeIf {
-                        it.isNotBlank()
-                    }
-                    ?: block.rawText
+                block.formattedText.takeIf { it.isNotBlank() } ?: block.rawText
             }
         }
     }
@@ -614,4 +514,3 @@ class ScanFragment : Fragment() {
         AppDatabase.getDatabase(requireContext()).appDao().insertScanHistory(historyItem)
     }
 }
-

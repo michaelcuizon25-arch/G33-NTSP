@@ -1,8 +1,26 @@
 <resources>
-    <string name="app_name_note">NOTE</string>
-    <string name="app_name_2">2</string>
-    <string name="app_name_snap">SNAP</string>
-    <string name="greeting_welcome">Welcome back</string>
-    <string name="greeting_ready">Ready to scan your notes today?</string>
-    <string name="stat_total_notes">Total Notes</string>
+    <!-- Accessibility Content Descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_share">Share</string>
+    <string name="cd_more_options">More Options</string>
+
+    <!-- Toolbar Icons -->
+    <string name="tool_text">T</string>
+    <string name="tool_pen">✏️</string>
+    <string name="tool_highlighter">🖊️</string>
+    <string name="tool_eraser">🧹</string>
+    <string name="tool_shapes">📐</string>
+    <string name="tool_mic">🎙️</string>
+
+    <!-- Editor Fields -->
+    <string name="hint_edit_content">Type your notes here…</string>
+
+    <!-- Bottom Actions -->
+    <string name="action_save">💾 Save</string>
+    <string name="action_export_pdf">⬇ Export PDF</string>
+    <string name="action_share">🔗 Share</string>
+
+    <!-- Page Controls -->
+    <string name="page_up">▲</string>
+    <string name="page_down">▼</string>
 </resources>

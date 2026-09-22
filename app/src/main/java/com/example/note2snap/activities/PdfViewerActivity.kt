@@ -1,5 +1,6 @@
 package com.example.note2snap.activities
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
@@ -13,6 +14,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
@@ -31,15 +33,24 @@ import com.example.note2snap.R
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.Note
 import com.example.note2snap.utils.DocxExporter
+import com.example.note2snap.views.DrawingView
+import com.example.note2snap.views.ToolMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class PdfViewerActivity : AppCompatActivity() {
 
     private var currentNote: Note? = null
     private var currentTitle: String = "Untitled Note"
     private var currentRawContent: String = ""
+
+    private var isEditMode = false
+    private var currentPage = 1
+    private var totalPages = 1
 
     private val createPdfLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
@@ -54,9 +65,10 @@ class PdfViewerActivity : AppCompatActivity() {
         currentTitle = intent.getStringExtra("TITLE") ?: "Untitled Note"
         val directContent = intent.getStringExtra("CONTENT")
 
-        findViewById<TextView>(R.id.tvPdfTitle).apply {
-            text = currentTitle
-        }
+        setupHeaderAndMetadata()
+        setupToolRibbon()
+        setupBottomActions()
+        setupPageNavigation()
 
         if (!directContent.isNullOrEmpty()) {
             currentRawContent = directContent
@@ -65,25 +77,151 @@ class PdfViewerActivity : AppCompatActivity() {
         } else {
             fetchNoteFromDatabase()
         }
+    }
+
+    private fun setupHeaderAndMetadata() {
+        findViewById<TextView>(R.id.tvPdfTitle)?.text = currentTitle
+
+        val currentDate = SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()).format(Date())
+        findViewById<TextView>(R.id.tvPdfDate)?.text = currentDate
 
         findViewById<ImageButton>(R.id.btnPdfBack)?.setOnClickListener { finish() }
 
         findViewById<ImageView>(R.id.btnPdfMoreOptions)?.setOnClickListener { view ->
             showOptionsMenu(view)
         }
+    }
 
-        findViewById<LinearLayout>(R.id.btnActionSaveNotes)?.setOnClickListener {
-            showEditContentDialog()
+    private fun setupToolRibbon() {
+        val drawingView = findViewById<DrawingView>(R.id.drawingView)
+
+        // Text Edit Tool Button (T)
+        findViewById<TextView>(R.id.btnToolText)?.setOnClickListener {
+            toggleInlineEditMode()
         }
 
-        findViewById<LinearLayout>(R.id.btnActionDownload)?.setOnClickListener {
+        // Top Toolbar Share Button
+        findViewById<ImageButton>(R.id.btnToolShare)?.setOnClickListener {
+            shareDocument()
+        }
+
+        // Tool Selectors
+        val toolPen = findViewById<TextView>(R.id.btnToolPen)
+        val toolHighlighter = findViewById<TextView>(R.id.btnToolHighlighter)
+        val toolEraser = findViewById<TextView>(R.id.btnToolEraser)
+        val toolShapes = findViewById<TextView>(R.id.btnToolShapes)
+        val toolMic = findViewById<TextView>(R.id.btnToolMic)
+
+        // Pen Click: Activate Pen & Open Basic Color Dialog
+        toolPen?.setOnClickListener {
+            drawingView?.setTool(ToolMode.PEN)
+            showColorPickerDialog(isHighlighter = false)
+        }
+
+        // Highlighter Click: Activate Highlighter & Open Basic Color Dialog
+        toolHighlighter?.setOnClickListener {
+            drawingView?.setTool(ToolMode.HIGHLIGHTER)
+            showColorPickerDialog(isHighlighter = true)
+        }
+
+        // Eraser Click: Activate Clear Mode
+        toolEraser?.setOnClickListener {
+            drawingView?.setTool(ToolMode.ERASER)
+            showToolToast("Eraser Active")
+        }
+
+        toolShapes?.setOnClickListener { showToolToast("Shape recognition active") }
+        toolMic?.setOnClickListener { showToolToast("Voice note recording") }
+    }
+
+    private fun showColorPickerDialog(isHighlighter: Boolean) {
+        val drawingView = findViewById<DrawingView>(R.id.drawingView) ?: return
+
+        val colorNames = if (isHighlighter) {
+            arrayOf("Yellow 🟡", "Green 🟢", "Blue 🔵", "Pink 🩷", "Orange 🟠")
+        } else {
+            arrayOf("Black ⬛", "Blue 🔵", "Red 🔴", "Green 🟢", "Purple 🟣")
+        }
+
+        val colorValues = if (isHighlighter) {
+            intArrayOf(
+                Color.YELLOW,
+                Color.GREEN,
+                Color.CYAN,
+                Color.MAGENTA,
+                Color.parseColor("#FFA500")
+            )
+        } else {
+            intArrayOf(
+                Color.BLACK,
+                Color.BLUE,
+                Color.RED,
+                Color.GREEN,
+                Color.parseColor("#800080")
+            )
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(if (isHighlighter) "Select Highlighter Color" else "Select Pen Color")
+            .setItems(colorNames) { _, index ->
+                val selectedColor = colorValues[index]
+                if (isHighlighter) {
+                    drawingView.setHighlighterColor(selectedColor)
+                    showToolToast("Highlighter: ${colorNames[index]}")
+                } else {
+                    drawingView.setPenColor(selectedColor)
+                    showToolToast("Pen: ${colorNames[index]}")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun setupBottomActions() {
+        findViewById<View>(R.id.btnActionSaveNotes)?.setOnClickListener {
+            if (isEditMode) {
+                toggleInlineEditMode() // Finalize edits if in inline edit mode
+            } else {
+                saveNoteToDatabase()
+            }
+        }
+
+        findViewById<View>(R.id.btnActionDownload)?.setOnClickListener {
             val sanitizedFileName = currentTitle.replace("[^a-zA-Z0-9._-]".toRegex(), "_")
             createPdfLauncher.launch("$sanitizedFileName.pdf")
         }
 
-        findViewById<LinearLayout>(R.id.btnActionShare)?.setOnClickListener {
+        findViewById<View>(R.id.btnActionShare)?.setOnClickListener {
             shareDocument()
         }
+    }
+
+    private fun setupPageNavigation() {
+        val tvPageIndicator = findViewById<TextView>(R.id.tvPageIndicator)
+        val btnPageUp = findViewById<TextView>(R.id.btnPageUp)
+        val btnPageDown = findViewById<TextView>(R.id.btnPageDown)
+
+        updatePageIndicator()
+
+        btnPageUp?.setOnClickListener {
+            if (currentPage > 1) {
+                currentPage--
+                updatePageIndicator()
+                findViewById<ScrollView>(R.id.scrollViewContent)?.fullScroll(View.FOCUS_UP)
+            }
+        }
+
+        btnPageDown?.setOnClickListener {
+            if (currentPage < totalPages) {
+                currentPage++
+                updatePageIndicator()
+                findViewById<ScrollView>(R.id.scrollViewContent)?.fullScroll(View.FOCUS_DOWN)
+            }
+        }
+    }
+
+    private fun updatePageIndicator() {
+        findViewById<TextView>(R.id.tvPageIndicator)?.text = "$currentPage / $totalPages"
     }
 
     private fun isDarkMode(): Boolean {
@@ -106,6 +244,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
     private fun renderContent(rawContent: String) {
         val tvPdfContent = findViewById<TextView>(R.id.tvPdfContent)
+        val tvSectionHeader = findViewById<TextView>(R.id.tvSectionHeader)
         val webViewContent = findViewById<WebView>(R.id.webViewContent)
         val scrollViewContent = findViewById<View>(R.id.scrollViewContent)
 
@@ -115,7 +254,6 @@ class PdfViewerActivity : AppCompatActivity() {
 
         if (hasRichContent && webViewContent != null) {
             scrollViewContent?.visibility = View.GONE
-            tvPdfContent?.visibility = View.GONE
             webViewContent.visibility = View.VISIBLE
 
             val bgColor = if (dark) "#121212" else "#FFFFFF"
@@ -155,9 +293,26 @@ class PdfViewerActivity : AppCompatActivity() {
         } else {
             webViewContent?.visibility = View.GONE
             scrollViewContent?.visibility = View.VISIBLE
-            tvPdfContent?.visibility = View.VISIBLE
 
-            val htmlFormatted = rawContent
+            val lines = rawContent.lines()
+            val contentBuilder = StringBuilder()
+            var detectedHeader = currentTitle
+
+            for (line in lines) {
+                val trimmed = line.trim()
+                if (trimmed.isEmpty()) continue
+
+                if (trimmed.startsWith("1.") || trimmed.startsWith("Chapter") || trimmed.startsWith("Section")) {
+                    detectedHeader = trimmed
+                } else {
+                    contentBuilder.append(trimmed).append("\n")
+                }
+            }
+
+            tvSectionHeader?.text = detectedHeader
+
+            val bodyText = if (contentBuilder.isNotEmpty()) contentBuilder.toString() else rawContent
+            val htmlFormatted = bodyText
                 .replace(Regex("\\*\\*(.*?)\\*\\*"), "<b>$1</b>")
                 .replace("\n", "<br/>")
 
@@ -168,7 +323,43 @@ class PdfViewerActivity : AppCompatActivity() {
                 Html.fromHtml(htmlFormatted)
             }
 
-            tvPdfContent?.setTextColor(if (dark) Color.WHITE else Color.BLACK)
+            tvPdfContent?.setTextColor(if (dark) Color.WHITE else Color.parseColor("#0F172A"))
+        }
+    }
+
+    private fun toggleInlineEditMode() {
+        val tvPdfContent = findViewById<TextView>(R.id.tvPdfContent)
+        val etInlineEditor = findViewById<EditText>(R.id.etInlineEditor)
+        val btnToolText = findViewById<TextView>(R.id.btnToolText)
+
+        if (!isEditMode) {
+            val cleanText = cleanHtmlAndMarkdown(currentRawContent)
+            etInlineEditor?.setText(cleanText)
+            tvPdfContent?.visibility = View.GONE
+            etInlineEditor?.visibility = View.VISIBLE
+
+            etInlineEditor?.requestFocus()
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(etInlineEditor, InputMethodManager.SHOW_IMPLICIT)
+
+            btnToolText?.setTextColor(Color.parseColor("#16A34A"))
+            isEditMode = true
+            Toast.makeText(this, "Editing Mode Active", Toast.LENGTH_SHORT).show()
+        } else {
+            val updatedText = etInlineEditor?.text?.toString() ?: ""
+            currentRawContent = updatedText.replace("\n", "<br/>")
+
+            etInlineEditor?.visibility = View.GONE
+            tvPdfContent?.visibility = View.VISIBLE
+
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(etInlineEditor?.windowToken, 0)
+
+            btnToolText?.setTextColor(Color.parseColor("#2563EB"))
+            isEditMode = false
+
+            renderContent(currentRawContent)
+            saveNoteToDatabase()
         }
     }
 
@@ -194,14 +385,14 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun showOptionsMenu(anchorView: View) {
         val popup = PopupMenu(this, anchorView)
 
-        popup.menu.add(0, 1, 0, "Edit Content")
-        popup.menu.add(0, 2, 1, "Rename Note")
+        popup.menu.add(0, 1, 0, "Edit Note Text")
+        popup.menu.add(0, 2, 1, "Rename Title")
         popup.menu.add(0, 3, 2, "Delete Note")
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> {
-                    showEditContentDialog()
+                    toggleInlineEditMode()
                     true
                 }
                 2 -> {
@@ -226,47 +417,15 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Rename Note")
+            .setTitle("Rename Note Title")
             .setView(input)
             .setPositiveButton("Save") { d, _ ->
                 val newTitle = input.text.toString().trim()
                 if (newTitle.isNotEmpty()) {
                     currentTitle = newTitle
-                    findViewById<TextView>(R.id.tvPdfTitle).text = newTitle
+                    findViewById<TextView>(R.id.tvPdfTitle)?.text = newTitle
                     saveNoteToDatabase()
                 }
-                d.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
-
-        dialog.show()
-    }
-
-    private fun showEditContentDialog() {
-        // Strip complex HTML tags for user-friendly editing in plain text
-        val editableContent = cleanHtmlAndMarkdown(currentRawContent)
-
-        val input = EditText(this).apply {
-            setText(editableContent)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            setPadding(40, 32, 40, 32)
-            minLines = 8
-            gravity = android.view.Gravity.TOP or android.view.Gravity.START
-        }
-
-        val scrollContainer = ScrollView(this).apply {
-            addView(input)
-        }
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Edit Note Content")
-            .setView(scrollContainer)
-            .setPositiveButton("Save") { d, _ ->
-                val newText = input.text.toString()
-                currentRawContent = newText.replace("\n", "<br/>")
-                renderContent(currentRawContent)
-                saveNoteToDatabase()
                 d.dismiss()
             }
             .setNegativeButton("Cancel", null)
@@ -411,5 +570,9 @@ class PdfViewerActivity : AppCompatActivity() {
             @Suppress("DEPRECATION")
             StaticLayout(text, paint, width, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false)
         }
+    }
+
+    private fun showToolToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 }

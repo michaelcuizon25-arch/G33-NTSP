@@ -56,11 +56,12 @@ class HomeFragment : Fragment() {
 
         updateHeaderAndDate()
 
-        // Tab switches synchronized with BottomNavigationView selection
+        // 1. Triggers Scan Dialog directly in MainActivity (Camera / Gallery option)
+        // Inside HomeFragment.kt - Replace cardScan listener with this:
         cardScan?.setOnClickListener {
-            (activity as? MainActivity)?.selectTab(R.id.nav_scan)
+            (activity as? MainActivity)?.openScan()
         }
-
+        // 2. Tab switches synchronized with BottomNavigationView selection
         cardNotes?.setOnClickListener {
             (activity as? MainActivity)?.selectTab(R.id.nav_notes)
         }

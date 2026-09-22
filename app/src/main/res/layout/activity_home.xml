@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- Fragment Container for Screen Content -->
+    <FrameLayout
+        android:id="@+id/fragmentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="72dp" />
+
+    <!-- Theme-Adaptive Curved Bottom Navigation Bar -->
+    <com.example.note2snap.activities.CurvedBottomNavigationView
+        android:id="@+id/bottomNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:layout_gravity="bottom"
+        android:background="@android:color/transparent"
+        app:elevation="8dp"
+        app:itemActiveIndicatorStyle="@null"
+        app:itemIconTint="@color/nav_item_color"
+        app:itemTextColor="@color/nav_item_color"
+        app:labelVisibilityMode="selected"
+        app:menu="@menu/bottom_nav_menu" />
+
+    <!-- Center Floating Action Button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabScan"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="Scan"
+        android:src="@drawable/ic_camera"
+        android:translationY="20dp"
+        app:backgroundTint="@color/fab_bg_color"
+        app:elevation="12dp"
+        app:fabCustomSize="56dp"
+        app:layout_anchor="@id/bottomNavigation"
+        app:layout_anchorGravity="top|center_horizontal"
+        app:tint="@color/fab_icon_tint" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

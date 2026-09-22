@@ -12,6 +12,7 @@
         android:orientation="vertical"
         android:padding="20dp">
 
+
         <!-- NOTE2SNAP Custom Title Header -->
         <LinearLayout
             android:layout_width="wrap_content"
@@ -35,14 +36,14 @@
                 android:id="@+id/tvTitle2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="2"
-                android:textColor="#FFFFFF"
-                android:textSize="30sp"
-                android:textStyle="bold"
                 android:shadowColor="#000000"
                 android:shadowDx="2"
                 android:shadowDy="2"
-                android:shadowRadius="4" />
+                android:shadowRadius="4"
+                android:text="2"
+                android:textColor="#FFFFFF"
+                android:textSize="30sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvTitleSnap"
@@ -58,41 +59,76 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Dynamic Contextual Greeting & Date -->
-        <TextView
-            android:id="@+id/tvGreeting"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Welcome back"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvGreetingSubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="Ready to scan your notes today?"
-            android:textColor="?android:attr/textColorSecondary"
-            android:textSize="13sp" />
-
         <TextView
             android:id="@+id/tvDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="4dp"
             android:text="Tuesday, August 25"
             android:textColor="?android:attr/textColorSecondary"
             android:textSize="12sp" />
+
+        <!-- Mascot Character Speech Bubble Card -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardMascot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <!-- Vector Animated Mascot -->
+                <com.airbnb.lottie.LottieAnimationView
+                    android:id="@+id/lottieMascot"
+                    android:layout_width="85dp"
+                    android:layout_height="85dp"
+                    app:lottie_autoPlay="true"
+                    app:lottie_loop="true"
+                    app:lottie_rawRes="@raw/robot_mascot" />
+
+                <!-- Speech Bubble Greeting -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvGreeting"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Welcome back"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvGreetingSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Ready to scan your notes today?"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
         <!-- Habit / Streak Statistics Bar -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardBackgroundColor="#2563EB"
             app:cardCornerRadius="16dp"
             app:cardElevation="2dp">
 
@@ -115,7 +151,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
-                        android:textColor="?android:attr/textColorPrimary"
+                        android:textColor="#FFFFFF"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -123,7 +159,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Total Notes"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="#FFFFFF"
                         android:textSize="11sp" />
                 </LinearLayout>
 
@@ -144,7 +180,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
-                        android:textColor="?android:attr/textColorPrimary"
+                        android:textColor="#FFFFFF"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -152,7 +188,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="This Week"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="#FFFFFF"
                         android:textSize="11sp" />
                 </LinearLayout>
 
@@ -173,7 +209,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🔥 Active"
-                        android:textColor="?android:attr/textColorPrimary"
+                        android:textColor="#FFFFFF"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -181,7 +217,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Study Streak"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="#FFFFFF"
                         android:textSize="11sp" />
                 </LinearLayout>
             </LinearLayout>

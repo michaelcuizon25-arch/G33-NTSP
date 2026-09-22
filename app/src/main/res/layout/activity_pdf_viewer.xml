@@ -1,152 +1,393 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:background="#F8FAFC"
+    tools:context=".activities.PdfViewerActivity">
 
-    <!-- Header Toolbar -->
+    <!-- Digital Notebook Top Navigation & Tool Ribbon -->
     <LinearLayout
         android:id="@+id/llPdfHeader"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:background="?android:attr/colorBackground"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="16dp">
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:background="#FFFFFF"
+        android:elevation="3dp"
+        android:orientation="vertical">
 
-        <ImageButton
-            android:id="@+id/btnPdfBack"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_revert"
-            app:tint="?android:attr/textColorPrimary" />
+        <!-- Row 1: GoodNotes Style Tool Bar -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:fillViewport="true"
+            android:scrollbars="none">
 
-        <TextView
-            android:id="@+id/tvPdfTitle"
-            android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="8dp">
+
+                <!-- Navigation Controls -->
+                <ImageButton
+                    android:id="@+id/btnPdfBack"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_back"
+                    android:padding="6dp"
+                    android:src="@android:drawable/ic_menu_revert"
+                    app:tint="#475569" />
+
+                <ImageButton
+                    android:id="@+id/btnToolShare"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_share"
+                    android:padding="6dp"
+                    android:src="@android:drawable/ic_menu_share"
+                    app:tint="#475569" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="24dp"
+                    android:layout_marginHorizontal="6dp"
+                    android:background="#E2E8F0" />
+
+                <!-- Note-Taking Palette Tools -->
+                <TextView
+                    android:id="@+id/btnToolText"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="@string/tool_text"
+                    android:textColor="#2563EB"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btnToolPen"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="@string/tool_pen"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/btnToolHighlighter"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="@string/tool_highlighter"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/btnToolEraser"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="@string/tool_eraser"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/btnToolShapes"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="@string/tool_shapes"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/btnToolMic"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="@string/tool_mic"
+                    android:textSize="16sp" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="24dp"
+                    android:layout_marginHorizontal="6dp"
+                    android:background="#E2E8F0" />
+
+                <ImageView
+                    android:id="@+id/btnPdfMoreOptions"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_more_options"
+                    android:padding="6dp"
+                    android:src="@android:drawable/ic_menu_more"
+                    app:tint="#475569" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#F1F5F9" />
+
+        <!-- Row 2: Title & Timestamp Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="16dp"
-            android:text="CS 212"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
 
-        <!-- 3-Dot Options Button -->
-        <ImageView
-            android:id="@+id/btnPdfMoreOptions"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="4dp"
-            android:src="@android:drawable/ic_menu_more"
-            app:tint="?android:attr/textColorPrimary" />
+            <TextView
+                android:id="@+id/tvPdfTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-bold"
+                android:maxLines="1"
+                android:textColor="#0F172A"
+                android:textSize="18sp"
+                tools:text="Chapter. 1 - Terminology and Sampling Techniques" />
+
+            <TextView
+                android:id="@+id/tvPdfDate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="#64748B"
+                android:textSize="12sp"
+                tools:text="Jun 6, 2026, 2:06 PM" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E2E8F0" />
     </LinearLayout>
 
-    <!-- Standard Text Content View -->
+    <!-- Digital Paper Sheet Scroll Area -->
     <ScrollView
         android:id="@+id/scrollViewContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/llPdfBottomActions"
         android:layout_below="@id/llPdfHeader"
-        android:background="?android:attr/colorBackground"
-        android:padding="16dp">
+        android:clipToPadding="false"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
 
-        <TextView
-            android:id="@+id/tvPdfContent"
+        <!-- Notebook Paper Page -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:lineSpacingExtra="6dp"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="15sp" />
+            android:background="#FFFFFF"
+            android:elevation="2dp"
+            android:minHeight="720dp"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- Sub-topic Section Title -->
+            <TextView
+                android:id="@+id/tvSectionHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-bold"
+                android:paddingBottom="16dp"
+                android:textColor="#0F172A"
+                android:textSize="16sp"
+                tools:text="1.1 - Introduction to Statistics" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <!-- Thin Vertical Notebook Margin Divider Line -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginHorizontal="12dp"
+                    android:background="#CBD5E1" />
+
+                <!-- Main Notes Content -->
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.0">
+
+                    <!-- Formatted Text Display -->
+                    <TextView
+                        android:id="@+id/tvPdfContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:lineSpacingExtra="6dp"
+                        android:textColor="#0F172A"
+                        android:textSize="13sp" />
+
+                    <!-- Editable Input Box -->
+                    <EditText
+                        android:id="@+id/etInlineEditor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="400dp"
+                        android:autofillHints=""
+                        android:background="@null"
+                        android:gravity="top|start"
+                        android:hint="@string/hint_edit_content"
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:lineSpacingExtra="6dp"
+                        android:textColor="#0F172A"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+                </FrameLayout>
+            </LinearLayout>
+        </LinearLayout>
     </ScrollView>
 
-    <!-- Table Render View -->
+    <!-- WebView for HTML Tables -->
     <WebView
         android:id="@+id/webViewContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/llPdfBottomActions"
         android:layout_below="@id/llPdfHeader"
-        android:background="?android:attr/colorBackground"
+        android:background="#FFFFFF"
         android:visibility="gone" />
 
-    <!-- Bottom Actions Bar -->
-    <LinearLayout
+    <!-- Overlay Drawing Canvas (Pen / Highlighter / Eraser) -->
+    <com.example.note2snap.views.DrawingView
+        android:id="@+id/drawingView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/llPdfBottomActions"
+        android:layout_below="@id/llPdfHeader" />
+
+    <!-- Bottom Actions Bar & Floating Page Indicator -->
+    <RelativeLayout
         android:id="@+id/llPdfBottomActions"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
+        android:layout_height="56dp"
         android:layout_alignParentBottom="true"
-        android:background="?android:attr/colorBackground"
-        android:orientation="horizontal">
+        android:background="#FFFFFF"
+        android:elevation="4dp"
+        android:paddingHorizontal="16dp">
 
+        <!-- Action Buttons (Left Aligned) -->
         <LinearLayout
-            android:id="@+id/btnActionSaveNotes"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
+            android:layout_alignParentStart="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
+                android:id="@+id/btnActionSaveNotes"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="💾" />
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp"
+                android:text="@string/action_save"
+                android:textColor="#0F172A"
+                android:textSize="13sp" />
 
             <TextView
+                android:id="@+id/btnActionDownload"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Save to Notes"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp"
+                android:text="@string/action_export_pdf"
+                android:textColor="#0F172A"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/btnActionShare"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp"
+                android:text="@string/action_share"
+                android:textColor="#0F172A"
+                android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- GoodNotes Style Bottom-Right Page Selector (▲ 1/2 ▼) -->
         <LinearLayout
-            android:id="@+id/btnActionDownload"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
+            android:layout_alignParentEnd="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="⬇" />
+                android:id="@+id/btnPageUp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/page_up"
+                android:textColor="#64748B"
+                android:textSize="12sp" />
 
             <TextView
+                android:id="@+id/tvPageIndicator"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Download"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:fontFamily="sans-serif-medium"
+                android:paddingHorizontal="4dp"
+                android:textColor="#475569"
+                android:textSize="12sp"
+                tools:text="1 / 2" />
+
+            <TextView
+                android:id="@+id/btnPageDown"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/page_down"
+                android:textColor="#64748B"
+                android:textSize="12sp" />
         </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/btnActionShare"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🔗" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Share"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-    </LinearLayout>
+    </RelativeLayout>
 
 </RelativeLayout>

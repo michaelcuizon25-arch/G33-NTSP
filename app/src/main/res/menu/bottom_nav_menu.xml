@@ -4,18 +4,23 @@
         android:id="@+id/nav_home"
         android:icon="@drawable/ic_home"
         android:title="Home" />
+
     <item
         android:id="@+id/nav_notes"
         android:icon="@drawable/ic_notes"
         android:title="Notes" />
+
+    <!-- Center placeholder slot under curve dip (no title) -->
     <item
-        android:id="@+id/nav_scan"
-        android:icon="@drawable/ic_camera"
-        android:title="Scan" />
+        android:id="@+id/nav_placeholder"
+        android:enabled="false"
+        android:title="" />
+
     <item
         android:id="@+id/nav_history"
         android:icon="@drawable/ic_history"
         android:title="History" />
+
     <item
         android:id="@+id/nav_settings"
         android:icon="@drawable/ic_setting"

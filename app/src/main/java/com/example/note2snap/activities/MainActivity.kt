@@ -7,9 +7,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import com.example.note2snap.R
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var bottomNav: CurvedBottomNavigationView
+    private lateinit var fabScan: FloatingActionButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Read saved preference and set Night Mode BEFORE layout inflation
@@ -28,25 +31,55 @@ class MainActivity : AppCompatActivity() {
         }
 
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_home)
 
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
+        bottomNav = findViewById(R.id.bottomNavigation)
+        fabScan = findViewById(R.id.fabScan)
+
         if (savedInstanceState == null) {
             loadFragment(HomeFragment())
+            // Position initial curve over Home tab after layout renders
+            bottomNav.post {
+                bottomNav.animateCurveToItem(R.id.nav_home)
+            }
         }
 
+        // Handles tab item clicks and triggers sliding curve wave animation
         bottomNav.setOnItemSelectedListener { item ->
-            val fragment: Fragment = when (item.itemId) {
-                R.id.nav_home -> HomeFragment()
-                R.id.nav_notes -> NotesFragment()
-                R.id.nav_scan -> ScanFragment()
-                R.id.nav_history -> HistoryFragment()
-                R.id.nav_settings -> SettingsFragment()
-                else -> HomeFragment()
+            bottomNav.animateCurveToItem(item.itemId)
+
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    loadFragment(HomeFragment())
+                    true
+                }
+                R.id.nav_notes -> {
+                    loadFragment(NotesFragment())
+                    true
+                }
+                R.id.nav_history -> {
+                    loadFragment(HistoryFragment())
+                    true
+                }
+                R.id.nav_settings -> {
+                    loadFragment(SettingsFragment())
+                    true
+                }
+                else -> false
             }
-            loadFragment(fragment)
-            true
         }
+
+        // Tap camera button to immediately open ScanFragment
+        fabScan.setOnClickListener {
+            openScan()
+        }
+    }
+
+    // Opens ScanFragment and aligns the curved bottom nav position
+    fun openScan() {
+        loadFragment(ScanFragment())
+        bottomNav.selectedItemId = R.id.nav_placeholder
+        bottomNav.animateCurveToItem(R.id.nav_placeholder)
     }
 
     fun loadFragment(fragment: Fragment) {
@@ -55,9 +88,9 @@ class MainActivity : AppCompatActivity() {
             .commit()
     }
 
-    // Call this to change the active tab icon on the bottom nav bar
+    // Call this to change active tab icon and animate wave curve
     fun selectTab(itemId: Int) {
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
         bottomNav.selectedItemId = itemId
+        bottomNav.animateCurveToItem(itemId)
     }
 }
