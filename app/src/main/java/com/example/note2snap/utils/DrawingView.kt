@@ -1,118 +1,140 @@
-package com.example.note2snap.views
+package com.example.note2snap.utils
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.graphics.toColorInt
 
-enum class ToolMode { PEN, HIGHLIGHTER, ERASER }
-
-data class Stroke(
-    val path: Path,
-    val paint: Paint
-)
+enum class ToolMode {
+    NONE,
+    PEN,
+    HIGHLIGHTER,
+    ERASER
+}
 
 class DrawingView @JvmOverloads constructor(
     context: Context,
-    attrs: AttributeSet? = null
-) : View(context, attrs) {
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : View(context, attrs, defStyleAttr) {
 
-    private val strokes = mutableListOf<Stroke>()
-    private var currentPath = Path()
-    private var currentPaint = Paint()
+    private var currentTool = ToolMode.NONE
+    private var penColor: Int = Color.BLACK
+    private var highlighterColor: Int = "#FFFF00".toColorInt()
 
-    var currentTool: ToolMode = ToolMode.PEN
-        private set
+    private val paths = mutableListOf<DrawnPath>()
+    private val undonePaths = mutableListOf<DrawnPath>()
 
-    var penColor: Int = Color.BLACK
-        private set
+    private var currentPath: Path? = null
 
-    var highlighterColor: Int = Color.argb(100, 255, 235, 59) // Default transparent yellow
-        private set
+    data class DrawnPath(
+        val path: Path,
+        val paint: Paint
+    )
 
     init {
-        setLayerType(LAYER_TYPE_SOFTWARE, null) // Required for PorterDuff CLEAR (Eraser)
-        setupPaint()
-    }
-
-    private fun setupPaint() {
-        currentPaint = Paint().apply {
-            isAntiAlias = true
-            style = Paint.Style.STROKE
-            strokeJoin = Paint.Join.ROUND
-            strokeCap = Paint.Cap.ROUND
-        }
-
-        when (currentTool) {
-            ToolMode.PEN -> {
-                currentPaint.color = penColor
-                currentPaint.strokeWidth = 6f
-                currentPaint.xfermode = null
-            }
-            ToolMode.HIGHLIGHTER -> {
-                currentPaint.color = highlighterColor
-                currentPaint.strokeWidth = 32f
-                currentPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
-            }
-            ToolMode.ERASER -> {
-                currentPaint.color = Color.TRANSPARENT
-                currentPaint.strokeWidth = 40f
-                currentPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-            }
-        }
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
     }
 
     fun setTool(tool: ToolMode) {
         currentTool = tool
-        setupPaint()
+        invalidate()
     }
 
     fun setPenColor(color: Int) {
         penColor = color
-        if (currentTool == ToolMode.PEN) setupPaint()
     }
 
-    fun setHighlighterColor(baseColor: Int) {
-        // Apply 35% opacity (89 out of 255 alpha) so note text underneath is visible
-        highlighterColor = Color.argb(89, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
-        if (currentTool == ToolMode.HIGHLIGHTER) setupPaint()
+    fun setHighlighterColor(color: Int) {
+        highlighterColor = color
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        for (stroke in strokes) {
-            canvas.drawPath(stroke.path, stroke.paint)
+    fun undo() {
+        if (paths.isNotEmpty()) {
+            undonePaths.add(paths.removeAt(paths.size - 1))
+            invalidate()
         }
-        canvas.drawPath(currentPath, currentPaint)
+    }
+
+    fun redo() {
+        if (undonePaths.isNotEmpty()) {
+            paths.add(undonePaths.removeAt(undonePaths.size - 1))
+            invalidate()
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (currentTool == ToolMode.NONE) {
+            return false
+        }
+
         val x = event.x
         val y = event.y
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                currentPath = Path()
-                currentPath.moveTo(x, y)
+                parent?.requestDisallowInterceptTouchEvent(true)
+                undonePaths.clear()
+                val newPath = Path().apply { moveTo(x, y) }
+                val newPaint = createPaintForTool(currentTool)
+                currentPath = newPath
+                paths.add(DrawnPath(newPath, newPaint))
+                invalidate()
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                currentPath.lineTo(x, y)
+                currentPath?.lineTo(x, y)
                 invalidate()
+                return true
             }
-            MotionEvent.ACTION_UP -> {
-                strokes.add(Stroke(currentPath, Paint(currentPaint)))
-                currentPath = Path()
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                currentPath = null
                 invalidate()
+                return true
             }
         }
-        return true
+        return super.onTouchEvent(event)
     }
 
-    fun clearCanvas() {
-        strokes.clear()
-        currentPath.reset()
-        invalidate()
+    private fun createPaintForTool(tool: ToolMode): Paint {
+        return Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeJoin = Paint.Join.ROUND
+            strokeCap = Paint.Cap.ROUND
+
+            when (tool) {
+                ToolMode.PEN -> {
+                    color = penColor
+                    strokeWidth = 6f
+                }
+                ToolMode.HIGHLIGHTER -> {
+                    color = highlighterColor
+                    alpha = 100
+                    strokeWidth = 30f
+                }
+                ToolMode.ERASER -> {
+                    color = Color.TRANSPARENT
+                    xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+                    strokeWidth = 40f
+                }
+                ToolMode.NONE -> {}
+            }
+        }
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        for (dp in paths) {
+            canvas.drawPath(dp.path, dp.paint)
+        }
     }
 }

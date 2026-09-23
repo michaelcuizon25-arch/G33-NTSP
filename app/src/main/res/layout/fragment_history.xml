@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="#FF03A9F4"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="History"
-        android:textColor="@color/text_main"
+        android:textColor="#FFFFFF"
         android:textSize="26sp"
         android:textStyle="bold" />
 
@@ -26,7 +26,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="☹"
-            android:textColor="@color/text_main"
+            android:textColor="#FFFFFF"
             android:textSize="64sp" />
 
         <TextView
@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="No scans yet."
-            android:textColor="@color/text_sub"
+            android:textColor="#F0F9FF"
             android:textSize="16sp" />
     </LinearLayout>
 

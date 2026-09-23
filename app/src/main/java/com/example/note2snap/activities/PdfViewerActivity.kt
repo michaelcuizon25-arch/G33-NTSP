@@ -1,15 +1,12 @@
 package com.example.note2snap.activities
 
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.text.Html
-import android.text.InputType
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -20,7 +17,6 @@ import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -28,14 +24,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.graphics.toColorInt
+import androidx.core.graphics.withTranslation
 import androidx.lifecycle.lifecycleScope
 import com.example.note2snap.R
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.Note
 import com.example.note2snap.utils.DocxExporter
-import com.example.note2snap.views.DrawingView
-import com.example.note2snap.views.ToolMode
+import com.example.note2snap.utils.DrawingView
+import com.example.note2snap.utils.ToolMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -95,7 +94,10 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun setupToolRibbon() {
         val drawingView = findViewById<DrawingView>(R.id.drawingView)
 
-        // Text Edit Tool Button (T)
+        // Pen inactive by default for normal page touch scrolling
+        drawingView?.setTool(ToolMode.NONE)
+
+        // Text Edit Tool Button
         findViewById<TextView>(R.id.btnToolText)?.setOnClickListener {
             toggleInlineEditMode()
         }
@@ -112,19 +114,20 @@ class PdfViewerActivity : AppCompatActivity() {
         val toolShapes = findViewById<TextView>(R.id.btnToolShapes)
         val toolMic = findViewById<TextView>(R.id.btnToolMic)
 
-        // Pen Click: Activate Pen & Open Basic Color Dialog
+        // Undo & Redo Tool Buttons
+        val toolUndo = findViewById<View>(R.id.btnToolUndo)
+        val toolRedo = findViewById<View>(R.id.btnToolRedo)
+
         toolPen?.setOnClickListener {
             drawingView?.setTool(ToolMode.PEN)
             showColorPickerDialog(isHighlighter = false)
         }
 
-        // Highlighter Click: Activate Highlighter & Open Basic Color Dialog
         toolHighlighter?.setOnClickListener {
             drawingView?.setTool(ToolMode.HIGHLIGHTER)
             showColorPickerDialog(isHighlighter = true)
         }
 
-        // Eraser Click: Activate Clear Mode
         toolEraser?.setOnClickListener {
             drawingView?.setTool(ToolMode.ERASER)
             showToolToast("Eraser Active")
@@ -132,6 +135,16 @@ class PdfViewerActivity : AppCompatActivity() {
 
         toolShapes?.setOnClickListener { showToolToast("Shape recognition active") }
         toolMic?.setOnClickListener { showToolToast("Voice note recording") }
+
+        toolUndo?.setOnClickListener {
+            drawingView?.undo()
+            showToolToast("Undo")
+        }
+
+        toolRedo?.setOnClickListener {
+            drawingView?.redo()
+            showToolToast("Redo")
+        }
     }
 
     private fun showColorPickerDialog(isHighlighter: Boolean) {
@@ -149,7 +162,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 Color.GREEN,
                 Color.CYAN,
                 Color.MAGENTA,
-                Color.parseColor("#FFA500")
+                "#FFA500".toColorInt()
             )
         } else {
             intArrayOf(
@@ -157,7 +170,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 Color.BLUE,
                 Color.RED,
                 Color.GREEN,
-                Color.parseColor("#800080")
+                "#800080".toColorInt()
             )
         }
 
@@ -180,7 +193,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun setupBottomActions() {
         findViewById<View>(R.id.btnActionSaveNotes)?.setOnClickListener {
             if (isEditMode) {
-                toggleInlineEditMode() // Finalize edits if in inline edit mode
+                toggleInlineEditMode()
             } else {
                 saveNoteToDatabase()
             }
@@ -197,7 +210,6 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun setupPageNavigation() {
-        val tvPageIndicator = findViewById<TextView>(R.id.tvPageIndicator)
         val btnPageUp = findViewById<TextView>(R.id.btnPageUp)
         val btnPageDown = findViewById<TextView>(R.id.btnPageDown)
 
@@ -221,7 +233,8 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun updatePageIndicator() {
-        findViewById<TextView>(R.id.tvPageIndicator)?.text = "$currentPage / $totalPages"
+        val pageText = String.format(Locale.getDefault(), "%d / %d", currentPage, totalPages)
+        findViewById<TextView>(R.id.tvPageIndicator)?.text = pageText
     }
 
     private fun isDarkMode(): Boolean {
@@ -256,21 +269,21 @@ class PdfViewerActivity : AppCompatActivity() {
             scrollViewContent?.visibility = View.GONE
             webViewContent.visibility = View.VISIBLE
 
-            val bgColor = if (dark) "#121212" else "#FFFFFF"
-            val textColor = if (dark) "#E0E0E0" else "#000000"
-            val headerBg = if (dark) "#1F1F1F" else "#F2F2F7"
-            val borderColor = if (dark) "#333333" else "#CCCCCC"
+            val bgColorStr = if (dark) "#121212" else "#FFFFFF"
+            val textColorStr = if (dark) "#E0E0E0" else "#000000"
+            val headerBgStr = if (dark) "#1F1F1F" else "#F2F2F7"
+            val borderColorStr = if (dark) "#333333" else "#CCCCCC"
 
             val styledHtml = """
                 <html>
                 <head>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
-                        body { font-family: sans-serif; padding: 12px; color: $textColor; background-color: $bgColor; }
+                        body { font-family: sans-serif; padding: 12px; color: $textColorStr; background-color: $bgColorStr; }
                         table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
                         img { display: block; max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; }
-                        th { background-color: $headerBg; font-weight: bold; text-align: left; padding: 8px; border: 1px solid $borderColor; color: $textColor; }
-                        td { padding: 8px; border: 1px solid $borderColor; vertical-align: top; color: $textColor; }
+                        th { background-color: $headerBgStr; font-weight: bold; text-align: left; padding: 8px; border: 1px solid $borderColorStr; color: $textColorStr; }
+                        td { padding: 8px; border: 1px solid $borderColorStr; vertical-align: top; color: $textColorStr; }
                     </style>
                 </head>
                 <body>
@@ -279,7 +292,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 </html>
             """.trimIndent()
 
-            webViewContent.setBackgroundColor(Color.parseColor(bgColor))
+            webViewContent.setBackgroundColor(bgColorStr.toColorInt())
             webViewContent.webViewClient = WebViewClient()
             webViewContent.settings.javaScriptEnabled = false
             webViewContent.settings.allowFileAccess = true
@@ -311,19 +324,13 @@ class PdfViewerActivity : AppCompatActivity() {
 
             tvSectionHeader?.text = detectedHeader
 
-            val bodyText = if (contentBuilder.isNotEmpty()) contentBuilder.toString() else rawContent
+            val bodyText = contentBuilder.ifEmpty { rawContent }.toString()
             val htmlFormatted = bodyText
                 .replace(Regex("\\*\\*(.*?)\\*\\*"), "<b>$1</b>")
                 .replace("\n", "<br/>")
 
-            tvPdfContent?.text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                Html.fromHtml(htmlFormatted, Html.FROM_HTML_MODE_COMPACT)
-            } else {
-                @Suppress("DEPRECATION")
-                Html.fromHtml(htmlFormatted)
-            }
-
-            tvPdfContent?.setTextColor(if (dark) Color.WHITE else Color.parseColor("#0F172A"))
+            tvPdfContent?.text = Html.fromHtml(htmlFormatted, Html.FROM_HTML_MODE_COMPACT)
+            tvPdfContent?.setTextColor(if (dark) Color.WHITE else "#0F172A".toColorInt())
         }
     }
 
@@ -339,10 +346,15 @@ class PdfViewerActivity : AppCompatActivity() {
             etInlineEditor?.visibility = View.VISIBLE
 
             etInlineEditor?.requestFocus()
+
+            if (cleanText.isNotEmpty()) {
+                etInlineEditor?.setSelection(cleanText.length)
+            }
+
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(etInlineEditor, InputMethodManager.SHOW_IMPLICIT)
 
-            btnToolText?.setTextColor(Color.parseColor("#16A34A"))
+            btnToolText?.setTextColor("#16A34A".toColorInt())
             isEditMode = true
             Toast.makeText(this, "Editing Mode Active", Toast.LENGTH_SHORT).show()
         } else {
@@ -355,7 +367,7 @@ class PdfViewerActivity : AppCompatActivity() {
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(etInlineEditor?.windowToken, 0)
 
-            btnToolText?.setTextColor(Color.parseColor("#2563EB"))
+            btnToolText?.setTextColor("#2563EB".toColorInt())
             isEditMode = false
 
             renderContent(currentRawContent)
@@ -387,7 +399,8 @@ class PdfViewerActivity : AppCompatActivity() {
 
         popup.menu.add(0, 1, 0, "Edit Note Text")
         popup.menu.add(0, 2, 1, "Rename Title")
-        popup.menu.add(0, 3, 2, "Delete Note")
+        popup.menu.add(0, 3, 2, "Move Note to Folder")
+        popup.menu.add(0, 4, 3, "Delete Note")
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -400,6 +413,10 @@ class PdfViewerActivity : AppCompatActivity() {
                     true
                 }
                 3 -> {
+                    showMoveToFolderDialog()
+                    true
+                }
+                4 -> {
                     showDeleteConfirmationDialog()
                     true
                 }
@@ -407,6 +424,58 @@ class PdfViewerActivity : AppCompatActivity() {
             }
         }
         popup.show()
+    }
+
+    private fun showMoveToFolderDialog() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
+            val folders = db.getAllFolders().first()
+
+            withContext(Dispatchers.Main) {
+                val folderOptions = mutableListOf("Main Screen (No Folder)")
+                folderOptions.addAll(folders.map { it.name })
+
+                AlertDialog.Builder(this@PdfViewerActivity)
+                    .setTitle("Move '${currentTitle}' to Folder")
+                    .setItems(folderOptions.toTypedArray()) { d, index ->
+                        if (index == 0) {
+                            moveNoteToFolder(null, "Main Screen")
+                        } else {
+                            val selectedFolder = folders[index - 1]
+                            moveNoteToFolder(selectedFolder.id, selectedFolder.name)
+                        }
+                        d.dismiss()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun moveNoteToFolder(folderId: Int?, folderName: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
+            val existingNote = currentNote
+
+            if (existingNote != null) {
+                db.updateNoteFolder(existingNote.id, folderId)
+                currentNote = existingNote.copy(folderId = folderId)
+            } else {
+                val newNote = Note(
+                    folderId = folderId,
+                    title = currentTitle,
+                    content = currentRawContent,
+                    imagePath = intent.getStringExtra("IMAGE_PATH") ?: "",
+                    dateEdited = "Updated"
+                )
+                db.insertNote(newNote)
+                fetchNoteFromDatabase()
+            }
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@PdfViewerActivity, "Moved to $folderName", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun showRenameDialog() {
@@ -512,10 +581,9 @@ class PdfViewerActivity : AppCompatActivity() {
                 var currentY = margin
 
                 val titleLayout = createStaticLayout(currentTitle, titlePaint, printableWidth)
-                canvas.save()
-                canvas.translate(margin, currentY)
-                titleLayout.draw(canvas)
-                canvas.restore()
+                canvas.withTranslation(margin, currentY) {
+                    titleLayout.draw(canvas)
+                }
 
                 currentY += titleLayout.height + 20f
 
@@ -534,10 +602,9 @@ class PdfViewerActivity : AppCompatActivity() {
                         currentY = margin
                     }
 
-                    canvas.save()
-                    canvas.translate(margin, currentY)
-                    lineLayout.draw(canvas)
-                    canvas.restore()
+                    canvas.withTranslation(margin, currentY) {
+                        lineLayout.draw(canvas)
+                    }
 
                     currentY += lineLayout.height + 4f
                 }
@@ -562,14 +629,9 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun createStaticLayout(text: String, paint: TextPaint, width: Int): StaticLayout {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
-                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                .build()
-        } else {
-            @Suppress("DEPRECATION")
-            StaticLayout(text, paint, width, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false)
-        }
+        return StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .build()
     }
 
     private fun showToolToast(message: String) {

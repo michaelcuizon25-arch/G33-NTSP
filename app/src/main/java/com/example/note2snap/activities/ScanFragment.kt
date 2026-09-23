@@ -1,6 +1,7 @@
 package com.example.note2snap.activities
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,13 +12,13 @@ import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
-import android.graphics.Rect // CHANGE: Imported Rect for bounding box spatial positioning
-import android.graphics.drawable.ColorDrawable
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -34,17 +35,19 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.note2snap.R
 import com.example.note2snap.ccl.Region
 import com.example.note2snap.data.AppDatabase
-import com.example.note2snap.model.BlockType // CHANGE: Imported BlockType for visual vs text block classification
-import com.example.note2snap.model.Note // CHANGE: Imported Note database entity
-import com.example.note2snap.model.NoteBlock // CHANGE: Imported NoteBlock model for structured note output
+import com.example.note2snap.model.BlockType
+import com.example.note2snap.model.Note
+import com.example.note2snap.model.NoteBlock
 import com.example.note2snap.model.ScanHistory
 import com.example.note2snap.recognition.WhiteboardRecognitionPipeline
-import com.example.note2snap.utils.WhiteboardRuleEngine // CHANGE: Imported offline spatial rule engine
+import com.example.note2snap.utils.WhiteboardRuleEngine
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -57,6 +60,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 class ScanFragment : Fragment() {
 
@@ -108,6 +112,7 @@ class ScanFragment : Fragment() {
         val btnFlash = view.findViewById<ImageButton>(R.id.btnFlash)
 
         checkAndStartCamera()
+        setupPinchToZoom()
 
         btnCapture.setOnClickListener {
             takePhoto()
@@ -132,6 +137,29 @@ class ScanFragment : Fragment() {
         return view
     }
 
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupPinchToZoom() {
+        val listener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val activeCamera = camera ?: return false
+                val currentZoomRatio = activeCamera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
+                val delta = detector.scaleFactor
+
+                activeCamera.cameraControl.setZoomRatio(currentZoomRatio * delta)
+                return true
+            }
+        }
+
+        val scaleGestureDetector = ScaleGestureDetector(requireContext(), listener)
+
+        viewFinder.setOnTouchListener { view, event ->
+            scaleGestureDetector.onTouchEvent(event)
+            view.performClick()
+            true
+        }
+    }
+
+    @Suppress("unused")
     fun updateInstruction(message: String) {
         tvInstruction.text = message
     }
@@ -173,6 +201,7 @@ class ScanFragment : Fragment() {
                     imageCapture
                 )
             } catch (exc: Exception) {
+                exc.printStackTrace()
                 Toast.makeText(requireContext(), "Failed to start camera.", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
@@ -203,6 +232,7 @@ class ScanFragment : Fragment() {
             ContextCompat.getMainExecutor(requireContext()),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exc: ImageCaptureException) {
+                    exc.printStackTrace()
                     hideLoadingDialog()
                     Toast.makeText(requireContext(), "Photo capture failed.", Toast.LENGTH_SHORT).show()
                 }
@@ -222,7 +252,7 @@ class ScanFragment : Fragment() {
     private fun preprocessBitmap(bitmap: Bitmap): Bitmap {
         val width = bitmap.width
         val height = bitmap.height
-        val bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val bmpGrayscale = createBitmap(width, height)
         val canvas = Canvas(bmpGrayscale)
         val paint = Paint()
 
@@ -265,12 +295,8 @@ class ScanFragment : Fragment() {
 
                 val processedBitmap = preprocessBitmap(originalBitmap)
 
-                // Working pipeline with no trained model required:
-                // photo -> preprocessing -> CCL -> line crops -> ML Kit OCR -> ordered lines
                 val pipelineResult = runCatching {
-                    val pipeline = WhiteboardRecognitionPipeline(
-                        requireContext()
-                    )
+                    val pipeline = WhiteboardRecognitionPipeline(requireContext())
                     try {
                         pipeline.process(originalBitmap)
                     } finally {
@@ -288,27 +314,18 @@ class ScanFragment : Fragment() {
                                     pipelineResult.diagramRegions.isNotEmpty()
                             )
                 ) {
-
                     val structuredNote = pipelineResult.structuredNote
-
-                    // CHANGE: Save detected diagram/visual bounding regions into file storage and return as visual blocks
                     val visualBlocks = saveDetectedDiagrams(pipelineResult.diagramRegions)
 
-                    /*
-                     * CHANGE: Avoid re-sorting text blocks spatially to preserve multi-column logical reading order.
-                     * Only visual blocks are ordered among themselves before placing them at the top of body text.
-                     */
                     val orderedVisualBlocks = visualBlocks.sortedWith(
-                        compareBy<NoteBlock>(
+                        compareBy(
                             { it.boundingBox?.top ?: Int.MAX_VALUE },
                             { it.boundingBox?.left ?: Int.MAX_VALUE }
                         )
                     )
 
-                    // CHANGE: Merge visual blocks ahead of text blocks while maintaining structuredNote logical sequence
                     val allBlocks = orderedVisualBlocks + structuredNote.blocks
 
-                    // CHANGE: Convert blocks into HTML formatted content string for rendering in PdfViewerActivity
                     val formattedContent = allBlocks
                         .map { renderNoteBlock(it) }
                         .filter { it.isNotBlank() }
@@ -322,7 +339,7 @@ class ScanFragment : Fragment() {
                     saveScanHistory(finalTitle, imagePath)
 
                     val elapsedTime = System.currentTimeMillis() - scanStartTime
-                    delay((5000L - elapsedTime).coerceAtLeast(0L))
+                    delay((5000L - elapsedTime).coerceAtLeast(0L).milliseconds)
 
                     withContext(Dispatchers.Main) {
                         hideLoadingDialog()
@@ -339,14 +356,12 @@ class ScanFragment : Fragment() {
                     return@launch
                 }
 
-                // CHANGE: Safe fallback using ML Kit TextRecognizer when the custom pipeline produces no results
                 val inputImage = InputImage.fromBitmap(processedBitmap, 0)
                 val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
                 withContext(Dispatchers.Main) {
                     recognizer.process(inputImage)
                         .addOnSuccessListener { visionText ->
-                            // CHANGE: Pass ML Kit 'visionText' object directly to WhiteboardRuleEngine to preserve bounding box spatial coordinates
                             val structuredNote = WhiteboardRuleEngine.process(visionText)
                             val formattedContent = structuredNote.blocks.joinToString("<br/>") { it.formattedText }
 
@@ -356,7 +371,7 @@ class ScanFragment : Fragment() {
                                 fallbackTitle
                             }
 
-                            val finalTitle = if (extractedTitle.isNotBlank()) extractedTitle else fallbackTitle
+                            val finalTitle = extractedTitle.ifBlank { fallbackTitle }
 
                             lifecycleScope.launch(Dispatchers.IO) {
                                 saveNoteToDatabase(finalTitle, formattedContent, imagePath)
@@ -364,7 +379,7 @@ class ScanFragment : Fragment() {
 
                                 val elapsedTime = System.currentTimeMillis() - scanStartTime
                                 val remainingDelay = (5000L - elapsedTime).coerceAtLeast(0L)
-                                delay(remainingDelay)
+                                delay(remainingDelay.milliseconds)
 
                                 withContext(Dispatchers.Main) {
                                     hideLoadingDialog()
@@ -385,7 +400,7 @@ class ScanFragment : Fragment() {
 
                                 val elapsedTime = System.currentTimeMillis() - scanStartTime
                                 val remainingDelay = (5000L - elapsedTime).coerceAtLeast(0L)
-                                delay(remainingDelay)
+                                delay(remainingDelay.milliseconds)
 
                                 withContext(Dispatchers.Main) {
                                     hideLoadingDialog()
@@ -412,7 +427,7 @@ class ScanFragment : Fragment() {
                 .setView(dialogView)
                 .setCancelable(false)
                 .create().apply {
-                    window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                    window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
                 }
         } else {
             loadingDialog?.findViewById<TextView>(R.id.tvLoadingMessage)?.text = message
@@ -444,7 +459,6 @@ class ScanFragment : Fragment() {
         }
     }
 
-    // CHANGE: Added helper function to save diagram regions to PNGs and return NoteBlock items with image paths and bounding boxes
     private fun saveDetectedDiagrams(regions: List<Region>): List<NoteBlock> {
         if (regions.isEmpty()) {
             return emptyList()
@@ -473,7 +487,6 @@ class ScanFragment : Fragment() {
         }
     }
 
-    // CHANGE: Added block rendering helper to format visual blocks into <img> HTML elements and text blocks into styled HTML
     private fun renderNoteBlock(block: NoteBlock): String {
         return when (block.type) {
             BlockType.VISUAL -> {
@@ -488,7 +501,7 @@ class ScanFragment : Fragment() {
                 """.trimIndent()
             }
             else -> {
-                block.formattedText.takeIf { it.isNotBlank() } ?: block.rawText
+                block.formattedText.ifBlank { block.rawText }
             }
         }
     }

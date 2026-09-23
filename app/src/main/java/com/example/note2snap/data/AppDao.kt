@@ -19,6 +19,13 @@ interface AppDao {
     @Query("SELECT * FROM folders ORDER BY id DESC")
     fun getAllFolders(): Flow<List<Folder>>
 
+    // Synchronous list fetch for popup/dialog picker choices
+    @Query("SELECT * FROM folders ORDER BY name ASC")
+    suspend fun getAllFoldersList(): List<Folder>
+
+    @Query("SELECT * FROM folders WHERE id = :folderId")
+    suspend fun getFolderById(folderId: Int): Folder?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFolder(folder: Folder)
 
@@ -29,14 +36,32 @@ interface AppDao {
     @Query("SELECT * FROM notes ORDER BY id DESC")
     fun getAllNotes(): Flow<List<Note>>
 
+    // Notes assigned to a specific folder
     @Query("SELECT * FROM notes WHERE folderId = :folderId ORDER BY id DESC")
     fun getNotesByFolder(folderId: Int): Flow<List<Note>>
+
+    // Notes NOT assigned to any folder (Main Screen / Unassigned)
+    @Query("SELECT * FROM notes WHERE folderId IS NULL ORDER BY id DESC")
+    fun getUnassignedNotes(): Flow<List<Note>>
+
+    // DIRECT TRANSFER QUERY: Update folder assignment without rewriting the entire Note object
+    @Query("UPDATE notes SET folderId = :folderId WHERE id = :noteId")
+    suspend fun updateNoteFolder(noteId: Int, folderId: Int?)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNote(note: Note)
 
+    @Update
+    suspend fun updateNote(note: Note)
+
     @Delete
     suspend fun deleteNote(note: Note)
+
+    @Query("SELECT * FROM notes WHERE id = :noteId")
+    suspend fun getNoteById(noteId: Int): Note?
+
+    @Query("SELECT * FROM notes WHERE title = :title LIMIT 1")
+    suspend fun getNoteByTitle(title: String): Note?
 
     // Delete single note by title (e.g., removing "OOP Discussion")
     @Query("DELETE FROM notes WHERE title = :title")
@@ -52,16 +77,12 @@ interface AppDao {
     @Query("DELETE FROM scan_history")
     suspend fun clearHistory()
 
-    @Query("SELECT * FROM notes WHERE title = :title LIMIT 1")
-    suspend fun getNoteByTitle(title: String): Note?
-
     @Delete
     suspend fun deleteScanHistory(history: ScanHistory)
 
     @Update
     suspend fun updateScanHistory(history: ScanHistory)
 
-    @Update
-    suspend fun updateNote(note: Note)
-
+    @Query("UPDATE notes SET folderId = :folderId WHERE id IN (:noteIds)")
+    suspend fun moveNotesToFolder(noteIds: List<Int>, folderId: Int)
 }

@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+
 class HomeFragment : Fragment() {
 
     private val recentNotesList = mutableListOf<Note>()
@@ -71,12 +72,20 @@ class HomeFragment : Fragment() {
         }
 
         // Horizontal Recent Notes RecyclerView setup
-        recentNotesAdapter = NotesAdapter(recentNotesList) { note ->
-            val intent = Intent(context, PdfViewerActivity::class.java)
-            intent.putExtra("TITLE", note.title)
-            intent.putExtra("IMAGE_PATH", note.imagePath)
-            startActivity(intent)
-        }
+        recentNotesAdapter = NotesAdapter(
+            notes = recentNotesList,
+            onItemClick = { note ->
+                val intent = Intent(context, PdfViewerActivity::class.java).apply {
+                    putExtra("TITLE", note.title)
+                    putExtra("CONTENT", note.content)
+                    putExtra("IMAGE_PATH", note.imagePath)
+                }
+                startActivity(intent)
+            },
+            onMoveClick = { note ->
+                // Handle move click or pass empty lambda if not needed here
+            }
+        )
         rvRecentNotes?.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         rvRecentNotes?.adapter = recentNotesAdapter
 

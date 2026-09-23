@@ -35,13 +35,13 @@ class CurvedBottomNavigationView @JvmOverloads constructor(
         background = null
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
-        // Set dynamic wave color based on active Light/Dark theme
         paint.color = ContextCompat.getColor(context, R.color.nav_wave_color)
 
         val density = resources.displayMetrics.density
-        dipWidth = 110f * density
-        dipDepth = 32f * density
-        cornerRadius = 24f * density
+        // Adjusted dimensions for a smooth, natural cradle dip
+        dipWidth = 90f * density
+        dipDepth = 28f * density
+        cornerRadius = 20f * density
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -86,23 +86,28 @@ class CurvedBottomNavigationView @JvmOverloads constructor(
         path.reset()
         path.moveTo(cornerRadius, 0f)
 
-        val dipStart = (currentCenterX - dipWidth / 2f).coerceAtLeast(cornerRadius)
-        val dipEnd = (currentCenterX + dipWidth / 2f).coerceAtMost(width - cornerRadius)
+        val halfDip = dipWidth / 2f
+        val dipStart = (currentCenterX - halfDip).coerceAtLeast(cornerRadius)
+        val dipEnd = (currentCenterX + halfDip).coerceAtMost(width - cornerRadius)
 
+        // Draw line to start of center cradle
         path.lineTo(dipStart, 0f)
 
+        // Smooth downward Bezier curve into cradle depth
         path.cubicTo(
-            currentCenterX - (dipWidth / 4f), 0f,
-            currentCenterX - (dipWidth / 4f), dipDepth,
+            dipStart + (dipWidth / 3f), 0f,
+            currentCenterX - (dipWidth / 3f), dipDepth,
             currentCenterX, dipDepth
         )
 
+        // Smooth upward Bezier curve back to top line
         path.cubicTo(
-            currentCenterX + (dipWidth / 4f), dipDepth,
-            currentCenterX + (dipWidth / 4f), 0f,
+            currentCenterX + (dipWidth / 3f), dipDepth,
+            dipEnd - (dipWidth / 3f), 0f,
             dipEnd, 0f
         )
 
+        // Continue top edge and rounded corners
         path.lineTo(width - cornerRadius, 0f)
         path.quadTo(width, 0f, width, cornerRadius)
         path.lineTo(width, height)
