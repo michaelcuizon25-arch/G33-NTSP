@@ -3,61 +3,338 @@ package com.example.note2snap.activities
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.note2snap.R
-import com.google.android.material.bottomnavigation.BottomNavigationView
-
+import com.google.android.material.card.MaterialCardView
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var navHome: LinearLayout
+    private lateinit var navNotes: LinearLayout
+    private lateinit var navHistory: LinearLayout
+    private lateinit var navSettings: LinearLayout
+    private lateinit var scanFab: MaterialCardView
+    private lateinit var iconHome: ImageView
+    private lateinit var iconNotes: ImageView
+    private lateinit var iconHistory: ImageView
+    private lateinit var iconSettings: ImageView
+
+    private lateinit var textHome: TextView
+    private lateinit var textNotes: TextView
+    private lateinit var textHistory: TextView
+    private lateinit var textSettings: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Read saved preference and set Night Mode BEFORE layout inflation
-        val sharedPref = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
-        val isSystemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val isDarkModeSaved = sharedPref.getBoolean("DARK_MODE", isSystemDark)
 
-        val targetMode = if (isDarkModeSaved) {
-            AppCompatDelegate.MODE_NIGHT_YES
-        } else {
-            AppCompatDelegate.MODE_NIGHT_NO
-        }
+        val sharedPref =
+            getSharedPreferences(
+                "AppSettings",
+                Context.MODE_PRIVATE
+            )
 
-        if (AppCompatDelegate.getDefaultNightMode() != targetMode) {
-            AppCompatDelegate.setDefaultNightMode(targetMode)
+        val isSystemDark =
+            (
+                    resources.configuration.uiMode and
+                            Configuration.UI_MODE_NIGHT_MASK
+                    ) ==
+                    Configuration.UI_MODE_NIGHT_YES
+
+        val isDarkModeSaved =
+            sharedPref.getBoolean(
+                "DARK_MODE",
+                isSystemDark
+            )
+
+        val targetMode =
+            if (isDarkModeSaved) {
+                AppCompatDelegate.MODE_NIGHT_YES
+            } else {
+                AppCompatDelegate.MODE_NIGHT_NO
+            }
+
+        if (
+            AppCompatDelegate.getDefaultNightMode() !=
+            targetMode
+        ) {
+            AppCompatDelegate.setDefaultNightMode(
+                targetMode
+            )
         }
 
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
+        setContentView(
+            R.layout.activity_main
+        )
+
+        navHome =
+            findViewById(
+                R.id.navHome
+            )
+
+        navNotes =
+            findViewById(
+                R.id.navNotes
+            )
+
+        navHistory =
+            findViewById(
+                R.id.navHistory
+            )
+
+        navSettings =
+            findViewById(
+                R.id.navSettings
+            )
+
+        scanFab =
+            findViewById(
+                R.id.scanFab
+            )
+
+        iconHome =
+            findViewById(
+                R.id.iconHome
+            )
+
+        iconNotes =
+            findViewById(
+                R.id.iconNotes
+            )
+
+        iconHistory =
+            findViewById(
+                R.id.iconHistory
+            )
+
+        iconSettings =
+            findViewById(
+                R.id.iconSettings
+            )
+
+        textHome =
+            findViewById(
+                R.id.textHome
+            )
+
+        textNotes =
+            findViewById(
+                R.id.textNotes
+            )
+
+        textHistory =
+            findViewById(
+                R.id.textHistory
+            )
+
+        textSettings =
+            findViewById(
+                R.id.textSettings
+            )
+
         if (savedInstanceState == null) {
-            loadFragment(HomeFragment())
+
+            loadFragment(
+                HomeFragment()
+            )
+
+            setActiveTab(
+                "home"
+            )
         }
 
-        bottomNav.setOnItemSelectedListener { item ->
-            val fragment: Fragment = when (item.itemId) {
-                R.id.nav_home -> HomeFragment()
-                R.id.nav_notes -> NotesFragment()
-                R.id.nav_scan -> ScanFragment()
-                R.id.nav_history -> HistoryFragment()
-                R.id.nav_settings -> SettingsFragment()
-                else -> HomeFragment()
-            }
-            loadFragment(fragment)
-            true
+        navHome.setOnClickListener {
+
+            loadFragment(
+                HomeFragment()
+            )
+
+            setActiveTab(
+                "home"
+            )
+        }
+
+        navNotes.setOnClickListener {
+
+            loadFragment(
+                NotesFragment()
+            )
+
+            setActiveTab(
+                "notes"
+            )
+        }
+
+        navHistory.setOnClickListener {
+
+            loadFragment(
+                HistoryFragment()
+            )
+
+            setActiveTab(
+                "history"
+            )
+        }
+
+        navSettings.setOnClickListener {
+
+            loadFragment(
+                SettingsFragment()
+            )
+
+            setActiveTab(
+                "settings"
+            )
+        }
+
+        scanFab.setOnClickListener {
+
+            loadFragment(
+                ScanFragment()
+            )
+
+            setActiveTab(
+                "scan"
+            )
         }
     }
 
-    fun loadFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment)
+    fun loadFragment(
+        fragment: Fragment
+    ) {
+
+        supportFragmentManager
+            .beginTransaction()
+            .replace(
+                R.id.fragmentContainer,
+                fragment
+            )
             .commit()
     }
 
-    // Call this to change the active tab icon on the bottom nav bar
-    fun selectTab(itemId: Int) {
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
-        bottomNav.selectedItemId = itemId
+    private fun setActiveTab(
+        activeTab: String
+    ) {
+
+        val primaryColor =
+            ContextCompat.getColor(
+                this,
+                R.color.primary
+            )
+
+        val inactiveColor =
+            ContextCompat.getColor(
+                this,
+                R.color.text_secondary
+            )
+
+        iconHome.setColorFilter(
+            if (activeTab == "home")
+                primaryColor
+            else
+                inactiveColor
+        )
+
+        textHome.setTextColor(
+            if (activeTab == "home")
+                primaryColor
+            else
+                inactiveColor
+        )
+
+        iconNotes.setColorFilter(
+            if (activeTab == "notes")
+                primaryColor
+            else
+                inactiveColor
+        )
+
+        textNotes.setTextColor(
+            if (activeTab == "notes")
+                primaryColor
+            else
+                inactiveColor
+        )
+
+        iconHistory.setColorFilter(
+            if (activeTab == "history")
+                primaryColor
+            else
+                inactiveColor
+        )
+
+        textHistory.setTextColor(
+            if (activeTab == "history")
+                primaryColor
+            else
+                inactiveColor
+        )
+
+        iconSettings.setColorFilter(
+            if (activeTab == "settings")
+                primaryColor
+            else
+                inactiveColor
+        )
+
+        textSettings.setTextColor(
+            if (activeTab == "settings")
+                primaryColor
+            else
+                inactiveColor
+        )
+    }
+
+    /*
+     * Kept so your existing fragments that call
+     * selectTab(...) won't immediately break.
+     */
+    fun selectTab(
+        itemId: Int
+    ) {
+
+        when (itemId) {
+
+            R.id.nav_home -> {
+                loadFragment(
+                    HomeFragment()
+                )
+                setActiveTab(
+                    "home"
+                )
+            }
+
+            R.id.nav_notes -> {
+                loadFragment(
+                    NotesFragment()
+                )
+                setActiveTab(
+                    "notes"
+                )
+            }
+
+            R.id.nav_history -> {
+                loadFragment(
+                    HistoryFragment()
+                )
+                setActiveTab(
+                    "history"
+                )
+            }
+
+            R.id.nav_settings -> {
+                loadFragment(
+                    SettingsFragment()
+                )
+                setActiveTab(
+                    "settings"
+                )
+            }
+        }
     }
 }

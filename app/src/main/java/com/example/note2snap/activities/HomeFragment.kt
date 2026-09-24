@@ -58,8 +58,7 @@ class HomeFragment : Fragment() {
 
         // Tab switches synchronized with BottomNavigationView selection
         cardScan?.setOnClickListener {
-            (activity as? MainActivity)?.selectTab(R.id.nav_scan)
-        }
+            (activity as? MainActivity)?.loadFragment(ScanFragment())        }
 
         cardNotes?.setOnClickListener {
             (activity as? MainActivity)?.selectTab(R.id.nav_notes)
