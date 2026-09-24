@@ -11,6 +11,7 @@ import com.example.note2snap.model.Folder
 import com.example.note2snap.model.Note
 import com.example.note2snap.model.ScanHistory
 import kotlinx.coroutines.flow.Flow
+import androidx.room.Transaction
 
 @Dao
 interface AppDao {
@@ -118,4 +119,10 @@ interface AppDao {
 
     @Query("DELETE FROM scan_history")
     suspend fun clearHistory()
+
+    @Transaction
+    suspend fun renameNoteAndHistoryByPath(imagePath: String, newTitle: String) {
+        updateNoteTitleByPath(imagePath, newTitle)
+        updateScanHistoryTitleByPath(imagePath, newTitle)
+    }
 }

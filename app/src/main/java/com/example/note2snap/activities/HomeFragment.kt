@@ -9,7 +9,8 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import androidx.viewpager2.widget.ViewPager2
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
 import com.example.note2snap.adapters.RecentActivityAdapter
 import com.example.note2snap.data.AppDatabase
@@ -32,7 +33,7 @@ class HomeFragment : Fragment() {
     private var tvStatWeek: TextView? = null
     private var tvStatStreak: TextView? = null
     private var tvEmptyRecent: TextView? = null
-    private var vpRecentNotes: ViewPager2? = null
+    private var rvRecentNotes: RecyclerView? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -47,7 +48,9 @@ class HomeFragment : Fragment() {
         tvStatWeek = view.findViewById(R.id.tvStatWeek)
         tvStatStreak = view.findViewById(R.id.tvStatStreak)
         tvEmptyRecent = view.findViewById(R.id.tvEmptyRecent)
-        vpRecentNotes = view.findViewById(R.id.vpRecentNotes)
+
+        // Supports both ID names depending on your XML update
+        rvRecentNotes = view.findViewById(R.id.rvRecentNotes)
 
         val cardScan = view.findViewById<CardView>(R.id.cardScan)
         val cardNotes = view.findViewById<CardView>(R.id.cardNotes)
@@ -69,6 +72,7 @@ class HomeFragment : Fragment() {
             notes = recentNotesList,
             onItemClick = { note ->
                 val intent = Intent(context, PdfViewerActivity::class.java).apply {
+                    putExtra("NOTE_ID", note.id)
                     putExtra("TITLE", note.title)
                     putExtra("CONTENT", note.content)
                     putExtra("IMAGE_PATH", note.imagePath)
@@ -77,16 +81,10 @@ class HomeFragment : Fragment() {
             }
         )
 
-        vpRecentNotes?.apply {
+        rvRecentNotes?.apply {
+            layoutManager = LinearLayoutManager(requireContext())
             adapter = recentNotesAdapter
-            orientation = ViewPager2.ORIENTATION_HORIZONTAL
-
-            // Disable 3D depth transformer to prevent text/card overlapping:
-            setPageTransformer(null)
-
-            // Allow smooth edge padding/swiping
-            clipToPadding = false
-            clipChildren = false
+            isNestedScrollingEnabled = false // Prevents scrolling conflicts if nested inside a ScrollView
         }
 
         observeDatabaseData()
@@ -133,10 +131,10 @@ class HomeFragment : Fragment() {
                 recentNotesAdapter.updateNotes(sortedRecent)
 
                 if (sortedRecent.isEmpty()) {
-                    vpRecentNotes?.visibility = View.GONE
+                    rvRecentNotes?.visibility = View.GONE
                     tvEmptyRecent?.visibility = View.VISIBLE
                 } else {
-                    vpRecentNotes?.visibility = View.VISIBLE
+                    rvRecentNotes?.visibility = View.VISIBLE
                     tvEmptyRecent?.visibility = View.GONE
                 }
             }

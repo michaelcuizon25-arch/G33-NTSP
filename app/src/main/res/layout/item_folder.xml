@@ -1,53 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
+    android:layout_marginHorizontal="4dp"
     android:layout_marginVertical="6dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="?attr/colorSurface">
+    app:cardBackgroundColor="#FFFFFF"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/bg_card_border"
+        android:layout_height="72dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="16dp">
+        android:paddingStart="14dp"
+        android:paddingEnd="12dp">
 
-        <!-- Folder Icon -->
-        <ImageView
-            android:id="@+id/ivFolderIcon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_folder"
-            app:tint="#93C5FD" />
+        <!-- FOLDER ICON -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            app:cardBackgroundColor="#F3F6FC"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
 
-        <!-- Folder Name -->
+            <ImageView
+                android:id="@+id/ivFolderIcon"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_folder"
+                app:tint="#AFC4F6" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- FOLDER NAME -->
         <TextView
             android:id="@+id/tvFolderName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_semibold"
+            android:maxLines="1"
             android:text="CS 101"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textColor="#171717"
+            android:textSize="14sp" />
 
-        <!-- 3-Dots Options Button -->
+        <!-- MORE -->
         <ImageView
             android:id="@+id/btnFolderMore"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Options"
-            android:padding="2dp"
+            android:padding="5dp"
             android:src="@android:drawable/ic_menu_more"
-            app:tint="?android:attr/textColorSecondary" />
+            app:tint="#8A8A92" />
 
     </LinearLayout>
+
 </androidx.cardview.widget.CardView>

@@ -39,12 +39,22 @@ class HistoryFragment : Fragment() {
         historyAdapter = HistoryAdapter(
             historyList = emptyList(),
             onItemClick = { item ->
-                val intent = Intent(requireContext(), PdfViewerActivity::class.java).apply {
-                    putExtra("SCAN_ID", item.id) // Corrected to SCAN_ID to avoid ID collision
-                    putExtra("TITLE", item.title)
-                    putExtra("IMAGE_PATH", item.imagePath)
+                // Fetch associated Note ID before opening PdfViewer to avoid duplicating
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val dao = AppDatabase.getDatabase(requireContext()).appDao()
+                    val existingNote = if (!item.imagePath.isNullOrEmpty()) {
+                        dao.getNoteByPath(item.imagePath)
+                    } else null
+
+                    withContext(Dispatchers.Main) {
+                        val intent = Intent(requireContext(), PdfViewerActivity::class.java).apply {
+                            putExtra("NOTE_ID", existingNote?.id ?: -1)
+                            putExtra("TITLE", item.title)
+                            putExtra("IMAGE_PATH", item.imagePath)
+                        }
+                        startActivity(intent)
+                    }
                 }
-                startActivity(intent)
             },
             onItemLongClick = { item ->
                 showOptionsDialog(item)

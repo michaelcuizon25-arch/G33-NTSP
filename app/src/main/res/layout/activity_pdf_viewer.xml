@@ -5,227 +5,309 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="?android:attr/windowBackground"
+    android:background="@color/screen_background"
+    android:forceDarkAllowed="false"
+    tools:targetApi="q"
+    tools:ignore="HardcodedText,TextContrastCheck,ImageContrastCheck,TouchTargetSizeCheck"
     tools:context=".activities.PdfViewerActivity">
 
-    <!-- Digital Notebook Top Navigation & Tool Ribbon -->
+    <!-- TOP HEADER -->
     <LinearLayout
         android:id="@+id/llPdfHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:background="?attr/colorSurface"
-        android:elevation="3dp"
-        android:orientation="vertical">
+        android:background="#FFF9FF"
+        android:orientation="vertical"
+        android:paddingTop="8dp">
 
-        <!-- Row 1: Tool Bar -->
-        <HorizontalScrollView
+        <!-- TOOL RIBBON CARD -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:fillViewport="true"
-            android:scrollbars="none">
+            android:layout_height="64dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="3dp"
+            app:strokeColor="#ECECF2"
+            app:strokeWidth="1dp">
 
-            <LinearLayout
-                android:layout_width="wrap_content"
+            <HorizontalScrollView
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="4dp">
+                android:clipToPadding="false"
+                android:fillViewport="false"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:scrollbars="none">
 
-                <!-- Navigation Controls -->
-                <ImageButton
-                    android:id="@+id/btnPdfBack"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/cd_back"
-                    android:padding="12dp"
-                    android:src="@android:drawable/ic_menu_revert"
-                    app:tint="?android:attr/textColorPrimary" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <ImageButton
-                    android:id="@+id/btnToolShare"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/cd_share"
-                    android:padding="12dp"
-                    android:src="@android:drawable/ic_menu_share"
-                    app:tint="?android:attr/textColorPrimary" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F6F7FB"
+                        app:cardCornerRadius="24dp"
+                        app:cardElevation="0dp">
 
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="24dp"
-                    android:layout_marginHorizontal="4dp"
-                    android:background="?android:attr/listDivider" />
+                        <ImageButton
+                            android:id="@+id/btnPdfBack"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="@string/cd_back"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_back"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
 
-                <!-- Note-Taking Palette Tools -->
-                <TextView
-                    android:id="@+id/btnToolText"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_text"
-                    android:textColor="#1D4ED8"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F6F7FB"
+                        app:cardCornerRadius="24dp"
+                        app:cardElevation="0dp">
 
-                <TextView
-                    android:id="@+id/btnToolPen"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_pen"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textSize="16sp" />
+                        <ImageButton
+                            android:id="@+id/btnToolShare"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="@string/cd_share"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_share"
+                            app:tint="#3B62C6" />
+                    </com.google.android.material.card.MaterialCardView>
 
-                <TextView
-                    android:id="@+id/btnToolHighlighter"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_highlighter"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textSize="16sp" />
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="26dp"
+                        android:layout_marginHorizontal="6dp"
+                        android:background="#E6E7EC" />
 
-                <TextView
-                    android:id="@+id/btnToolEraser"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_eraser"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textSize="16sp" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#EDF2FF"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
 
-                <TextView
-                    android:id="@+id/btnToolShapes"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_shapes"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textSize="16sp" />
+                        <ImageButton
+                            android:id="@+id/btnToolText"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Text tool"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_text"
+                            app:tint="#3B62C6" />
+                    </com.google.android.material.card.MaterialCardView>
 
-                <TextView
-                    android:id="@+id/btnToolMic"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_mic"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textSize="16sp" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
 
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="24dp"
-                    android:layout_marginHorizontal="4dp"
-                    android:background="?android:attr/listDivider" />
+                        <ImageButton
+                            android:id="@+id/btnToolPen"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Pen tool"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_pen"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
 
-                <!-- Undo / Redo Controls -->
-                <TextView
-                    android:id="@+id/btnToolUndo"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_undo"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
 
-                <TextView
-                    android:id="@+id/btnToolRedo"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="@string/tool_redo"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                        <ImageButton
+                            android:id="@+id/btnToolHighlighter"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Highlighter tool"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_highlighter"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
 
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="24dp"
-                    android:layout_marginHorizontal="4dp"
-                    android:background="?android:attr/listDivider" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
 
-                <ImageView
-                    android:id="@+id/btnPdfMoreOptions"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/cd_more_options"
-                    android:padding="12dp"
-                    android:src="@android:drawable/ic_menu_more"
-                    app:tint="?android:attr/textColorPrimary" />
-            </LinearLayout>
-        </HorizontalScrollView>
+                        <ImageButton
+                            android:id="@+id/btnToolEraser"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Eraser tool"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_eraser"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider" />
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
 
-        <!-- Row 2: Title & Timestamp Header -->
+                        <ImageButton
+                            android:id="@+id/btnToolShapes"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Shapes tool"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_shapes"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
+
+                        <ImageButton
+                            android:id="@+id/btnToolMic"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Voice note tool"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_mic"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="26dp"
+                        android:layout_marginHorizontal="6dp"
+                        android:background="#E6E7EC" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
+
+                        <ImageButton
+                            android:id="@+id/btnToolUndo"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Undo"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_undo"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
+
+                        <ImageButton
+                            android:id="@+id/btnToolRedo"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Redo"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_redo"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="2dp"
+                        app:cardBackgroundColor="#F8F8FB"
+                        app:cardCornerRadius="24dp"
+                        app:cardElevation="0dp">
+
+                        <ImageView
+                            android:id="@+id/btnPdfMoreOptions"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/cd_more_options"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_tool_more"
+                            app:tint="#171717" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
+            </HorizontalScrollView>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- TITLE / DATE -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
+            android:paddingStart="24dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="24dp"
+            android:paddingBottom="12dp">
 
             <TextView
                 android:id="@+id/tvPdfTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                tools:text="Chapter. 1 - Terminology and Sampling Techniques" />
+                android:fontFamily="@font/apple_garamond_italic"
+                android:maxLines="2"
+                android:textColor="#171717"
+                android:textSize="25sp"
+                tools:text="Chapter 1 - Terminology and Sampling Techniques" />
 
             <TextView
                 android:id="@+id/tvPdfDate"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="12sp"
+                android:layout_marginTop="3dp"
+                android:fontFamily="@font/poppins_regular"
+                android:textColor="#59595E"
+                android:textSize="11sp"
                 tools:text="Jun 6, 2026, 2:06 PM" />
-        </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="?android:attr/listDivider" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- Digital Paper Sheet Scroll Area -->
+    <!-- MAIN CONTENT -->
     <ScrollView
         android:id="@+id/scrollViewContent"
         android:layout_width="match_parent"
@@ -233,222 +315,318 @@
         android:layout_above="@id/llPdfBottomActions"
         android:layout_below="@id/llPdfHeader"
         android:clipToPadding="false"
-        android:fillViewport="true"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp">
+        android:fillViewport="false"
+        android:paddingBottom="8dp"
+        android:scrollbars="none">
 
-        <!-- Notebook Paper Page -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="?attr/colorSurface"
-            android:elevation="2dp"
-            android:minHeight="720dp"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:paddingBottom="8dp">
 
-            <!-- Scanned Document / Photo Preview -->
-            <ImageView
-                android:id="@+id/ivScannedImage"
-                android:layout_width="match_parent"
-                android:layout_height="220dp"
-                android:layout_marginBottom="16dp"
-                android:adjustViewBounds="true"
-                android:contentDescription="@string/cd_scanned_photo"
-                android:scaleType="fitCenter"
-                android:visibility="gone"
-                tools:visibility="visible" />
-
-            <!-- Sub-topic Section Title -->
-            <TextView
-                android:id="@+id/tvSectionHeader"
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingBottom="16dp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:visibility="gone"
-                tools:text="1.1 - Introduction to Statistics" />
+                app:cardBackgroundColor="#FFFFFF"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="2dp"
+                app:strokeColor="#ECECF2"
+                app:strokeWidth="1dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <!-- Notebook Margin Divider Line -->
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginHorizontal="12dp"
-                    android:background="?android:attr/listDivider" />
-
-                <!-- Main Notes Content -->
-                <FrameLayout
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1.0">
+                    android:orientation="vertical"
+                    android:paddingStart="18dp"
+                    android:paddingTop="16dp"
+                    android:paddingEnd="18dp"
+                    android:paddingBottom="12dp">
 
-                    <!-- Formatted Text Display -->
+                    <!-- SCANNED IMAGE -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="185dp"
+                        android:layout_marginBottom="18dp"
+                        app:cardBackgroundColor="#F7F8FC"
+                        app:cardCornerRadius="18dp"
+                        app:cardElevation="0dp">
+
+                        <ImageView
+                            android:id="@+id/ivScannedImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:adjustViewBounds="true"
+                            android:contentDescription="@string/cd_scanned_photo"
+                            android:padding="8dp"
+                            android:scaleType="fitCenter"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- OPTIONAL SECTION HEADER -->
                     <TextView
-                        android:id="@+id/tvPdfContent"
+                        android:id="@+id/tvSectionHeader"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:lineSpacingExtra="6dp"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="13sp" />
+                        android:layout_marginBottom="10dp"
+                        android:fontFamily="@font/apple_garamond_bold"
+                        android:textColor="#171717"
+                        android:textSize="19sp"
+                        android:visibility="gone"
+                        tools:text="1.1 - Introduction to Statistics" />
 
-                    <!-- Editable Input Box -->
-                    <EditText
-                        android:id="@+id/etInlineEditor"
+                    <!-- EXTRACTED TEXT HEADER -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:minHeight="400dp"
-                        android:autofillHints=""
-                        android:background="@null"
-                        android:gravity="top|start"
-                        android:hint="@string/hint_edit_content"
-                        android:inputType="textMultiLine|textCapSentences"
-                        android:lineSpacingExtra="6dp"
-                        android:paddingTop="2dp"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textColorHint="?android:attr/textColorHint"
-                        android:textSize="13sp"
-                        android:visibility="gone" />
-                </FrameLayout>
-            </LinearLayout>
+                        android:layout_marginBottom="9dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:text="Extracted Text"
+                            android:textColor="#3B62C6"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/btnExpandText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="48dp"
+                            android:minHeight="48dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:fontFamily="@font/poppins_medium"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="4dp"
+                            android:text="Show more"
+                            android:textColor="#3B62C6"
+                            android:textSize="10sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <!-- TEXT AREA CARD -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="#FFF9FF"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="#ECECF2"
+                        app:strokeWidth="1dp">
+
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="0dp"
+                            android:padding="16dp">
+
+                            <TextView
+                                android:id="@+id/tvPdfContent"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:fontFamily="@font/poppins_regular"
+                                android:lineSpacingExtra="5dp"
+                                android:maxLines="12"
+                                android:textColor="#202127"
+                                android:textSize="13sp" />
+
+                            <EditText
+                                android:id="@+id/etInlineEditor"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:minHeight="120dp"
+                                android:autofillHints=""
+                                android:background="@null"
+                                android:fontFamily="@font/poppins_regular"
+                                android:gravity="top|start"
+                                android:hint="@string/hint_edit_content"
+                                android:inputType="textMultiLine|textCapSentences"
+                                android:lineSpacingExtra="5dp"
+                                android:padding="0dp"
+                                android:textColor="#202127"
+                                android:textColorHint="#9A9AA2"
+                                android:textSize="13sp"
+                                android:visibility="gone" />
+
+                        </FrameLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
     </ScrollView>
 
-    <!-- WebView for HTML Tables -->
+    <!-- STICKY BOTTOM ACTION BAR -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/llPdfBottomActions"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="10dp"
+        app:cardBackgroundColor="#FFFFFF"
+        app:cardCornerRadius="28dp"
+        app:cardElevation="6dp"
+        app:strokeColor="#ECECF2"
+        app:strokeWidth="1dp">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <!-- PAGE SELECTOR -->
+            <LinearLayout
+                android:id="@+id/llPageSelector"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_alignParentEnd="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btnPageUp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="48dp"
+                    android:minHeight="48dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:text="@string/page_up"
+                    android:textColor="#3B62C6"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tvPageIndicator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:paddingHorizontal="4dp"
+                    android:textColor="#171717"
+                    android:textSize="11sp"
+                    tools:text="1 / 2" />
+
+                <TextView
+                    android:id="@+id/btnPageDown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="48dp"
+                    android:minHeight="48dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:text="@string/page_down"
+                    android:textColor="#3B62C6"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+
+            <!-- ACTION BUTTONS -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_alignParentStart="true"
+                android:layout_toStartOf="@id/llPageSelector"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btnActionSaveNotes"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="52dp"
+                    android:minHeight="48dp"
+                    android:layout_marginEnd="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:drawableStart="@drawable/ic_action_save"
+                    android:drawablePadding="5dp"
+                    android:text="Save"
+                    android:textColor="#171717"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/btnActionDownload"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="64dp"
+                    android:minHeight="48dp"
+                    android:layout_marginEnd="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:paddingHorizontal="7dp"
+                    android:drawableStart="@drawable/ic_action_export"
+                    android:drawablePadding="5dp"
+                    android:text="Export PDF"
+                    android:textColor="#3B62C6"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/btnActionShare"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="52dp"
+                    android:minHeight="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:paddingHorizontal="7dp"
+                    android:drawableStart="@drawable/ic_tool_share"
+                    android:drawablePadding="5dp"
+                    android:text="Share"
+                    android:textColor="#171717"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+
+        </RelativeLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- WEBVIEW FOR RICH CONTENT -->
     <WebView
         android:id="@+id/webViewContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/llPdfBottomActions"
         android:layout_below="@id/llPdfHeader"
-        android:background="?attr/colorSurface"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="#FFFFFF"
         android:visibility="gone" />
 
-    <!-- Overlay Drawing Canvas -->
+    <!-- DRAWING OVERLAY -->
     <com.example.note2snap.utils.DrawingView
         android:id="@+id/drawingView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/llPdfBottomActions"
         android:layout_below="@id/llPdfHeader" />
-
-    <!-- Bottom Actions Bar & Floating Page Indicator -->
-    <RelativeLayout
-        android:id="@+id/llPdfBottomActions"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_alignParentBottom="true"
-        android:background="?attr/colorSurface"
-        android:elevation="4dp"
-        android:paddingHorizontal="8dp">
-
-        <!-- Page Selector -->
-        <LinearLayout
-            android:id="@+id/llPageSelector"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_alignParentEnd="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/btnPageUp"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="@string/page_up"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/tvPageIndicator"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="2dp"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                tools:text="1 / 2" />
-
-            <TextView
-                android:id="@+id/btnPageDown"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:text="@string/page_down"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <!-- Action Buttons -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_alignParentStart="true"
-            android:layout_toStartOf="@id/llPageSelector"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/btnActionSaveNotes"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:paddingHorizontal="6dp"
-                android:text="@string/action_save"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/btnActionDownload"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:paddingHorizontal="6dp"
-                android:text="@string/action_export_pdf"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/btnActionShare"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:paddingHorizontal="6dp"
-                android:text="@string/action_share"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-    </RelativeLayout>
 
 </RelativeLayout>

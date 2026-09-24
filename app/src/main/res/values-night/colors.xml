@@ -20,12 +20,18 @@
     <color name="color_gray">#E3E3E3</color>
 
     <color name="card_bg">#1E1E1E</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B0B0B0</color>
+
+
     <color name="search_bg">#2C2C2C</color>
 
     <color name="nav_wave_color">#2563EB</color>
     <color name="nav_item_color">#FFFFFF</color>
     <color name="fab_bg_color">#FFFFFF</color>
     <color name="fab_icon_tint">#2563EB</color>
+
+
+    <color name="card_background">#1C1C1E</color>
+    <color name="card_stroke">#000000</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#AEAEEA</color>
 </resources>

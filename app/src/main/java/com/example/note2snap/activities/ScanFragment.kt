@@ -15,7 +15,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -26,37 +28,28 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
 import com.example.note2snap.R
-import com.example.note2snap.data.AppDatabase
-import com.example.note2snap.model.Note
-import com.example.note2snap.model.ScanHistory
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class ScanFragment : Fragment() {
 
-    private var imageCapture: ImageCapture? = null
     private var camera: Camera? = null
+    private var imageCapture: ImageCapture? = null
+    private var isFlashOn = false
     private lateinit var cameraExecutor: ExecutorService
 
     private lateinit var viewFinder: PreviewView
     private lateinit var progressBar: ProgressBar
-    private var btnFlash: ImageView? = null
-
-    private var flashMode: Int = ImageCapture.FLASH_MODE_OFF
 
     // Gallery Picker Contract
     private val selectImageLauncher = registerForActivityResult(
@@ -91,10 +84,20 @@ class ScanFragment : Fragment() {
 
         viewFinder = view.findViewById(R.id.viewFinder)
         progressBar = view.findViewById(R.id.progressBarScan)
-        btnFlash = view.findViewById(R.id.btnFlash)
 
+        val backButtonContainer = view.findViewById<View>(R.id.backButtonContainer)
+        val btnBack = view.findViewById<View>(R.id.btnBack)
+        val flashControl = view.findViewById<View>(R.id.flashControl)
+        val btnFlash = view.findViewById<ImageView>(R.id.btnFlash)
+        val controlPanel = view.findViewById<View>(R.id.controlPanel)
         val btnCapture = view.findViewById<View>(R.id.btnCapture)
         val btnGallery = view.findViewById<View>(R.id.btnGallery)
+        val tvCancel = view.findViewById<View>(R.id.tvCancel)
+
+        // Elevate parent containers above Camera PreviewView in the Z-axis
+        backButtonContainer?.bringToFront()
+        flashControl?.bringToFront()
+        controlPanel?.bringToFront()
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -102,7 +105,30 @@ class ScanFragment : Fragment() {
 
         btnCapture?.setOnClickListener { takePhoto() }
         btnGallery?.setOnClickListener { selectImageLauncher.launch("image/*") }
-        btnFlash?.setOnClickListener { toggleFlashMode() }
+
+        // Flash click listeners
+        val flashToggleListener = View.OnClickListener { toggleFlash() }
+        flashControl?.setOnClickListener(flashToggleListener)
+        btnFlash?.setOnClickListener(flashToggleListener)
+
+        // Navigation back listeners pointing directly to Home
+        backButtonContainer?.setOnClickListener { navigateToHome() }
+        btnBack?.setOnClickListener { navigateToHome() }
+        tvCancel?.setOnClickListener { navigateToHome() }
+
+        // Device System Back Gesture / Back Button Handler
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    navigateToHome()
+                }
+            }
+        )
+    }
+
+    private fun navigateToHome() {
+        (activity as? MainActivity)?.selectTab(R.id.nav_home)
     }
 
     private fun checkCameraPermissionAndStart() {
@@ -132,7 +158,7 @@ class ScanFragment : Fragment() {
 
                 imageCapture = ImageCapture.Builder()
                     .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .setFlashMode(flashMode)
+                    .setFlashMode(if (isFlashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF)
                     .build()
 
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -144,20 +170,22 @@ class ScanFragment : Fragment() {
 
                 cameraProvider.unbindAll()
 
-                camera = cameraProvider.bindToLifecycle(
+                // Bind camera instance to class variable
+                val boundCamera = cameraProvider.bindToLifecycle(
                     viewLifecycleOwner,
                     cameraSelector,
                     preview,
                     imageCapture
                 )
 
-                camera?.let { safeCamera ->
-                    setupCameraGestures(safeContext, viewFinder, safeCamera)
-                    // Enable torch if flash was turned ON before camera finished starting
-                    if (safeCamera.cameraInfo.hasFlashUnit()) {
-                        safeCamera.cameraControl.enableTorch(flashMode == ImageCapture.FLASH_MODE_ON)
-                    }
+                camera = boundCamera
+
+                // Restore torch state if flash was previously toggled on
+                if (isFlashOn && boundCamera.cameraInfo.hasFlashUnit()) {
+                    boundCamera.cameraControl.enableTorch(true)
                 }
+
+                setupCameraGestures(safeContext, viewFinder, boundCamera)
 
             } catch (exc: Exception) {
                 Log.e("ScanFragment", "Camera binding failed", exc)
@@ -165,40 +193,45 @@ class ScanFragment : Fragment() {
         }, ContextCompat.getMainExecutor(safeContext))
     }
 
-    private fun toggleFlashMode() {
-        val safeCamera = camera ?: run {
-            Toast.makeText(context, "Camera not ready", Toast.LENGTH_SHORT).show()
+    private fun toggleFlash() {
+        val currentCamera = camera
+        if (currentCamera == null) {
+            context?.let { Toast.makeText(it, "Camera not ready", Toast.LENGTH_SHORT).show() }
             return
         }
 
-        if (safeCamera.cameraInfo.hasFlashUnit() != true) {
-            Toast.makeText(context, "Flash not supported on this device", Toast.LENGTH_SHORT).show()
+        if (!currentCamera.cameraInfo.hasFlashUnit()) {
+            context?.let { Toast.makeText(it, "Flash unavailable on this device", Toast.LENGTH_SHORT).show() }
             return
         }
 
-        flashMode = when (flashMode) {
-            ImageCapture.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_ON
-            ImageCapture.FLASH_MODE_ON -> ImageCapture.FLASH_MODE_AUTO
-            ImageCapture.FLASH_MODE_AUTO -> ImageCapture.FLASH_MODE_OFF
-            else -> ImageCapture.FLASH_MODE_OFF
+        isFlashOn = !isFlashOn
+
+        // 1. Enable flashlight on camera preview (Torch)
+        currentCamera.cameraControl.enableTorch(isFlashOn)
+
+        // 2. Set capture mode flash state
+        imageCapture?.flashMode = if (isFlashOn) {
+            ImageCapture.FLASH_MODE_ON
+        } else {
+            ImageCapture.FLASH_MODE_OFF
         }
 
-        imageCapture?.flashMode = flashMode
+        // 3. Update UI indicator
+        updateFlashUI()
+    }
 
-        // 💡 Turn physical flashlight ON/OFF during camera preview
-        val isTorchOn = (flashMode == ImageCapture.FLASH_MODE_ON)
-        safeCamera.cameraControl.enableTorch(isTorchOn)
+    private fun updateFlashUI() {
+        val tvFlashState = view?.findViewById<TextView>(R.id.tvFlashState)
+        val btnFlash = view?.findViewById<ImageView>(R.id.btnFlash)
 
-        // Visual button indicator (bright when ON, dimmed when OFF)
-        btnFlash?.alpha = if (flashMode == ImageCapture.FLASH_MODE_OFF) 0.5f else 1.0f
-
-        val toastMsg = when (flashMode) {
-            ImageCapture.FLASH_MODE_ON -> "Flash ON"
-            ImageCapture.FLASH_MODE_AUTO -> "Flash AUTO"
-            else -> "Flash OFF"
+        if (isFlashOn) {
+            tvFlashState?.text = "On"
+            btnFlash?.setColorFilter("#16A34A".toColorInt()) // Active Green
+        } else {
+            tvFlashState?.text = "Off"
+            btnFlash?.setColorFilter("#5A7FDB".toColorInt()) // Default Accent Blue
         }
-
-        Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -289,10 +322,11 @@ class ScanFragment : Fragment() {
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
                     if (!isAdded) return@addOnSuccessListener
+                    setLoading(false)
+                    val extractedText = visionText.text
 
-                    val finalText = visionText.text.ifBlank { "[No text detected]" }
-
-                    saveScanToDatabaseAndNavigate(finalText, filePath)
+                    val finalText = if (extractedText.isBlank()) "[No text detected]" else extractedText
+                    navigateToPdfViewer(finalText, filePath)
                 }
                 .addOnFailureListener { e ->
                     if (!isAdded) return@addOnFailureListener
@@ -322,48 +356,18 @@ class ScanFragment : Fragment() {
         }
     }
 
-    private fun saveScanToDatabaseAndNavigate(content: String, imagePath: String) {
+    private fun navigateToPdfViewer(content: String, imagePath: String) {
         val safeContext = context ?: return
-        val timestamp = System.currentTimeMillis()
-        val formattedDate = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(Date(timestamp))
-        val defaultTitle = "Scan $formattedDate"
+        val timeStamp = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(System.currentTimeMillis())
+        val defaultTitle = "Scan $timeStamp"
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            val db = AppDatabase.getDatabase(safeContext)
-            val dao = db.appDao()
-
-            val note = Note(
-                title = defaultTitle,
-                content = content,
-                imagePath = imagePath,
-                folderId = null,
-                dateEdited = formattedDate
-            )
-            val insertedNoteId = dao.insertNote(note).toInt()
-
-            val history = ScanHistory(
-                title = defaultTitle,
-                imagePath = imagePath,
-                timestamp = timestamp,
-                date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(timestamp)),
-                isSyncedLocal = true
-            )
-            val insertedHistoryId = dao.insertScanHistory(history).toInt()
-
-            withContext(Dispatchers.Main) {
-                if (!isAdded) return@withContext
-                setLoading(false)
-
-                val intent = Intent(safeContext, PdfViewerActivity::class.java).apply {
-                    putExtra("NOTE_ID", insertedNoteId)
-                    putExtra("SCAN_ID", insertedHistoryId)
-                    putExtra("TITLE", defaultTitle)
-                    putExtra("CONTENT", content)
-                    putExtra("IMAGE_PATH", imagePath)
-                }
-                startActivity(intent)
-            }
+        val intent = Intent(safeContext, PdfViewerActivity::class.java).apply {
+            putExtra("NOTE_ID", -1)
+            putExtra("TITLE", defaultTitle)
+            putExtra("CONTENT", content)
+            putExtra("IMAGE_PATH", imagePath)
         }
+        startActivity(intent)
     }
 
     private fun setLoading(isLoading: Boolean) {

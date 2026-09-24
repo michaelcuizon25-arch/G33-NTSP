@@ -4,8 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/screen_background"
-    >
+    android:background="@color/screen_background">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -16,99 +15,97 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:paddingStart="28dp"
+            android:paddingTop="30dp"
+            android:paddingEnd="28dp"
+            android:paddingBottom="110dp">
 
-            <!-- Title Header -->
+            <!-- NOTES TITLE -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/apple_garamond_italic"
+                android:text="Notes"
+                android:textColor="@color/text_primary"
+                android:textSize="32sp" />
+
+            <!-- OLD TITLE IDS KEPT HIDDEN FOR COMPATIBILITY -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:visibility="gone">
 
                 <TextView
                     android:id="@+id/tvTitleNote"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="NOTE"
-                    android:textColor="#FFFFFF"
-                    android:textSize="26sp"
-                    android:textStyle="bold"
-                    android:shadowColor="#000000"
-                    android:shadowDx="2"
-                    android:shadowDy="2"
-                    android:shadowRadius="4" />
+                    android:text="NOTE" />
 
                 <TextView
                     android:id="@+id/tvTitle2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="2"
-                    android:textColor="#FFFFFF"
-                    android:textSize="30sp"
-                    android:textStyle="bold"
-                    android:shadowColor="#000000"
-                    android:shadowDx="2"
-                    android:shadowDy="2"
-                    android:shadowRadius="4" />
+                    android:text="2" />
 
                 <TextView
                     android:id="@+id/tvTitleSnap"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SNAP"
-                    android:textColor="#2563EB"
-                    android:textSize="26sp"
-                    android:textStyle="bold"
-                    android:shadowColor="#000000"
-                    android:shadowDx="2"
-                    android:shadowDy="2"
-                    android:shadowRadius="4" />
+                    android:text="SNAP" />
+
             </LinearLayout>
 
-            <!-- Section Header -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Notes"
-                android:textColor="#FFFFFF"
-                android:textSize="32sp"
-                android:fontFamily="sans-serif-medium" />
-
-            <!-- Search Bar -->
-            <LinearLayout
+            <!-- SEARCH BAR -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="52dp"
                 android:layout_marginTop="16dp"
-                android:background="@drawable/bg_search_bar"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="16dp">
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="26dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/card_stroke"
+                app:strokeWidth="1dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_search"
-                    app:tint="?android:attr/textColorSecondary" />
-
-                <EditText
-                    android:id="@+id/etSearchNotes"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_marginStart="12dp"
-                    android:background="@null"
-                    android:hint="Search Notes"
-                    android:imeOptions="actionSearch"
-                    android:inputType="text"
-                    android:textColor="?android:attr/textColorPrimary"
-                    android:textColorHint="?android:attr/textColorSecondary"
-                    android:textSize="15sp" />
-            </LinearLayout>
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp">
 
-            <!-- Filter Chips -->
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="Search"
+                        android:src="@android:drawable/ic_menu_search"
+                        app:tint="@color/text_secondary" />
+
+                    <EditText
+                        android:id="@+id/etSearchNotes"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:background="@null"
+                        android:fontFamily="@font/poppins_regular"
+                        android:hint="Search Notes"
+                        android:imeOptions="actionSearch"
+                        android:inputType="text"
+                        android:padding="0dp"
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- FILTERS -->
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="14dp"
                 android:scrollbars="none">
 
                 <LinearLayout
@@ -119,47 +116,53 @@
                     <TextView
                         android:id="@+id/chipAll"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
+                        android:layout_height="34dp"
                         android:background="@drawable/bg_filter_active"
+                        android:fontFamily="@font/poppins_medium"
                         android:gravity="center"
-                        android:paddingHorizontal="20dp"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
                         android:text="All"
                         android:textColor="#FFFFFF"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/chipNotes"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
+                        android:layout_height="34dp"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_chip_unselected"
+                        android:fontFamily="@font/poppins_medium"
                         android:gravity="center"
-                        android:paddingHorizontal="20dp"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
                         android:text="Notes"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="14sp" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/chipFolders"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
+                        android:layout_height="34dp"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_chip_unselected"
+                        android:fontFamily="@font/poppins_medium"
                         android:gravity="center"
-                        android:paddingHorizontal="20dp"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
                         android:text="Folders"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="14sp" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
                 </LinearLayout>
+
             </HorizontalScrollView>
 
-            <!-- Action Toolbar (Sort & View Modes) -->
+            <!-- SORT + VIEW -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="8dp">
+                android:layout_height="40dp"
+                android:layout_marginTop="10dp">
 
                 <TextView
                     android:id="@+id/tvResultCount"
@@ -167,59 +170,93 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentStart="true"
                     android:layout_centerVertical="true"
-                    android:textColor="#F0F9FF"
-                    android:textSize="13sp"
+                    android:fontFamily="@font/poppins_regular"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
                     android:visibility="gone" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_alignParentEnd="true"
+                    android:gravity="center"
                     android:orientation="horizontal">
 
                     <ImageView
                         android:id="@+id/btnSort"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginEnd="16dp"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Sort"
+                        android:padding="6dp"
                         android:src="@android:drawable/ic_menu_sort_by_size"
-                        app:tint="#FFFFFF" />
+                        app:tint="@color/text_secondary" />
 
                     <ImageView
                         android:id="@+id/btnViewMode"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="6dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="View mode"
+                        android:padding="6dp"
                         android:src="@android:drawable/ic_menu_agenda"
-                        app:tint="#FFFFFF" />
+                        app:tint="@color/text_secondary" />
+
                 </LinearLayout>
+
             </RelativeLayout>
 
-            <!-- Empty State Text -->
-            <TextView
-                android:id="@+id/tvNotFound"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="32dp"
-                android:layout_marginBottom="32dp"
-                android:text="No notes found"
-                android:textColor="#F0F9FF"
-                android:textSize="16sp"
-                android:visibility="gone" />
+            <!-- EMPTY STATE -->
+            <LinearLayout
+                android:id="@+id/emptyStateContainer"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone">
 
-            <!-- Folders Section -->
+                <ImageView
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:alpha="0.55"
+                    android:contentDescription="Empty Notes"
+                    android:src="@drawable/ic_folder"
+                    app:tint="@color/primary" />
+
+                <TextView
+                    android:id="@+id/tvNotFound"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:text="Feels empty here."
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/poppins_regular"
+                    android:text="+ Add One?"
+                    android:textColor="@color/accent"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- FOLDERS LABEL -->
             <TextView
                 android:id="@+id/tvFoldersLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/poppins_semibold"
                 android:text="Folders"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
 
+            <!-- FOLDERS LIST -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvFolders"
                 android:layout_width="match_parent"
@@ -227,17 +264,18 @@
                 android:layout_marginTop="8dp"
                 android:nestedScrollingEnabled="false" />
 
-            <!-- Notes Section -->
+            <!-- NOTES LABEL -->
             <TextView
                 android:id="@+id/tvNotesLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="20dp"
+                android:fontFamily="@font/poppins_semibold"
                 android:text="Notes"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
 
+            <!-- NOTES LIST -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvNotes"
                 android:layout_width="match_parent"
@@ -246,18 +284,21 @@
                 android:nestedScrollingEnabled="false" />
 
         </LinearLayout>
+
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Floating Action Button -->
+    <!-- ADD BUTTON -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddNotes"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:layout_gravity="bottom|end"
-        android:layout_margin="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="100dp"
         android:contentDescription="Add Notes"
         android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="#2563EB"
-        app:tint="#FFFFFF" />
+        app:backgroundTint="@color/primary"
+        app:elevation="6dp"
+        app:tint="@color/text_main" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
