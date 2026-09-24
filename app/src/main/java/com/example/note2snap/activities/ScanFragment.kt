@@ -1,32 +1,24 @@
 package com.example.note2snap.activities
 
 import android.Manifest
-import android.content.ContentValues
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
-import android.graphics.drawable.ColorDrawable
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
+import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.TextView
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -34,584 +26,275 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
 import com.example.note2snap.R
-import com.example.note2snap.ccl.Region
-import com.example.note2snap.data.AppDatabase
-import com.example.note2snap.model.Note
-import com.example.note2snap.model.ScanHistory
-import com.example.note2snap.recognition.WhiteboardRecognitionPipeline
-import com.example.note2snap.utils.WhiteboardRuleEngine
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import android.graphics.Rect
-import com.example.note2snap.model.BlockType
-import com.example.note2snap.model.NoteBlock
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class ScanFragment : Fragment() {
 
-    private lateinit var viewFinder: PreviewView
-    private lateinit var tvInstruction: TextView
     private var imageCapture: ImageCapture? = null
-    private var camera: Camera? = null
-    private var isTorchOn = false
-    private var loadingDialog: AlertDialog? = null
-    private var scanStartTime: Long = 0L
+    private lateinit var cameraExecutor: ExecutorService
 
-    private val selectImageFromGallery = registerForActivityResult(
+    private lateinit var viewFinder: PreviewView
+    private lateinit var progressBar: ProgressBar
+
+    // Gallery Picker Contract
+    private val selectImageLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { selectedUri ->
-            scanStartTime = System.currentTimeMillis()
-            showLoadingDialog("Processing photo...")
-            val savedPath = saveImageToInternalStorage(selectedUri)
-            if (savedPath != null) {
-                val localFileUri = Uri.fromFile(File(savedPath))
-                processImageWithOcr(localFileUri, savedPath, "Gallery Note")
-            } else {
-                hideLoadingDialog()
-                Toast.makeText(requireContext(), "Failed to save selected image.", Toast.LENGTH_SHORT).show()
-            }
-        }
+        uri?.let { processImageUri(it) }
     }
 
-    private val requestCameraPermission = registerForActivityResult(
+    // Camera Permission Contract
+    private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+    ) { isGranted: Boolean ->
         if (isGranted) {
             startCamera()
         } else {
-            Toast.makeText(requireContext(), "Camera permission denied.", Toast.LENGTH_SHORT).show()
+            context?.let {
+                Toast.makeText(it, "Camera permission is required to scan documents.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_scan, container, false)
+        return inflater.inflate(R.layout.fragment_scan, container, false)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         viewFinder = view.findViewById(R.id.viewFinder)
-        tvInstruction = view.findViewById(R.id.tvInstruction)
-        val btnCapture = view.findViewById<Button>(R.id.btnCapture)
+        progressBar = view.findViewById(R.id.progressBarScan)
+
+        val btnCapture = view.findViewById<View>(R.id.btnCapture)
         val btnGallery = view.findViewById<View>(R.id.btnGallery)
-        val btnFlash = view.findViewById<ImageButton>(R.id.btnFlash)
 
-        checkAndStartCamera()
+        cameraExecutor = Executors.newSingleThreadExecutor()
 
-        btnCapture.setOnClickListener {
-            takePhoto()
-        }
+        checkCameraPermissionAndStart()
 
-        btnGallery.setOnClickListener {
-            selectImageFromGallery.launch("image/*")
-        }
-
-        btnFlash.setOnClickListener {
-            if (camera?.cameraInfo?.hasFlashUnit() == true) {
-                isTorchOn = !isTorchOn
-                camera?.cameraControl?.enableTorch(isTorchOn)
-
-                val statusText = if (isTorchOn) "Flashlight ON" else "Flashlight OFF"
-                Toast.makeText(requireContext(), statusText, Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "Flash unavailable on this device", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        return view
+        btnCapture?.setOnClickListener { takePhoto() }
+        btnGallery?.setOnClickListener { selectImageLauncher.launch("image/*") }
     }
 
-    fun updateInstruction(message: String) {
-        tvInstruction.text = message
-    }
-
-    private fun checkAndStartCamera() {
-        if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
+    private fun checkCameraPermissionAndStart() {
+        val safeContext = context ?: return
+        if (ContextCompat.checkSelfPermission(safeContext, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
         ) {
             startCamera()
         } else {
-            requestCameraPermission.launch(Manifest.permission.CAMERA)
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
     private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        val safeContext = context ?: return
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(safeContext)
 
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(viewFinder.surfaceProvider)
-            }
-
-            imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-                .build()
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            // Check if fragment is attached and lifecycle is active before binding camera
+            if (!isAdded || viewLifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED) return@addListener
 
             try {
+                val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(viewFinder.surfaceProvider)
+                }
+
+                imageCapture = ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .build()
+
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                // Ensure device has back camera available before binding
+                if (!cameraProvider.hasCamera(cameraSelector)) {
+                    Log.w("ScanFragment", "No back camera found on this device")
+                    return@addListener
+                }
+
                 cameraProvider.unbindAll()
-                camera = cameraProvider.bindToLifecycle(
+
+                val camera = cameraProvider.bindToLifecycle(
                     viewLifecycleOwner,
                     cameraSelector,
                     preview,
                     imageCapture
                 )
+
+                setupCameraGestures(safeContext, viewFinder, camera)
+
             } catch (exc: Exception) {
-                Toast.makeText(requireContext(), "Failed to start camera.", Toast.LENGTH_SHORT).show()
+                Log.e("ScanFragment", "Camera binding failed", exc)
             }
-        }, ContextCompat.getMainExecutor(requireContext()))
+        }, ContextCompat.getMainExecutor(safeContext))
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupCameraGestures(context: Context, previewView: PreviewView, camera: Camera) {
+        val scaleGestureDetector = ScaleGestureDetector(
+            context,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val currentZoomRatio = camera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
+                    val delta = detector.scaleFactor
+                    camera.cameraControl.setZoomRatio(currentZoomRatio * delta)
+                    return true
+                }
+            }
+        )
+
+        previewView.setOnTouchListener { view, event ->
+            scaleGestureDetector.onTouchEvent(event)
+
+            if (event.action == MotionEvent.ACTION_UP && !scaleGestureDetector.isInProgress) {
+                val factory = previewView.meteringPointFactory
+                val point = factory.createPoint(event.x, event.y)
+                val action = FocusMeteringAction.Builder(point).build()
+                camera.cameraControl.startFocusAndMetering(action)
+                view.performClick()
+            }
+            true
+        }
     }
 
     private fun takePhoto() {
-        val imageCapture = imageCapture ?: return
-        scanStartTime = System.currentTimeMillis()
-        showLoadingDialog("Scanning process...")
-
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "NOTE2SNAP_$timeStamp.jpg")
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/NOTE2SNAP")
-            }
+        val safeContext = context ?: return
+        val capture = imageCapture ?: run {
+            Toast.makeText(safeContext, "Camera not ready yet", Toast.LENGTH_SHORT).show()
+            return
         }
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(
-            requireContext().contentResolver,
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        ).build()
+        val cacheDir = safeContext.externalCacheDir ?: safeContext.cacheDir
+        val photoFile = File(
+            cacheDir,
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(System.currentTimeMillis()) + ".jpg"
+        )
 
-        imageCapture.takePicture(
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        setLoading(true)
+
+        capture.takePicture(
             outputOptions,
-            ContextCompat.getMainExecutor(requireContext()),
+            ContextCompat.getMainExecutor(safeContext),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exc: ImageCaptureException) {
-                    hideLoadingDialog()
-                    Toast.makeText(requireContext(), "Photo capture failed.", Toast.LENGTH_SHORT).show()
+                    if (!isAdded) return
+                    setLoading(false)
+                    Log.e("ScanFragment", "Photo capture failed: ${exc.message}", exc)
+                    Toast.makeText(context, "Failed to capture image", Toast.LENGTH_SHORT).show()
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val savedUri = output.savedUri
-                    if (savedUri != null) {
-                        processImageWithOcr(savedUri, savedUri.toString(), "Scanned Note")
-                    } else {
-                        hideLoadingDialog()
-                    }
+                    if (!isAdded) return
+                    processImageUri(Uri.fromFile(photoFile), photoFile.absolutePath)
                 }
             }
         )
     }
 
-    private fun preprocessBitmap(bitmap: Bitmap): Bitmap {
-        val width = bitmap.width
-        val height = bitmap.height
-        val bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmpGrayscale)
-        val paint = Paint()
+    private fun processImageUri(rawUri: Uri, rawFilePath: String? = null) {
+        val safeContext = context ?: return
+        setLoading(true)
 
-        val grayscaleMatrix = ColorMatrix().apply {
-            setSaturation(0f)
-        }
-
-        val contrast = 1.3f
-        val translate = (-0.5f * contrast + 0.5f) * 255f
-        val contrastMatrix = ColorMatrix(
-            floatArrayOf(
-                contrast, 0f, 0f, 0f, translate,
-                0f, contrast, 0f, 0f, translate,
-                0f, 0f, contrast, 0f, translate,
-                0f, 0f, 0f, 1f, 0f
-            )
-        )
-
-        grayscaleMatrix.postConcat(contrastMatrix)
-        paint.colorFilter = ColorMatrixColorFilter(grayscaleMatrix)
-        canvas.drawBitmap(bitmap, 0f, 0f, paint)
-
-        return bmpGrayscale
-    }
-
-    private fun processImageWithOcr(imageUri: Uri, imagePath: String, fallbackTitle: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val inputStream = requireContext().contentResolver.openInputStream(imageUri)
-                val originalBitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
-
-                if (originalBitmap == null) {
-                    withContext(Dispatchers.Main) {
-                        hideLoadingDialog()
-                        Toast.makeText(requireContext(), "Failed to decode image.", Toast.LENGTH_SHORT).show()
-                    }
-                    return@launch
-                }
-
-                val processedBitmap = preprocessBitmap(originalBitmap)
-
-                // Working pipeline with no trained model required:
-                // photo -> preprocessing -> CCL -> line crops -> ML Kit OCR -> ordered lines
-                val pipelineResult = runCatching {
-                    val pipeline = WhiteboardRecognitionPipeline(
-                        requireContext()
-                    )
-                    try {
-                        pipeline.process(originalBitmap)
-                    } finally {
-                        pipeline.close()
-                    }
-                }.getOrElse { error ->
-                    error.printStackTrace()
-                    null
-                }
-
-                if (
-                    pipelineResult != null &&
-                    (
-                            pipelineResult.recognizedLines.isNotEmpty() ||
-                                    pipelineResult.diagramRegions.isNotEmpty()
-                            )
-                ) {
-
-                    val structuredNote =
-                        pipelineResult.structuredNote
-
-                    val visualBlocks =
-                        saveDetectedDiagrams(
-                            pipelineResult.diagramRegions
-                        )
-
-                    /*
-                     * IMPORTANT:
-                     *
-                     * Do NOT globally sort text + visual blocks by
-                     * boundingBox.top / left here.
-                     *
-                     * PipelineTextStructurer already decides the logical
-                     * reading order of the text. Re-sorting everything
-                     * spatially here can scramble sections on multi-column
-                     * whiteboards, for example:
-                     *
-                     * Properties -> Traversals -> remaining Properties
-                     *
-                     * Keep text blocks in the exact logical order returned
-                     * by the structurer. Visuals are ordered only among
-                     * themselves, then displayed before the body text.
-                     */
-                    val orderedVisualBlocks =
-                        visualBlocks.sortedWith(
-                            compareBy<NoteBlock>(
-                                {
-                                    it.boundingBox?.top
-                                        ?: Int.MAX_VALUE
-                                },
-                                {
-                                    it.boundingBox?.left
-                                        ?: Int.MAX_VALUE
-                                }
-                            )
-                        )
-
-                    val allBlocks =
-                        orderedVisualBlocks +
-                                structuredNote.blocks
-
-                    val formattedContent =
-                        allBlocks
-                            .map {
-                                renderNoteBlock(it)
-                            }
-                            .filter {
-                                it.isNotBlank()
-                            }
-                            .joinToString("<br/>")
-
-                    val finalTitle =
-                        structuredNote.title
-                            .takeIf {
-                                it.isNotBlank() &&
-                                        it != "Untitled Scan"
-                            }
-                            ?: fallbackTitle
-
-                    saveNoteToDatabase(
-                        finalTitle,
-                        formattedContent,
-                        imagePath
-                    )
-
-                    saveScanHistory(
-                        finalTitle,
-                        imagePath
-                    )
-
-                    val elapsedTime =
-                        System.currentTimeMillis() -
-                                scanStartTime
-
-                    delay(
-                        (5000L - elapsedTime)
-                            .coerceAtLeast(0L)
-                    )
-
-                    withContext(Dispatchers.Main) {
-
-                        hideLoadingDialog()
-
-                        startActivity(
-                            Intent(
-                                requireContext(),
-                                PdfViewerActivity::class.java
-                            ).apply {
-
-                                putExtra(
-                                    "TITLE",
-                                    finalTitle
-                                )
-
-                                putExtra(
-                                    "CONTENT",
-                                    formattedContent
-                                )
-
-                                putExtra(
-                                    "IMAGE_PATH",
-                                    imagePath
-                                )
-                            }
-                        )
-                    }
-
-                    return@launch
-                }
-
-                // Safe fallback while the custom .tflite model is not present or yields no lines.
-                val inputImage = InputImage.fromBitmap(processedBitmap, 0)
-                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-
-                withContext(Dispatchers.Main) {
-                    recognizer.process(inputImage)
-                        .addOnSuccessListener { visionText ->
-                            // Pass ML Kit Text object directly to preserve bounding box spatial coordinates
-                            val structuredNote = WhiteboardRuleEngine.process(visionText)
-                            val formattedContent = structuredNote.blocks.joinToString("<br/>") { it.formattedText }
-
-                            val extractedTitle = if (structuredNote.title.isNotBlank() && structuredNote.title != "Untitled Scan") {
-                                structuredNote.title
-                            } else {
-                                fallbackTitle
-                            }
-
-                            val finalTitle = if (extractedTitle.isNotBlank()) extractedTitle else fallbackTitle
-
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                saveNoteToDatabase(finalTitle, formattedContent, imagePath)
-                                saveScanHistory(finalTitle, imagePath)
-
-                                val elapsedTime = System.currentTimeMillis() - scanStartTime
-                                val remainingDelay = (5000L - elapsedTime).coerceAtLeast(0L)
-                                delay(remainingDelay)
-
-                                withContext(Dispatchers.Main) {
-                                    hideLoadingDialog()
-
-                                    val intent = Intent(requireContext(), PdfViewerActivity::class.java).apply {
-                                        putExtra("TITLE", finalTitle)
-                                        putExtra("CONTENT", formattedContent)
-                                        putExtra("IMAGE_PATH", imagePath)
-                                    }
-                                    startActivity(intent)
-                                }
-                            }
-                        }
-                        .addOnFailureListener {
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                saveNoteToDatabase(fallbackTitle, "", imagePath)
-                                saveScanHistory(fallbackTitle, imagePath)
-
-                                val elapsedTime = System.currentTimeMillis() - scanStartTime
-                                val remainingDelay = (5000L - elapsedTime).coerceAtLeast(0L)
-                                delay(remainingDelay)
-
-                                withContext(Dispatchers.Main) {
-                                    hideLoadingDialog()
-                                    Toast.makeText(requireContext(), "OCR processing failed.", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    hideLoadingDialog()
-                }
+        try {
+            // Convert gallery content:// URIs to cache file paths safely
+            val filePath = rawFilePath ?: if (rawUri.scheme == "content") {
+                copyUriToCache(safeContext, rawUri)
+            } else {
+                rawUri.path
             }
-        }
-    }
 
-    private fun showLoadingDialog(message: String) {
-        if (loadingDialog == null) {
-            val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_loading, null)
-            dialogView.findViewById<TextView>(R.id.tvLoadingMessage).text = message
-
-            loadingDialog = AlertDialog.Builder(requireContext())
-                .setView(dialogView)
-                .setCancelable(false)
-                .create().apply {
-                    window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-                }
-        } else {
-            loadingDialog?.findViewById<TextView>(R.id.tvLoadingMessage)?.text = message
-        }
-        loadingDialog?.show()
-    }
-
-    private fun hideLoadingDialog() {
-        loadingDialog?.dismiss()
-        loadingDialog = null
-    }
-
-    private fun saveImageToInternalStorage(uri: Uri): String? {
-        return try {
-            val inputStream = requireContext().contentResolver.openInputStream(uri)
-            val fileName = "gallery_${System.currentTimeMillis()}.jpg"
-            val file = File(requireContext().filesDir, fileName)
-            val outputStream = FileOutputStream(file)
-
-            inputStream?.use { input ->
-                outputStream.use { output ->
-                    input.copyTo(output)
-                }
+            if (filePath == null) {
+                setLoading(false)
+                Toast.makeText(safeContext, "Failed to load image file", Toast.LENGTH_SHORT).show()
+                return
             }
-            file.absolutePath
+
+            val imageFile = File(filePath)
+            val image = InputImage.fromFilePath(safeContext, Uri.fromFile(imageFile))
+            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+            recognizer.process(image)
+                .addOnSuccessListener { visionText ->
+                    if (!isAdded) return@addOnSuccessListener
+                    setLoading(false)
+                    val extractedText = visionText.text
+
+                    val finalText = if (extractedText.isBlank()) "[No text detected]" else extractedText
+                    navigateToPdfViewer(finalText, filePath)
+                }
+                .addOnFailureListener { e ->
+                    if (!isAdded) return@addOnFailureListener
+                    setLoading(false)
+                    Log.e("ScanFragment", "Text recognition failed", e)
+                    Toast.makeText(context, "OCR failed to read text", Toast.LENGTH_SHORT).show()
+                }
         } catch (e: Exception) {
-            e.printStackTrace()
+            if (isAdded) setLoading(false)
+            Log.e("ScanFragment", "Error processing image", e)
+            Toast.makeText(safeContext, "Error loading image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Copies a content:// Uri to a local file in cache and returns its absolute file path.
+     */
+    private fun copyUriToCache(context: Context, contentUri: Uri): String? {
+        return try {
+            val cacheFile = File(context.cacheDir, "gallery_import_${System.currentTimeMillis()}.jpg")
+            context.contentResolver.openInputStream(contentUri)?.use { inputStream ->
+                cacheFile.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            } ?: return null
+            cacheFile.absolutePath
+        } catch (e: Exception) {
+            Log.e("ScanFragment", "Failed to copy URI to cache", e)
             null
         }
     }
 
-    private fun saveDetectedDiagrams(
-        regions: List<Region>
-    ): List<NoteBlock> {
+    private fun navigateToPdfViewer(content: String, imagePath: String) {
+        val safeContext = context ?: return
+        val timeStamp = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(System.currentTimeMillis())
+        val defaultTitle = "Scan $timeStamp"
 
-        if (regions.isEmpty()) {
-            return emptyList()
+        val intent = Intent(safeContext, PdfViewerActivity::class.java).apply {
+            putExtra("NOTE_ID", -1)
+            putExtra("TITLE", defaultTitle)
+            putExtra("CONTENT", content)
+            putExtra("IMAGE_PATH", imagePath) // Passes absolute path: "/data/user/0/.../cache/photo.jpg"
         }
+        startActivity(intent)
+    }
 
-        val directory =
-            File(
-                requireContext().filesDir,
-                "recognized_diagrams"
-            ).apply {
-                mkdirs()
-            }
-
-        return regions.mapIndexedNotNull { index, region ->
-
-            runCatching {
-
-                val file =
-                    File(
-                        directory,
-                        "diagram_${System.currentTimeMillis()}_$index.png"
-                    )
-
-                FileOutputStream(file).use { stream ->
-
-                    region.croppedBitmap.compress(
-                        Bitmap.CompressFormat.PNG,
-                        100,
-                        stream
-                    )
-                }
-
-                NoteBlock(
-                    rawText = "",
-                    type = BlockType.VISUAL,
-                    formattedText = "",
-                    imagePath = file.absolutePath,
-                    boundingBox =
-                        Rect(region.boundingBox)
-                )
-
-            }.getOrNull()
+    private fun setLoading(isLoading: Boolean) {
+        if (::progressBar.isInitialized) {
+            progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
     }
 
-    private fun renderNoteBlock(
-        block: NoteBlock
-    ): String {
-
-        return when (block.type) {
-
-            BlockType.VISUAL -> {
-
-                val path =
-                    block.imagePath
-                        ?: return ""
-
-                val file =
-                    File(path)
-
-                val imageUri =
-                    Uri.fromFile(file)
-
-                """
-            <p>
-                <img
-                    src='$imageUri'
-                    alt='Whiteboard diagram'
-                />
-            </p>
-            """.trimIndent()
-            }
-
-            else -> {
-
-                block.formattedText
-                    .takeIf {
-                        it.isNotBlank()
-                    }
-                    ?: block.rawText
-            }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        if (::cameraExecutor.isInitialized) {
+            cameraExecutor.shutdown()
         }
-    }
-
-    private suspend fun saveNoteToDatabase(title: String, content: String, imagePath: String) {
-        val currentDate = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date())
-        val newNote = Note(
-            title = title,
-            content = content,
-            imagePath = imagePath,
-            dateEdited = currentDate
-        )
-        AppDatabase.getDatabase(requireContext()).appDao().insertNote(newNote)
-    }
-
-    private suspend fun saveScanHistory(title: String, imagePath: String) {
-        val currentDate = SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault()).format(Date())
-        val historyItem = ScanHistory(
-            title = title,
-            date = currentDate,
-            imagePath = imagePath
-        )
-        AppDatabase.getDatabase(requireContext()).appDao().insertScanHistory(historyItem)
     }
 }
-

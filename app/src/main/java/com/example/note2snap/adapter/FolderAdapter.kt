@@ -11,7 +11,7 @@ import com.example.note2snap.R
 import com.example.note2snap.model.Folder
 
 class FolderAdapter(
-    private val folderList: List<Folder>,
+    private var folderList: List<Folder>,
     private val onItemClick: (Folder) -> Unit,
     private val onEditClick: (Folder) -> Unit,
     private val onDeleteClick: (Folder) -> Unit
@@ -55,4 +55,10 @@ class FolderAdapter(
     }
 
     override fun getItemCount(): Int = folderList.size
+
+    // Call this whenever the list updates externally
+    fun updateFolders(newFolders: List<Folder>) {
+        this.folderList = newFolders
+        notifyDataSetChanged()
+    }
 }

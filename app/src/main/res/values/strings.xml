@@ -1,8 +1,46 @@
 <resources>
-    <string name="app_name_note">NOTE</string>
-    <string name="app_name_2">2</string>
-    <string name="app_name_snap">SNAP</string>
-    <string name="greeting_welcome">Welcome back</string>
-    <string name="greeting_ready">Ready to scan your notes today?</string>
-    <string name="stat_total_notes">Total Notes</string>
+    <!-- Accessibility Content Descriptions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_share">Share</string>
+    <string name="cd_more_options">More Options</string>
+
+    <!-- Toolbar Icons -->
+    <string name="tool_text">T</string>
+    <string name="tool_pen">✏️</string>
+    <string name="tool_highlighter">🖊️</string>
+    <string name="tool_eraser">🧹</string>
+    <string name="tool_shapes">📐</string>
+    <string name="tool_mic">🎙️</string>
+
+    <!-- Editor Fields -->
+    <string name="hint_edit_content">Type your notes here…</string>
+
+    <!-- Bottom Actions -->
+    <string name="action_save">💾 Save</string>
+    <string name="action_export_pdf">⬇ Export PDF</string>
+    <string name="action_share">🔗 Share</string>
+
+    <!-- Page Controls -->
+    <string name="page_up">▲</string>
+    <string name="page_down">▼</string>
+    <string name="no_file_found">No file found</string>
+    <string name="found_items_count">FOUND %1$d ITEMS</string>
+    <string name="no_folders_available">No folders available. Create one first!</string>
+    <string name="move_note_to_folder_title">Move \'%1$s\' to Folder</string>
+    <string name="moved_to_folder">Moved to %1$s</string>
+    <string name="edit_folder_name">Edit Folder Name</string>
+    <string name="delete_folder">Delete Folder</string>
+    <string name="delete_folder_confirm">Are you sure you want to delete \'%1$s\'?</string>
+    <string name="folder_updated">Folder updated</string>
+    <string name="folder_deleted">Folder deleted</string>
+    <string name="note_deleted">Note deleted</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="cd_note_thumbnail">Note preview icon</string>
+    <string name="cd_favorite">Toggle favorite</string>
+    <string name="cd_options">More options</string>
+    <string name="tool_undo">↶</string>
+    <string name="tool_redo">↷</string>
+    <string name="cd_scanned_photo">Scanned Photo</string>
 </resources>

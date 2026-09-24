@@ -9,22 +9,26 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
 import com.example.note2snap.R
-import com.example.note2snap.adapter.NotesAdapter
+import com.example.note2snap.adapters.RecentActivityAdapter
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.Note
+import com.example.note2snap.adapter.StackNoteTransformer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.time.Duration.Companion.seconds
 
 class HomeFragment : Fragment() {
 
     private val recentNotesList = mutableListOf<Note>()
-    private lateinit var recentNotesAdapter: NotesAdapter
+    private lateinit var recentNotesAdapter: RecentActivityAdapter
 
     private var tvGreeting: TextView? = null
     private var tvGreetingSubtitle: TextView? = null
@@ -33,7 +37,10 @@ class HomeFragment : Fragment() {
     private var tvStatWeek: TextView? = null
     private var tvStatStreak: TextView? = null
     private var tvEmptyRecent: TextView? = null
-    private var rvRecentNotes: RecyclerView? = null
+    private var vpRecentNotes: ViewPager2? = null
+
+    private var autoSwipeJob: Job? = null
+    private val swipeInterval = 3.5.seconds
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -48,7 +55,7 @@ class HomeFragment : Fragment() {
         tvStatWeek = view.findViewById(R.id.tvStatWeek)
         tvStatStreak = view.findViewById(R.id.tvStatStreak)
         tvEmptyRecent = view.findViewById(R.id.tvEmptyRecent)
-        rvRecentNotes = view.findViewById(R.id.rvRecentNotes)
+        vpRecentNotes = view.findViewById(R.id.vpRecentNotes)
 
         val cardScan = view.findViewById<CardView>(R.id.cardScan)
         val cardNotes = view.findViewById<CardView>(R.id.cardNotes)
@@ -56,27 +63,54 @@ class HomeFragment : Fragment() {
 
         updateHeaderAndDate()
 
-        // Tab switches synchronized with BottomNavigationView selection
         cardScan?.setOnClickListener {
-            (activity as? MainActivity)?.loadFragment(ScanFragment())        }
-
+            (activity as? MainActivity)?.openScan()
+        }
         cardNotes?.setOnClickListener {
             (activity as? MainActivity)?.selectTab(R.id.nav_notes)
         }
-
         cardFolders?.setOnClickListener {
             (activity as? MainActivity)?.selectTab(R.id.nav_notes)
         }
 
-        // Horizontal Recent Notes RecyclerView setup
-        recentNotesAdapter = NotesAdapter(recentNotesList) { note ->
-            val intent = Intent(context, PdfViewerActivity::class.java)
-            intent.putExtra("TITLE", note.title)
-            intent.putExtra("IMAGE_PATH", note.imagePath)
-            startActivity(intent)
+        recentNotesAdapter = RecentActivityAdapter(
+            notes = recentNotesList,
+            onItemClick = { note ->
+                val intent = Intent(context, PdfViewerActivity::class.java).apply {
+                    putExtra("TITLE", note.title)
+                    putExtra("CONTENT", note.content)
+                    putExtra("IMAGE_PATH", note.imagePath)
+                }
+                startActivity(intent)
+            }
+        )
+
+        vpRecentNotes?.apply {
+            adapter = recentNotesAdapter
+
+            // 1. Keep depth cards pre-rendered offscreen
+            offscreenPageLimit = 3
+
+            // 2. Attach 3D stack depth transformer
+            setPageTransformer(
+                StackNoteTransformer(
+                    maxVisibleItems = 3,
+                    scaleOffset = 0.08f,
+                    verticalOffsetDp = 20f
+                )
+            )
+
+            registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageScrollStateChanged(state: Int) {
+                    super.onPageScrollStateChanged(state)
+                    if (state == ViewPager2.SCROLL_STATE_DRAGGING) {
+                        stopAutoSwipe()
+                    } else if (state == ViewPager2.SCROLL_STATE_IDLE) {
+                        startAutoSwipe()
+                    }
+                }
+            })
         }
-        rvRecentNotes?.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-        rvRecentNotes?.adapter = recentNotesAdapter
 
         observeDatabaseData()
 
@@ -104,15 +138,12 @@ class HomeFragment : Fragment() {
             dao.getAllNotes().collectLatest { allNotes ->
                 val totalNotesCount = allNotes.size
 
-                // Total created notes counter
                 tvStatTotal?.text = totalNotesCount.toString()
 
-                // Scans created in the last 7 days
                 val sevenDaysAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000L)
                 val thisWeekCount = allNotes.count { it.timestamp >= sevenDaysAgo }
                 tvStatWeek?.text = thisWeekCount.toString()
 
-                // Dynamic evolved badge based on total created notes count
                 tvStatStreak?.text = getEvolvedNoteBadge(totalNotesCount)
 
                 tvGreetingSubtitle?.text = if (thisWeekCount > 0) {
@@ -121,34 +152,68 @@ class HomeFragment : Fragment() {
                     "Ready to scan your notes today?"
                 }
 
-                // Recent notes list (Top 5 latest notes)
                 val sortedRecent = allNotes.sortedByDescending { it.timestamp }.take(5)
-                recentNotesList.clear()
-                recentNotesList.addAll(sortedRecent)
-                recentNotesAdapter.notifyDataSetChanged()
+                recentNotesAdapter.updateNotes(sortedRecent)
 
-                if (recentNotesList.isEmpty()) {
-                    rvRecentNotes?.visibility = View.GONE
+                if (sortedRecent.isEmpty()) {
+                    vpRecentNotes?.visibility = View.GONE
                     tvEmptyRecent?.visibility = View.VISIBLE
+                    stopAutoSwipe()
                 } else {
-                    rvRecentNotes?.visibility = View.VISIBLE
+                    vpRecentNotes?.visibility = View.VISIBLE
                     tvEmptyRecent?.visibility = View.GONE
+
+                    if (vpRecentNotes?.currentItem == 0) {
+                        val middleIndex = (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % sortedRecent.size)
+                        vpRecentNotes?.setCurrentItem(middleIndex, false)
+                    }
+
+                    startAutoSwipe()
                 }
             }
         }
     }
 
-    /**
-     * Evolves the streak icon badge tier based on total notes created.
-     */
+    private fun startAutoSwipe() {
+        if (recentNotesList.size <= 1) return
+
+        stopAutoSwipe()
+
+        autoSwipeJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (isActive) {
+                delay(swipeInterval)
+                vpRecentNotes?.let { vp ->
+                    if (recentNotesList.size > 1) {
+                        vp.setCurrentItem(vp.currentItem + 1, true)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopAutoSwipe() {
+        autoSwipeJob?.cancel()
+        autoSwipeJob = null
+    }
+
+    override fun onResume() {
+        super.onResume()
+        startAutoSwipe()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopAutoSwipe()
+    }
+
     private fun getEvolvedNoteBadge(noteCount: Int): String {
-        return when {
-            noteCount == 0 -> "❄️ 0 Notes"
-            noteCount in 1..2 -> "🌱 $noteCount Notes"
-            noteCount in 3..5 -> "🔥 $noteCount Notes"
-            noteCount in 6..10 -> "⚡ $noteCount Notes"
-            noteCount in 11..25 -> "🚀 $noteCount Notes"
-            noteCount in 26..50 -> "💎 $noteCount Notes"
+        return when (noteCount) {
+            0 -> "❄️ 0 Notes"
+            in 1..2 -> "🌱 $noteCount Notes"
+            in 3..5 -> "🔥 $noteCount Notes"
+            in 6..10 -> "⚡ $noteCount Notes"
+            in 11..25 -> "🚀 $noteCount Notes"
+            in 26..50 -> "💎 $noteCount Notes"
             else -> "👑 $noteCount Notes"
         }
     }

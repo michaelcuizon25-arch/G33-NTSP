@@ -18,8 +18,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="NOTE2SNAP"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Note2Snap">
-        android:extractNativeLibs="true"
+        android:theme="@style/Theme.Note2Snap"
+        android:extractNativeLibs="true">
+
+        <!-- ML Kit OCR Model Auto-Download -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr" />
 
         <activity
             android:name=".activities.SplashActivity"

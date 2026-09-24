@@ -39,8 +39,9 @@ class NotesFragment : Fragment() {
 
     private val masterNotesList = mutableListOf<Note>()
     private val masterFolderList = mutableListOf<Folder>()
-    private val notesList = mutableListOf<Note>()
-    private val folderList = mutableListOf<Folder>()
+
+    private var currentFilteredNotes = listOf<Note>()
+    private var currentFilteredFolders = listOf<Folder>()
 
     private lateinit var notesAdapter: NotesAdapter
     private lateinit var folderAdapter: FolderAdapter
@@ -84,22 +85,28 @@ class NotesFragment : Fragment() {
         tvNotFound = view.findViewById(R.id.tvNotFound)
         btnSort = view.findViewById(R.id.btnSort)
 
-        // Set empty state text explicitly to "No file found"
-        tvNotFound?.text = "No file found"
+        tvNotFound?.setText(R.string.no_file_found)
 
-        notesAdapter = NotesAdapter(notesList) { note ->
-            val intent = Intent(context, PdfViewerActivity::class.java).apply {
-                putExtra("TITLE", note.title)
-                putExtra("CONTENT", note.content)
-                putExtra("IMAGE_PATH", note.imagePath)
-            }
-            startActivity(intent)
-        }
+        // Initialize adapters
+        notesAdapter = NotesAdapter(
+            notes = emptyList(),
+            onItemClick = { note ->
+                val intent = Intent(context, PdfViewerActivity::class.java).apply {
+                    putExtra("TITLE", note.title)
+                    putExtra("CONTENT", note.content)
+                    putExtra("IMAGE_PATH", note.imagePath)
+                }
+                startActivity(intent)
+            },
+            onMoveClick = { note -> showMoveNoteDialog(note) },
+            onDeleteClick = { note -> deleteNote(note) },
+            onToggleStarClick = { note -> toggleStarNote(note) }
+        )
         rvNotes.layoutManager = LinearLayoutManager(context)
         rvNotes.adapter = notesAdapter
 
         folderAdapter = FolderAdapter(
-            folderList = folderList,
+            folderList = emptyList(),
             onItemClick = { folder -> handleFolderClick(folder) },
             onEditClick = { folder -> showEditFolderDialog(folder) },
             onDeleteClick = { folder -> showDeleteFolderDialog(folder) }
@@ -128,26 +135,38 @@ class NotesFragment : Fragment() {
     }
 
     private fun handleFolderClick(folder: Folder) {
-        val notesInFolder = masterNotesList.filter { it.title.startsWith(folder.name, ignoreCase = true) }
-
-        if (notesInFolder.isEmpty()) {
-            showNoFileFoundDialog(folder.name)
-        } else {
-            notesList.clear()
-            notesList.addAll(notesInFolder)
-            notesAdapter.notifyDataSetChanged()
+        val intent = Intent(context, SaveFolderActivity::class.java).apply {
+            putExtra("FOLDER_ID", folder.id)
+            putExtra("FOLDER_NAME", folder.name)
         }
+        startActivity(intent)
     }
 
-    private fun showNoFileFoundDialog(folderName: String) {
+    private fun showMoveNoteDialog(note: Note) {
+        if (masterFolderList.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.no_folders_available, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val folderNames = masterFolderList.map { it.name }.toTypedArray()
+
         val dialog = AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert)
-            .setTitle(folderName)
-            .setMessage("No file found")
-            .setPositiveButton("OK") { d, _ -> d.dismiss() }
+            .setTitle(getString(R.string.move_note_to_folder_title, note.title))
+            .setItems(folderNames) { d, index ->
+                val targetFolder = masterFolderList[index]
+                lifecycleScope.launch(Dispatchers.IO) {
+                    AppDatabase.getDatabase(requireContext()).appDao().updateNoteFolder(note.id, targetFolder.id)
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(context, getString(R.string.moved_to_folder, targetFolder.name), Toast.LENGTH_SHORT).show()
+                    }
+                }
+                d.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
             .create()
 
         dialog.show()
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Color.BLACK)
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.BLACK)
     }
 
     private fun setupFilterListeners() {
@@ -211,6 +230,7 @@ class NotesFragment : Fragment() {
     }
 
     private fun applySearchAndSort() {
+        // 1. FILTER & SORT FOLDERS
         var filteredFolders = if (searchQuery.isEmpty()) {
             masterFolderList
         } else {
@@ -219,19 +239,19 @@ class NotesFragment : Fragment() {
 
         filteredFolders = when (currentSort) {
             SortType.NAME -> filteredFolders.sortedBy { it.name.lowercase() }
-            SortType.TIME -> filteredFolders.sortedByDescending { it.id }
+            SortType.TIME -> filteredFolders.sortedByDescending { it.timestamp }
             SortType.SIZE -> filteredFolders.sortedBy { it.name.lowercase() }
             SortType.TYPE -> filteredFolders.sortedBy { it.name.lowercase() }
         }
 
-        folderList.clear()
-        folderList.addAll(filteredFolders)
-        folderAdapter.notifyDataSetChanged()
+        currentFilteredFolders = filteredFolders
+        folderAdapter.updateFolders(currentFilteredFolders)
 
-        var filteredNotes = if (searchQuery.isEmpty()) {
-            masterNotesList
-        } else {
-            masterNotesList.filter { it.title.contains(searchQuery, ignoreCase = true) }
+        // 2. FILTER & SORT ROOT NOTES (Unassigned notes on main screen)
+        var filteredNotes = masterNotesList.filter { it.folderId == null }
+
+        if (searchQuery.isNotEmpty()) {
+            filteredNotes = filteredNotes.filter { it.title.contains(searchQuery, ignoreCase = true) }
         }
 
         filteredNotes = when (currentSort) {
@@ -241,12 +261,12 @@ class NotesFragment : Fragment() {
             SortType.TYPE -> filteredNotes.sortedBy { it.fileType.lowercase() }
         }
 
-        notesList.clear()
-        notesList.addAll(filteredNotes)
-        notesAdapter.notifyDataSetChanged()
+        currentFilteredNotes = filteredNotes
+        notesAdapter.updateNotes(currentFilteredNotes)
 
-        val showFoldersSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.FOLDERS) && folderList.isNotEmpty()
-        val showNotesSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.NOTES) && notesList.isNotEmpty()
+        // 3. TOGGLE VISIBILITY
+        val showFoldersSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.FOLDERS) && currentFilteredFolders.isNotEmpty()
+        val showNotesSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.NOTES) && currentFilteredNotes.isNotEmpty()
 
         rvFolders?.visibility = if (showFoldersSection) View.VISIBLE else View.GONE
         tvFoldersLabel?.visibility = if (showFoldersSection) View.VISIBLE else View.GONE
@@ -254,17 +274,17 @@ class NotesFragment : Fragment() {
         rvNotes.visibility = if (showNotesSection) View.VISIBLE else View.GONE
         tvNotesLabel?.visibility = if (showNotesSection) View.VISIBLE else View.GONE
 
-        val visibleItemCount = (if (showFoldersSection) folderList.size else 0) + (if (showNotesSection) notesList.size else 0)
+        val visibleItemCount = (if (showFoldersSection) currentFilteredFolders.size else 0) + (if (showNotesSection) currentFilteredNotes.size else 0)
 
         if (visibleItemCount == 0) {
-            tvNotFound?.text = "No file found"
+            tvNotFound?.setText(R.string.no_file_found)
             tvNotFound?.visibility = View.VISIBLE
             tvResultCount?.visibility = View.GONE
         } else {
             tvNotFound?.visibility = View.GONE
             if (searchQuery.isNotEmpty()) {
                 tvResultCount?.visibility = View.VISIBLE
-                tvResultCount?.text = "FOUND $visibleItemCount ITEMS"
+                tvResultCount?.text = getString(R.string.found_items_count, visibleItemCount)
             } else {
                 tvResultCount?.visibility = View.GONE
             }
@@ -273,33 +293,32 @@ class NotesFragment : Fragment() {
 
     private fun showSortBottomSheet() {
         val dialog = BottomSheetDialog(requireContext())
-        val dialogView = layoutInflater.inflate(R.layout.dialog_sort_by, null, false)
+        dialog.setContentView(R.layout.dialog_sort_by)
 
-        dialogView.findViewById<TextView>(R.id.tvSortName)?.setOnClickListener {
+        dialog.findViewById<TextView>(R.id.tvSortName)?.setOnClickListener {
             currentSort = SortType.NAME
             applySearchAndSort()
             dialog.dismiss()
         }
 
-        dialogView.findViewById<TextView>(R.id.tvSortTime)?.setOnClickListener {
+        dialog.findViewById<TextView>(R.id.tvSortTime)?.setOnClickListener {
             currentSort = SortType.TIME
             applySearchAndSort()
             dialog.dismiss()
         }
 
-        dialogView.findViewById<TextView>(R.id.tvSortSize)?.setOnClickListener {
+        dialog.findViewById<TextView>(R.id.tvSortSize)?.setOnClickListener {
             currentSort = SortType.SIZE
             applySearchAndSort()
             dialog.dismiss()
         }
 
-        dialogView.findViewById<TextView>(R.id.tvSortType)?.setOnClickListener {
+        dialog.findViewById<TextView>(R.id.tvSortType)?.setOnClickListener {
             currentSort = SortType.TYPE
             applySearchAndSort()
             dialog.dismiss()
         }
 
-        dialog.setContentView(dialogView)
         dialog.show()
     }
 
@@ -313,22 +332,22 @@ class NotesFragment : Fragment() {
         }
 
         val dialog = AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert)
-            .setTitle("Edit Folder Name")
+            .setTitle(R.string.edit_folder_name)
             .setView(input)
-            .setPositiveButton("Save") { d, _ ->
+            .setPositiveButton(R.string.save) { d, _ ->
                 val newName = input.text.toString().trim()
                 if (newName.isNotEmpty()) {
                     val updatedFolder = folder.copy(name = newName)
                     lifecycleScope.launch(Dispatchers.IO) {
                         AppDatabase.getDatabase(requireContext()).appDao().insertFolder(updatedFolder)
                         launch(Dispatchers.Main) {
-                            Toast.makeText(context, "Folder updated", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, R.string.folder_updated, Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
                 d.dismiss()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.cancel, null)
             .create()
 
         dialog.show()
@@ -338,18 +357,18 @@ class NotesFragment : Fragment() {
 
     private fun showDeleteFolderDialog(folder: Folder) {
         val dialog = AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert)
-            .setTitle("Delete Folder")
-            .setMessage("Are you sure you want to delete '${folder.name}'?")
-            .setPositiveButton("Delete") { d, _ ->
+            .setTitle(R.string.delete_folder)
+            .setMessage(getString(R.string.delete_folder_confirm, folder.name))
+            .setPositiveButton(R.string.delete) { d, _ ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     AppDatabase.getDatabase(requireContext()).appDao().deleteFolder(folder)
                     launch(Dispatchers.Main) {
-                        Toast.makeText(context, "Folder deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, R.string.folder_deleted, Toast.LENGTH_SHORT).show()
                     }
                 }
                 d.dismiss()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.cancel, null)
             .create()
 
         dialog.show()
@@ -357,21 +376,36 @@ class NotesFragment : Fragment() {
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.BLACK)
     }
 
+    private fun deleteNote(note: Note) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            AppDatabase.getDatabase(requireContext()).appDao().deleteNote(note)
+            launch(Dispatchers.Main) {
+                Toast.makeText(context, R.string.note_deleted, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun toggleStarNote(note: Note) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val updatedNote = note.copy(isStarred = !note.isStarred)
+            AppDatabase.getDatabase(requireContext()).appDao().insertNote(updatedNote)
+        }
+    }
+
     private fun showBottomSheetMenu() {
         val dialog = BottomSheetDialog(requireContext())
-        val dialogView = layoutInflater.inflate(R.layout.dialog_add_options, null, false)
+        dialog.setContentView(R.layout.dialog_add_options)
 
-        dialogView.findViewById<LinearLayout>(R.id.llOptionFolder)?.setOnClickListener {
+        dialog.findViewById<LinearLayout>(R.id.llOptionFolder)?.setOnClickListener {
             dialog.dismiss()
             startActivity(Intent(context, CreateFolderActivity::class.java))
         }
 
-        dialogView.findViewById<LinearLayout>(R.id.llOptionNote)?.setOnClickListener {
+        dialog.findViewById<LinearLayout>(R.id.llOptionNote)?.setOnClickListener {
             dialog.dismiss()
             (activity as? MainActivity)?.loadFragment(ScanFragment())
         }
 
-        dialog.setContentView(dialogView)
         dialog.show()
     }
 }
