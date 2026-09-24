@@ -1,36 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:layout_marginHorizontal="16dp"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="4dp"
     android:layout_marginVertical="6dp"
-    app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp">
+    app:cardBackgroundColor="#FFFFFF"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_card_border"
+        android:layout_height="76dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="12dp">
+        android:paddingStart="14dp"
+        android:paddingEnd="12dp">
 
-        <!-- Note Thumbnail / Preview Icon -->
-        <ImageView
-            android:id="@+id/ivNoteThumbnail"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="#E5E7EB"
-            android:contentDescription="@string/cd_note_thumbnail"
-            android:padding="8dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_notes" />
+        <!-- NOTE ICON -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            app:cardBackgroundColor="#F3F6FC"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
 
-        <!-- Note Title & Date -->
+            <ImageView
+                android:id="@+id/ivNoteThumbnail"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:contentDescription="@string/cd_note_thumbnail"
+                android:src="@drawable/ic_notes"
+                app:tint="#5A7FDB" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- TITLE + DATE -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -40,44 +49,50 @@
 
             <TextView
                 android:id="@+id/tvNoteTitle"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                tools:text="Whiteboard Note" />
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_semibold"
+                android:maxLines="1"
+                android:textColor="#171717"
+                android:textSize="14sp"
+                tools:text="Scan Sep 24, 2026 18:56" />
 
             <TextView
                 android:id="@+id/tvNoteDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textColor="?android:attr/textColorSecondary"
-                android:textSize="12sp"
-                tools:text="August 18, 2026 | 11:21 AM" />
+                android:layout_marginTop="3dp"
+                android:fontFamily="@font/poppins_regular"
+                android:textColor="#74747C"
+                android:textSize="11sp"
+                tools:text="September 24, 2026" />
+
         </LinearLayout>
 
-        <!-- Star Favorite Button -->
+        <!-- FAVORITE -->
         <ImageView
             android:id="@+id/btnFavorite"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginEnd="8dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="2dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_favorite"
+            android:padding="5dp"
             android:src="@android:drawable/btn_star_big_off"
-            app:tint="#F59E0B" />
+            app:tint="#F6C84C" />
 
-        <!-- 3-Dots Options Button -->
+        <!-- MORE -->
         <ImageView
             android:id="@+id/btnNoteMore"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_options"
-            android:padding="2dp"
+            android:padding="5dp"
             android:src="@android:drawable/ic_menu_more"
-            app:tint="?android:attr/textColorSecondary" />
+            app:tint="#8A8A92" />
 
     </LinearLayout>
+
 </androidx.cardview.widget.CardView>

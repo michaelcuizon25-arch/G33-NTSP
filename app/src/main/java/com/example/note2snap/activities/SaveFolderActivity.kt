@@ -1,154 +1,418 @@
 package com.example.note2snap.activities
-import java.io.File
+
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.os.Environment
+import android.view.Gravity
 import android.view.View
-import android.widget.Button
-import android.widget.RadioButton
-import android.widget.RadioGroup
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
+import com.example.note2snap.adapter.NotesAdapter
 import com.example.note2snap.data.AppDatabase
-import com.example.note2snap.model.Folder
 import com.example.note2snap.model.Note
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class SaveFolderActivity : AppCompatActivity() {
 
-    private var imagePath: String? = null
-    private var noteTitle: String = "Scanned Note"
-    private var noteContent: String = ""
+    private var folderId: Int = -1
+    private var folderName: String = "Folder"
 
-    private val folderMap = mutableMapOf<Int, Folder>() // Maps RadioButton view IDs to Folder objects
+    private lateinit var notesAdapter: NotesAdapter
+    private lateinit var rvFolderNotes: RecyclerView
+    private lateinit var tvEmptyFolder: TextView
+    private lateinit var tvFolderCount: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_save_folder)
 
-        // Receive data passed from capture/scan screen
-        imagePath = intent.getStringExtra("IMAGE_PATH")
-        noteTitle = intent.getStringExtra("TITLE") ?: "Scanned Note"
-        noteContent = intent.getStringExtra("CONTENT") ?: ""
+        folderId = intent.getIntExtra("FOLDER_ID", -1)
+        folderName = intent.getStringExtra("FOLDER_NAME") ?: "Folder"
 
-        val btnSave = findViewById<Button>(R.id.btnSaveNote)
-        val fabAddFolder = findViewById<FloatingActionButton>(R.id.fabAddFolderInSave)
-        val radioGroup = findViewById<RadioGroup>(R.id.rgFolders)
-
-        // Dynamically populate RadioGroup from Room DB
-        loadFoldersIntoRadioGroup(radioGroup)
-
-        btnSave?.setOnClickListener {
-            val selectedRadioId = radioGroup.checkedRadioButtonId
-
-            if (selectedRadioId != -1) {
-                val selectedFolder = folderMap[selectedRadioId]
-                if (selectedFolder != null) {
-                    saveNoteToSelectedFolder(selectedFolder)
-                } else {
-                    Toast.makeText(this, "Selected folder not found", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                Toast.makeText(this, "Please select a folder first", Toast.LENGTH_SHORT).show()
-            }
+        findViewById<TextView>(R.id.tvFolderTitle)?.text = folderName
+        findViewById<ImageButton>(R.id.btnFolderBack)?.setOnClickListener {
+            finish()
         }
 
-        fabAddFolder?.setOnClickListener {
-            startActivity(Intent(this, CreateFolderActivity::class.java))
-        }
+        rvFolderNotes = findViewById(R.id.rvFolderNotes)
+        tvEmptyFolder = findViewById(R.id.tvEmptyFolder)
+        tvFolderCount = findViewById(R.id.tvFolderCount)
+
+        setupNotesList()
+        observeFolderNotes()
     }
 
-    private fun loadFoldersIntoRadioGroup(radioGroup: RadioGroup) {
-        val dao = AppDatabase.getDatabase(this).appDao()
-
-        lifecycleScope.launch {
-            dao.getAllFolders().collectLatest { folders ->
-                radioGroup.removeAllViews()
-                folderMap.clear()
-
-                if (folders.isEmpty()) {
-                    Toast.makeText(this@SaveFolderActivity, "No folders available. Create one first!", Toast.LENGTH_LONG).show()
-                    return@collectLatest
-                }
-
-                folders.forEach { folder ->
-                    val radioButton = RadioButton(this@SaveFolderActivity).apply {
-                        id = View.generateViewId()
-                        text = folder.name
-                        textSize = 16f
-                        setTextColor(Color.BLACK)
-                        setPadding(16, 16, 16, 16)
+    private fun setupNotesList() {
+        notesAdapter = NotesAdapter(
+            notes = emptyList(),
+            onItemClick = { note ->
+                val intent =
+                    Intent(this, PdfViewerActivity::class.java).apply {
+                        putExtra("NOTE_ID", note.id)
+                        putExtra("TITLE", note.title)
+                        putExtra("CONTENT", note.content)
+                        putExtra("IMAGE_PATH", note.imagePath)
                     }
-
-                    radioGroup.addView(radioButton)
-                    folderMap[radioButton.id] = folder
+                startActivity(intent)
+            },
+            onMoveClick = { note ->
+                showMoveNoteDialog(note)
+            },
+            onDeleteClick = { note ->
+                lifecycleScope.launch(Dispatchers.IO) {
+                    AppDatabase
+                        .getDatabase(this@SaveFolderActivity)
+                        .appDao()
+                        .deleteNote(note)
                 }
+            },
+            onToggleStarClick = { note ->
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val updated =
+                        note.copy(
+                            isStarred = !note.isStarred
+                        )
 
-                // Select the first folder by default
-                if (radioGroup.childCount > 0) {
-                    (radioGroup.getChildAt(0) as RadioButton).isChecked = true
+                    AppDatabase
+                        .getDatabase(this@SaveFolderActivity)
+                        .appDao()
+                        .insertNote(updated)
                 }
             }
+        )
+
+        rvFolderNotes.layoutManager =
+            LinearLayoutManager(this)
+
+        rvFolderNotes.adapter = notesAdapter
+    }
+
+    private fun observeFolderNotes() {
+        lifecycleScope.launch {
+            AppDatabase
+                .getDatabase(this@SaveFolderActivity)
+                .appDao()
+                .getAllNotes()
+                .collectLatest { allNotes ->
+
+                    val folderNotes =
+                        allNotes.filter {
+                            it.folderId == folderId
+                        }
+
+                    notesAdapter.updateNotes(folderNotes)
+
+                    tvFolderCount.text =
+                        when (folderNotes.size) {
+                            0 -> "No notes yet"
+                            1 -> "1 note"
+                            else -> "${folderNotes.size} notes"
+                        }
+
+                    tvEmptyFolder.visibility =
+                        if (folderNotes.isEmpty()) {
+                            View.VISIBLE
+                        } else {
+                            View.GONE
+                        }
+
+                    rvFolderNotes.visibility =
+                        if (folderNotes.isEmpty()) {
+                            View.GONE
+                        } else {
+                            View.VISIBLE
+                        }
+                }
         }
     }
 
-    private fun saveNoteToSelectedFolder(folder: Folder) {
+    private fun showMoveNoteDialog(note: Note) {
         lifecycleScope.launch(Dispatchers.IO) {
-            val sourcePath = imagePath
-            var savedFilePath = sourcePath ?: ""
+            val dao =
+                AppDatabase
+                    .getDatabase(this@SaveFolderActivity)
+                    .appDao()
 
-            // 1. Copy physical file into phone storage folder: Documents/[folderName]/
-            if (!sourcePath.isNullOrEmpty()) {
-                val storageDir = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-                val targetFolder = File(storageDir, folder.name)
-
-                if (!targetFolder.exists()) {
-                    targetFolder.mkdirs()
-                }
-
-                val sourceFile = File(sourcePath)
-                if (sourceFile.exists()) {
-                    val destFile = File(targetFolder, sourceFile.name)
-                    sourceFile.copyTo(destFile, overwrite = true)
-                    savedFilePath = destFile.absolutePath
-                }
-            }
-
-            // Calculate file size for sorting
-            val fileSize = if (savedFilePath.isNotEmpty()) File(savedFilePath).length() else 0L
-            val currentDate = java.text.SimpleDateFormat("MMMM dd, yyyy", java.util.Locale.getDefault()).format(java.util.Date())
-
-            // 2. Save note record to Room Database WITH folderId
-            val newNote = Note(
-                folderId = folder.id, // Foreign key link to Folder
-                title = noteTitle,
-                content = noteContent,
-                imagePath = savedFilePath,
-                dateEdited = currentDate,
-                timestamp = System.currentTimeMillis(),
-                fileSizeBytes = fileSize
-            )
-
-            AppDatabase.getDatabase(this@SaveFolderActivity).appDao().insertNote(newNote)
+            val folders = dao.getAllFolders().first()
 
             launch(Dispatchers.Main) {
-                Toast.makeText(this@SaveFolderActivity, "Saved to ${folder.name}!", Toast.LENGTH_SHORT).show()
+                val dialog =
+                    BottomSheetDialog(this@SaveFolderActivity)
 
-                // Open PDF/Reviewer viewer
-                val intent = Intent(this@SaveFolderActivity, PdfViewerActivity::class.java).apply {
-                    putExtra("TITLE", newNote.title)
-                    putExtra("CONTENT", newNote.content)
-                    putExtra("IMAGE_PATH", savedFilePath)
+                val sheet =
+                    LinearLayout(this@SaveFolderActivity).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(
+                            dp(18),
+                            dp(12),
+                            dp(18),
+                            dp(24)
+                        )
+                        background =
+                            roundedBackground(
+                                "#FFF9FF",
+                                28f
+                            )
+                    }
+
+                sheet.addView(
+                    View(this@SaveFolderActivity).apply {
+                        background =
+                            roundedBackground(
+                                "#D7D4DC",
+                                3f
+                            )
+                    },
+                    LinearLayout.LayoutParams(
+                        dp(42),
+                        dp(4)
+                    ).apply {
+                        gravity =
+                            Gravity.CENTER_HORIZONTAL
+                        bottomMargin = dp(18)
+                    }
+                )
+
+                sheet.addView(
+                    TextView(this@SaveFolderActivity).apply {
+                        text = "Move note"
+                        textSize = 21f
+                        typeface =
+                            android.graphics.Typeface.DEFAULT_BOLD
+                        setTextColor(
+                            "#171717".toColorInt()
+                        )
+                    }
+                )
+
+                sheet.addView(
+                    TextView(this@SaveFolderActivity).apply {
+                        text = note.title
+                        textSize = 11f
+                        setTextColor(
+                            "#777780".toColorInt()
+                        )
+                        setPadding(
+                            0,
+                            dp(4),
+                            0,
+                            dp(14)
+                        )
+                    }
+                )
+
+                val listCard =
+                    LinearLayout(
+                        this@SaveFolderActivity
+                    ).apply {
+                        orientation =
+                            LinearLayout.VERTICAL
+                        background =
+                            roundedBackground(
+                                "#FFFFFF",
+                                20f,
+                                "#ECECF2"
+                            )
+                        setPadding(
+                            dp(6),
+                            dp(6),
+                            dp(6),
+                            dp(6)
+                        )
+                    }
+
+                listCard.addView(
+                    createDestinationRow(
+                        "Main Screen",
+                        note.folderId == null
+                    ) {
+                        moveNote(
+                            note,
+                            null,
+                            "Main Screen"
+                        )
+                        dialog.dismiss()
+                    }
+                )
+
+                folders.forEach { folder ->
+                    listCard.addView(
+                        createDestinationRow(
+                            folder.name,
+                            note.folderId ==
+                                    folder.id
+                        ) {
+                            moveNote(
+                                note,
+                                folder.id,
+                                folder.name
+                            )
+                            dialog.dismiss()
+                        }
+                    )
                 }
-                startActivity(intent)
-                finish()
+
+                sheet.addView(listCard)
+
+                dialog.setContentView(sheet)
+                dialog.show()
             }
         }
     }
+
+    private fun moveNote(
+        note: Note,
+        destinationFolderId: Int?,
+        destinationName: String
+    ) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            AppDatabase
+                .getDatabase(this@SaveFolderActivity)
+                .appDao()
+                .updateNoteFolder(
+                    note.id,
+                    destinationFolderId
+                )
+
+            launch(Dispatchers.Main) {
+                Toast.makeText(
+                    this@SaveFolderActivity,
+                    "Moved to $destinationName",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun createDestinationRow(
+        name: String,
+        isCurrent: Boolean,
+        action: () -> Unit
+    ): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(
+                dp(10),
+                dp(11),
+                dp(10),
+                dp(11)
+            )
+            background =
+                roundedBackground(
+                    if (isCurrent) {
+                        "#EEF2FF"
+                    } else {
+                        "#FFFFFF"
+                    },
+                    16f
+                )
+
+            addView(
+                TextView(this@SaveFolderActivity).apply {
+                    text =
+                        if (isCurrent) "✓" else "▣"
+                    textSize = 18f
+                    gravity = Gravity.CENTER
+                    setTextColor(
+                        if (isCurrent) {
+                            "#5A7FDB".toColorInt()
+                        } else {
+                            "#171717".toColorInt()
+                        }
+                    )
+                    background =
+                        roundedBackground(
+                            if (isCurrent) {
+                                "#DCE6FF"
+                            } else {
+                                "#F4F4F7"
+                            },
+                            14f
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    dp(44),
+                    dp(44)
+                )
+            )
+
+            val label =
+                TextView(this@SaveFolderActivity).apply {
+                    text =
+                        if (isCurrent) {
+                            "$name\nCurrent location"
+                        } else {
+                            name
+                        }
+                    textSize = 13f
+                    setTextColor(
+                        "#171717".toColorInt()
+                    )
+                    setPadding(
+                        dp(12),
+                        0,
+                        0,
+                        0
+                    )
+                }
+
+            addView(
+                label,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                if (!isCurrent) action()
+            }
+        }
+    }
+
+    private fun dp(value: Int): Int {
+        return (
+                value *
+                        resources.displayMetrics.density
+                ).toInt()
+    }
+
+    private fun roundedBackground(
+        fillColor: String,
+        radiusDp: Float,
+        strokeColor: String? = null
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius =
+                radiusDp *
+                        resources.displayMetrics.density
+            setColor(Color.parseColor(fillColor))
+
+            if (strokeColor != null) {
+                setStroke(
+                    dp(1),
+                    Color.parseColor(strokeColor)
+                )
+            }
+        }
+    }
+
 }

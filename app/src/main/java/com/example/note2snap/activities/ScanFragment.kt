@@ -5,15 +5,26 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.graphics.Typeface
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
@@ -40,60 +51,276 @@ import java.util.concurrent.Executors
 class ScanFragment : Fragment() {
 
     private var imageCapture: ImageCapture? = null
+    private var camera: Camera? = null
+    private var isFlashOn = false
+
     private lateinit var cameraExecutor: ExecutorService
 
     private lateinit var viewFinder: PreviewView
     private lateinit var progressBar: ProgressBar
+    private lateinit var analyzingOverlay: LinearLayout
 
-    // Gallery Picker Contract
-    private val selectImageLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { processImageUri(it) }
-    }
+    private lateinit var viewFrame: View
+    private lateinit var backButtonContainer: View
+    private lateinit var flashControl: View
+    private lateinit var tvInstruction: View
+    private lateinit var controlPanel: View
 
-    // Camera Permission Contract
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            startCamera()
-        } else {
-            context?.let {
-                Toast.makeText(it, "Camera permission is required to scan documents.", Toast.LENGTH_SHORT).show()
+    private lateinit var iconEnhance: TextView
+    private lateinit var iconText: TextView
+    private lateinit var iconElements: TextView
+    private lateinit var iconStructure: TextView
+
+    private lateinit var tvStepEnhance: TextView
+    private lateinit var tvStepText: TextView
+    private lateinit var tvStepElements: TextView
+    private lateinit var tvStepStructure: TextView
+
+    private val analysisHandler = Handler(Looper.getMainLooper())
+    private var analysisStartTime = 0L
+    private val minimumAnalysisTime = 2400L
+
+    private val selectImageLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
+            uri?.let { processImageUri(it) }
+        }
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                startCamera()
+            } else {
+                context?.let {
+                    Toast.makeText(
+                        it,
+                        "Camera permission is required to scan documents.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_scan, container, false)
+    ): View {
+        return inflater.inflate(
+            R.layout.fragment_scan,
+            container,
+            false
+        )
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         viewFinder = view.findViewById(R.id.viewFinder)
         progressBar = view.findViewById(R.id.progressBarScan)
+        analyzingOverlay = view.findViewById(R.id.analyzingOverlay)
+
+        viewFrame = view.findViewById(R.id.viewFrame)
+        backButtonContainer = view.findViewById(R.id.backButtonContainer)
+        flashControl = view.findViewById(R.id.flashControl)
+        tvInstruction = view.findViewById(R.id.tvInstruction)
+        controlPanel = view.findViewById(R.id.controlPanel)
+
+        iconEnhance = view.findViewById(R.id.iconEnhance)
+        iconText = view.findViewById(R.id.iconText)
+        iconElements = view.findViewById(R.id.iconElements)
+        iconStructure = view.findViewById(R.id.iconStructure)
+
+        tvStepEnhance = view.findViewById(R.id.tvStepEnhance)
+        tvStepText = view.findViewById(R.id.tvStepText)
+        tvStepElements = view.findViewById(R.id.tvStepElements)
+        tvStepStructure = view.findViewById(R.id.tvStepStructure)
 
         val btnCapture = view.findViewById<View>(R.id.btnCapture)
         val btnGallery = view.findViewById<View>(R.id.btnGallery)
+        val btnFlash = view.findViewById<ImageButton>(R.id.btnFlash)
+        val tvFlashState = view.findViewById<TextView>(R.id.tvFlashState)
+        val tvCancel = view.findViewById<TextView>(R.id.tvCancel)
+        val btnBack = view.findViewById<View>(R.id.btnBack)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
+        resetAnalysisSteps()
         checkCameraPermissionAndStart()
 
-        btnCapture?.setOnClickListener { takePhoto() }
-        btnGallery?.setOnClickListener { selectImageLauncher.launch("image/*") }
+        btnCapture.setOnClickListener {
+            takePhoto()
+        }
+
+        btnGallery.setOnClickListener {
+            selectImageLauncher.launch("image/*")
+        }
+
+        btnFlash.setOnClickListener {
+            val currentCamera = camera
+
+            if (currentCamera == null) {
+                Toast.makeText(
+                    requireContext(),
+                    "Camera is not ready yet",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+
+            if (!currentCamera.cameraInfo.hasFlashUnit()) {
+                Toast.makeText(
+                    requireContext(),
+                    "Flash is not available on this device",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+
+            isFlashOn = !isFlashOn
+            currentCamera.cameraControl.enableTorch(isFlashOn)
+            tvFlashState.text = if (isFlashOn) "On" else "Off"
+        }
+
+        tvCancel.setOnClickListener {
+            goBackFromScan()
+        }
+
+        btnBack.setOnClickListener {
+            goBackFromScan()
+        }
+    }
+
+    private fun setStepPending(
+        icon: TextView,
+        label: TextView,
+        number: String
+    ) {
+        icon.text = number
+        icon.setBackgroundResource(R.drawable.bg_analysis_pending)
+        icon.setTextColor(Color.parseColor("#8A8A92"))
+        label.setTextColor(Color.parseColor("#74747C"))
+        label.setTypeface(null, Typeface.NORMAL)
+    }
+
+    private fun setStepActive(
+        icon: TextView,
+        label: TextView,
+        number: String
+    ) {
+        icon.text = number
+        icon.setBackgroundResource(R.drawable.bg_analysis_active)
+        icon.setTextColor(Color.WHITE)
+        label.setTextColor(Color.WHITE)
+        label.setTypeface(null, Typeface.BOLD)
+    }
+
+    private fun setStepDone(
+        icon: TextView,
+        label: TextView
+    ) {
+        icon.text = "✓"
+        icon.setBackgroundResource(R.drawable.bg_analysis_active)
+        icon.setTextColor(Color.WHITE)
+        label.setTextColor(Color.WHITE)
+        label.setTypeface(null, Typeface.NORMAL)
+    }
+
+    private fun resetAnalysisSteps() {
+        if (!::iconEnhance.isInitialized) return
+
+        setStepPending(iconEnhance, tvStepEnhance, "1")
+        setStepPending(iconText, tvStepText, "2")
+        setStepPending(iconElements, tvStepElements, "3")
+        setStepPending(iconStructure, tvStepStructure, "4")
+    }
+
+    private fun startAnalysisAnimation() {
+        analysisHandler.removeCallbacksAndMessages(null)
+        resetAnalysisSteps()
+
+        setStepActive(iconEnhance, tvStepEnhance, "1")
+
+        analysisHandler.postDelayed({
+            if (!isAdded) return@postDelayed
+
+            setStepDone(iconEnhance, tvStepEnhance)
+            setStepActive(iconText, tvStepText, "2")
+        }, 600)
+
+        analysisHandler.postDelayed({
+            if (!isAdded) return@postDelayed
+
+            setStepDone(iconEnhance, tvStepEnhance)
+            setStepDone(iconText, tvStepText)
+            setStepActive(iconElements, tvStepElements, "3")
+        }, 1200)
+
+        analysisHandler.postDelayed({
+            if (!isAdded) return@postDelayed
+
+            setStepDone(iconEnhance, tvStepEnhance)
+            setStepDone(iconText, tvStepText)
+            setStepDone(iconElements, tvStepElements)
+            setStepActive(iconStructure, tvStepStructure, "4")
+        }, 1800)
+    }
+
+    private fun completeAnalysisSteps() {
+        setStepDone(iconEnhance, tvStepEnhance)
+        setStepDone(iconText, tvStepText)
+        setStepDone(iconElements, tvStepElements)
+        setStepDone(iconStructure, tvStepStructure)
+    }
+
+    private fun hideScanControls() {
+        viewFrame.visibility = View.INVISIBLE
+        backButtonContainer.visibility = View.INVISIBLE
+        flashControl.visibility = View.INVISIBLE
+        tvInstruction.visibility = View.INVISIBLE
+        controlPanel.visibility = View.INVISIBLE
+    }
+
+    private fun showScanControls() {
+        viewFrame.visibility = View.VISIBLE
+        backButtonContainer.visibility = View.VISIBLE
+        flashControl.visibility = View.VISIBLE
+        tvInstruction.visibility = View.VISIBLE
+        controlPanel.visibility = View.VISIBLE
+    }
+
+    private fun applyCameraBlur() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            viewFinder.setRenderEffect(
+                RenderEffect.createBlurEffect(
+                    60f,
+                    60f,
+                    Shader.TileMode.CLAMP
+                )
+            )
+        }
+    }
+
+    private fun removeCameraBlur() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            viewFinder.setRenderEffect(null)
+        }
     }
 
     private fun checkCameraPermissionAndStart() {
         val safeContext = context ?: return
-        if (ContextCompat.checkSelfPermission(safeContext, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED
+
+        if (
+            ContextCompat.checkSelfPermission(
+                safeContext,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
         ) {
             startCamera()
         } else {
@@ -106,87 +333,142 @@ class ScanFragment : Fragment() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(safeContext)
 
         cameraProviderFuture.addListener({
-            // Check if fragment is attached and lifecycle is active before binding camera
-            if (!isAdded || viewLifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED) return@addListener
+            if (
+                !isAdded ||
+                viewLifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED
+            ) {
+                return@addListener
+            }
 
             try {
-                val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+                val cameraProvider = cameraProviderFuture.get()
 
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(viewFinder.surfaceProvider)
-                }
+                val preview =
+                    Preview.Builder()
+                        .build()
+                        .also {
+                            it.setSurfaceProvider(viewFinder.surfaceProvider)
+                        }
 
-                imageCapture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                    .build()
+                imageCapture =
+                    ImageCapture.Builder()
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .build()
 
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                // Ensure device has back camera available before binding
                 if (!cameraProvider.hasCamera(cameraSelector)) {
-                    Log.w("ScanFragment", "No back camera found on this device")
+                    Log.w("ScanFragment", "No back camera found")
                     return@addListener
                 }
 
                 cameraProvider.unbindAll()
 
-                val camera = cameraProvider.bindToLifecycle(
-                    viewLifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageCapture
+                camera =
+                    cameraProvider.bindToLifecycle(
+                        viewLifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageCapture
+                    )
+
+                camera?.let {
+                    setupCameraGestures(
+                        safeContext,
+                        viewFinder,
+                        it
+                    )
+                }
+
+            } catch (error: Exception) {
+                Log.e(
+                    "ScanFragment",
+                    "Camera binding failed",
+                    error
                 )
-
-                setupCameraGestures(safeContext, viewFinder, camera)
-
-            } catch (exc: Exception) {
-                Log.e("ScanFragment", "Camera binding failed", exc)
             }
+
         }, ContextCompat.getMainExecutor(safeContext))
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setupCameraGestures(context: Context, previewView: PreviewView, camera: Camera) {
-        val scaleGestureDetector = ScaleGestureDetector(
-            context,
-            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                override fun onScale(detector: ScaleGestureDetector): Boolean {
-                    val currentZoomRatio = camera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
-                    val delta = detector.scaleFactor
-                    camera.cameraControl.setZoomRatio(currentZoomRatio * delta)
-                    return true
-                }
-            }
-        )
+    private fun setupCameraGestures(
+        context: Context,
+        previewView: PreviewView,
+        camera: Camera
+    ) {
+        val scaleGestureDetector =
+            ScaleGestureDetector(
+                context,
+                object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                    override fun onScale(
+                        detector: ScaleGestureDetector
+                    ): Boolean {
+                        val currentZoomRatio =
+                            camera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
 
-        previewView.setOnTouchListener { view, event ->
+                        camera.cameraControl.setZoomRatio(
+                            currentZoomRatio * detector.scaleFactor
+                        )
+
+                        return true
+                    }
+                }
+            )
+
+        previewView.setOnTouchListener { touchedView, event ->
             scaleGestureDetector.onTouchEvent(event)
 
-            if (event.action == MotionEvent.ACTION_UP && !scaleGestureDetector.isInProgress) {
-                val factory = previewView.meteringPointFactory
-                val point = factory.createPoint(event.x, event.y)
-                val action = FocusMeteringAction.Builder(point).build()
+            if (
+                event.action == MotionEvent.ACTION_UP &&
+                !scaleGestureDetector.isInProgress
+            ) {
+                val point =
+                    previewView.meteringPointFactory.createPoint(
+                        event.x,
+                        event.y
+                    )
+
+                val action =
+                    FocusMeteringAction.Builder(point).build()
+
                 camera.cameraControl.startFocusAndMetering(action)
-                view.performClick()
+                touchedView.performClick()
             }
+
             true
         }
     }
 
     private fun takePhoto() {
         val safeContext = context ?: return
-        val capture = imageCapture ?: run {
-            Toast.makeText(safeContext, "Camera not ready yet", Toast.LENGTH_SHORT).show()
-            return
-        }
 
-        val cacheDir = safeContext.externalCacheDir ?: safeContext.cacheDir
-        val photoFile = File(
-            cacheDir,
-            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(System.currentTimeMillis()) + ".jpg"
-        )
+        val capture =
+            imageCapture ?: run {
+                Toast.makeText(
+                    safeContext,
+                    "Camera not ready yet",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+        val cacheDir =
+            safeContext.externalCacheDir ?: safeContext.cacheDir
+
+        val photoFile =
+            File(
+                cacheDir,
+                SimpleDateFormat(
+                    "yyyyMMdd_HHmmss",
+                    Locale.getDefault()
+                ).format(
+                    System.currentTimeMillis()
+                ) + ".jpg"
+            )
+
+        val outputOptions =
+            ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
         setLoading(true)
 
@@ -194,107 +476,267 @@ class ScanFragment : Fragment() {
             outputOptions,
             ContextCompat.getMainExecutor(safeContext),
             object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
+
+                override fun onError(
+                    exc: ImageCaptureException
+                ) {
                     if (!isAdded) return
+
                     setLoading(false)
-                    Log.e("ScanFragment", "Photo capture failed: ${exc.message}", exc)
-                    Toast.makeText(context, "Failed to capture image", Toast.LENGTH_SHORT).show()
+
+                    Toast.makeText(
+                        context,
+                        "Failed to capture image",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
 
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                override fun onImageSaved(
+                    output: ImageCapture.OutputFileResults
+                ) {
                     if (!isAdded) return
-                    processImageUri(Uri.fromFile(photoFile), photoFile.absolutePath)
+
+                    processImageUri(
+                        Uri.fromFile(photoFile),
+                        photoFile.absolutePath
+                    )
                 }
             }
         )
     }
 
-    private fun processImageUri(rawUri: Uri, rawFilePath: String? = null) {
+    private fun processImageUri(
+        rawUri: Uri,
+        rawFilePath: String? = null
+    ) {
         val safeContext = context ?: return
+
         setLoading(true)
 
         try {
-            // Convert gallery content:// URIs to cache file paths safely
-            val filePath = rawFilePath ?: if (rawUri.scheme == "content") {
-                copyUriToCache(safeContext, rawUri)
-            } else {
-                rawUri.path
-            }
+            val filePath =
+                rawFilePath ?: if (rawUri.scheme == "content") {
+                    copyUriToCache(safeContext, rawUri)
+                } else {
+                    rawUri.path
+                }
 
             if (filePath == null) {
                 setLoading(false)
-                Toast.makeText(safeContext, "Failed to load image file", Toast.LENGTH_SHORT).show()
+
+                Toast.makeText(
+                    safeContext,
+                    "Failed to load image file",
+                    Toast.LENGTH_SHORT
+                ).show()
+
                 return
             }
 
             val imageFile = File(filePath)
-            val image = InputImage.fromFilePath(safeContext, Uri.fromFile(imageFile))
-            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+            val image =
+                InputImage.fromFilePath(
+                    safeContext,
+                    Uri.fromFile(imageFile)
+                )
+
+            val recognizer =
+                TextRecognition.getClient(
+                    TextRecognizerOptions.DEFAULT_OPTIONS
+                )
 
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
                     if (!isAdded) return@addOnSuccessListener
-                    setLoading(false)
+
                     val extractedText = visionText.text
 
-                    val finalText = if (extractedText.isBlank()) "[No text detected]" else extractedText
-                    navigateToPdfViewer(finalText, filePath)
+                    val finalText =
+                        if (extractedText.isBlank()) {
+                            "[No text detected]"
+                        } else {
+                            extractedText
+                        }
+
+                    finishAnalysisAndNavigate(
+                        finalText,
+                        filePath
+                    )
                 }
-                .addOnFailureListener { e ->
+                .addOnFailureListener {
                     if (!isAdded) return@addOnFailureListener
+
                     setLoading(false)
-                    Log.e("ScanFragment", "Text recognition failed", e)
-                    Toast.makeText(context, "OCR failed to read text", Toast.LENGTH_SHORT).show()
+
+                    Toast.makeText(
+                        context,
+                        "OCR failed to read text",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-        } catch (e: Exception) {
-            if (isAdded) setLoading(false)
-            Log.e("ScanFragment", "Error processing image", e)
-            Toast.makeText(safeContext, "Error loading image", Toast.LENGTH_SHORT).show()
+
+        } catch (error: Exception) {
+            if (isAdded) {
+                setLoading(false)
+            }
+
+            Log.e(
+                "ScanFragment",
+                "Error processing image",
+                error
+            )
+
+            Toast.makeText(
+                safeContext,
+                "Error loading image",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
-    /**
-     * Copies a content:// Uri to a local file in cache and returns its absolute file path.
-     */
-    private fun copyUriToCache(context: Context, contentUri: Uri): String? {
+    private fun finishAnalysisAndNavigate(
+        content: String,
+        imagePath: String
+    ) {
+        val elapsed =
+            SystemClock.elapsedRealtime() - analysisStartTime
+
+        val remaining =
+            (minimumAnalysisTime - elapsed).coerceAtLeast(0L)
+
+        analysisHandler.postDelayed({
+            if (!isAdded) return@postDelayed
+
+            completeAnalysisSteps()
+
+            analysisHandler.postDelayed({
+                if (!isAdded) return@postDelayed
+
+                setLoading(false)
+
+                navigateToPdfViewer(
+                    content,
+                    imagePath
+                )
+            }, 350)
+
+        }, remaining)
+    }
+
+    private fun copyUriToCache(
+        context: Context,
+        contentUri: Uri
+    ): String? {
         return try {
-            val cacheFile = File(context.cacheDir, "gallery_import_${System.currentTimeMillis()}.jpg")
-            context.contentResolver.openInputStream(contentUri)?.use { inputStream ->
-                cacheFile.outputStream().use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-            } ?: return null
+            val cacheFile =
+                File(
+                    context.cacheDir,
+                    "gallery_import_${System.currentTimeMillis()}.jpg"
+                )
+
+            context.contentResolver
+                .openInputStream(contentUri)
+                ?.use { inputStream ->
+                    cacheFile.outputStream()
+                        .use { outputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
+                } ?: return null
+
             cacheFile.absolutePath
-        } catch (e: Exception) {
-            Log.e("ScanFragment", "Failed to copy URI to cache", e)
+
+        } catch (error: Exception) {
+            Log.e(
+                "ScanFragment",
+                "Failed to copy URI",
+                error
+            )
+
             null
         }
     }
 
-    private fun navigateToPdfViewer(content: String, imagePath: String) {
+    private fun navigateToPdfViewer(
+        content: String,
+        imagePath: String
+    ) {
         val safeContext = context ?: return
-        val timeStamp = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(System.currentTimeMillis())
+
+        val timeStamp =
+            SimpleDateFormat(
+                "MMM d, yyyy HH:mm",
+                Locale.getDefault()
+            ).format(
+                System.currentTimeMillis()
+            )
+
         val defaultTitle = "Scan $timeStamp"
 
-        val intent = Intent(safeContext, PdfViewerActivity::class.java).apply {
-            putExtra("NOTE_ID", -1)
-            putExtra("TITLE", defaultTitle)
-            putExtra("CONTENT", content)
-            putExtra("IMAGE_PATH", imagePath) // Passes absolute path: "/data/user/0/.../cache/photo.jpg"
-        }
+        val intent =
+            Intent(
+                safeContext,
+                PdfViewerActivity::class.java
+            ).apply {
+                putExtra("NOTE_ID", -1)
+                putExtra("TITLE", defaultTitle)
+                putExtra("CONTENT", content)
+                putExtra("IMAGE_PATH", imagePath)
+            }
+
         startActivity(intent)
     }
 
-    private fun setLoading(isLoading: Boolean) {
+    private fun goBackFromScan() {
+        if (!isAdded) return
+
+        val mainActivity = activity as? MainActivity
+
+        if (mainActivity != null) {
+            mainActivity.selectTab(R.id.nav_home)
+        } else {
+            parentFragmentManager.popBackStack()
+        }
+    }
+
+    private fun setLoading(
+        isLoading: Boolean
+    ) {
+        if (::analyzingOverlay.isInitialized) {
+            if (isLoading) {
+                analysisStartTime = SystemClock.elapsedRealtime()
+
+                hideScanControls()
+                applyCameraBlur()
+                startAnalysisAnimation()
+
+                analyzingOverlay.visibility = View.VISIBLE
+            } else {
+                analyzingOverlay.visibility = View.GONE
+
+                removeCameraBlur()
+                showScanControls()
+            }
+        }
+
         if (::progressBar.isInitialized) {
-            progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+            progressBar.visibility = View.GONE
         }
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        analysisHandler.removeCallbacksAndMessages(null)
+
+        removeCameraBlur()
+
+        camera?.cameraControl?.enableTorch(false)
+        camera = null
+        isFlashOn = false
+
         if (::cameraExecutor.isInitialized) {
             cameraExecutor.shutdown()
         }
+
+        super.onDestroyView()
     }
 }

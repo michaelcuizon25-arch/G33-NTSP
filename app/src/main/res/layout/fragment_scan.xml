@@ -1,196 +1,400 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
-    android:fillViewport="true">
+    android:background="#000000">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="20dp">
+    <androidx.camera.view.PreviewView
+        app:implementationMode="compatible"
+        android:id="@+id/viewFinder"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Application Title Container -->
+    <View
+        android:id="@+id/viewFrame"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="70dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginBottom="18dp"
+        android:background="@drawable/bg_camera_frame"
+        app:layout_constraintTop_toTopOf="@id/viewFinder"
+        app:layout_constraintBottom_toTopOf="@id/controlPanel"
+        app:layout_constraintStart_toStartOf="@id/viewFinder"
+        app:layout_constraintEnd_toEndOf="@id/viewFinder" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/backButtonContainer"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        app:cardBackgroundColor="#99000000"
+        app:cardCornerRadius="22dp"
+        app:cardElevation="2dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:contentDescription="Back"
+            android:padding="10dp"
+            android:src="@drawable/ic_back"
+            app:tint="#FFFFFF" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/flashControl"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        app:cardBackgroundColor="#EEFFFFFF"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="4dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
         <LinearLayout
-            android:id="@+id/layoutTitle"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
             android:orientation="horizontal"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            android:paddingStart="10dp"
+            android:paddingEnd="12dp">
 
-            <!-- "NOTE" (Adapts to Light/Dark Mode) -->
-            <TextView
-                android:id="@+id/tvTitleNote"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:shadowColor="#000000"
-                android:shadowDx="2"
-                android:shadowDy="2"
-                android:shadowRadius="4"
-                android:text="NOTE"
-                android:textColor="#FFFFFF"
-                android:textSize="26sp"
-                android:textStyle="bold" />
+            <ImageButton
+                android:id="@+id/btnFlash"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="Toggle flash"
+                android:padding="4dp"
+                android:src="@drawable/ic_flash"
+                app:tint="#5A7FDB" />
 
             <TextView
-                android:id="@+id/tvTitle2"
+                android:id="@+id/tvFlashState"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:shadowColor="#000000"
-                android:shadowDx="2"
-                android:shadowDy="2"
-                android:shadowRadius="4"
-                android:text="2"
-                android:textColor="#FFFFFF"
-                android:textSize="30sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvTitleSnap"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:shadowColor="#000000"
-                android:shadowDx="2"
-                android:shadowDy="2"
-                android:shadowRadius="4"
-                android:text="SNAP"
-                android:textColor="#2563EB"
-                android:textSize="26sp"
-                android:textStyle="bold" />
-
+                android:layout_marginStart="1dp"
+                android:fontFamily="@font/poppins_medium"
+                android:text="Off"
+                android:textColor="#171717"
+                android:textSize="10sp" />
 
         </LinearLayout>
 
-        <!-- Flash Control Button -->
-        <ImageButton
-            android:id="@+id/btnFlash"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Flash Toggle"
-            android:padding="8dp"
-            android:src="@android:drawable/ic_menu_compass"
-            app:layout_constraintBottom_toBottomOf="@id/layoutTitle"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/layoutTitle"
-            app:tint="#2563EB" />
+    </com.google.android.material.card.MaterialCardView>
 
-        <!-- Subtitle Description -->
+    <TextView
+        android:id="@+id/tvInstruction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="26dp"
+        android:background="#99000000"
+        android:fontFamily="@font/poppins_regular"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp"
+        android:text="Keep the whole whiteboard inside the frame"
+        android:textColor="#FFFFFF"
+        android:textSize="10sp"
+        app:layout_constraintBottom_toBottomOf="@id/viewFinder"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/controlPanel"
+        android:layout_width="0dp"
+        android:layout_height="160dp"
+        android:background="#000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
         <TextView
-            android:id="@+id/tvSubTitle"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Point at handwritten notes or whiteboard. Text and notes are automatically detected for you."
-            android:textColor="?android:attr/textColorSecondary"
-            android:textSize="13sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/layoutTitle" />
-
-        <!-- Camera Viewfinder Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cardViewFinder"
-            android:layout_width="0dp"
-            android:layout_height="380dp"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="?attr/colorSurface"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="2dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvSubTitle">
-
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <!-- Camera Feed Preview -->
-                <androidx.camera.view.PreviewView
-                    android:id="@+id/viewFinder"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-                <!-- Frame Overlay -->
-                <View
-                    android:id="@+id/viewFrame"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_margin="20dp"
-                    android:background="@drawable/bg_camera_frame" />
-
-                <!-- Instruction Overlay Text over camera -->
-                <TextView
-                    android:id="@+id/tvInstruction"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_alignBottom="@id/viewFrame"
-                    android:layout_marginHorizontal="20dp"
-                    android:layout_marginBottom="16dp"
-                    android:background="#99000000"
-                    android:gravity="center"
-                    android:padding="8dp"
-                    android:text="Make sure to center the whiteboard to capture all notes"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-            </RelativeLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Main Capture Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCapture"
-            android:layout_width="0dp"
-            android:layout_height="56dp"
-            android:layout_marginTop="20dp"
-            android:backgroundTint="#2563EB"
-            android:text="Take photo"
-            android:textAllCaps="false"
+            android:fontFamily="@font/poppins_medium"
+            android:text="Scan"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:cornerRadius="16dp"
-            app:icon="@android:drawable/ic_menu_camera"
-            app:iconGravity="textStart"
-            app:iconPadding="8dp"
-            app:iconTint="#FFFFFF"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/cardViewFinder" />
+            android:textSize="12sp" />
 
-        <!-- Choose from Gallery Link -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="110dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="30dp"
+            android:paddingEnd="30dp">
+
+            <LinearLayout
+                android:id="@+id/btnGallery"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:contentDescription="Gallery"
+                    android:src="@android:drawable/ic_menu_gallery"
+                    app:tint="#AFC4F6" />
+
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/btnCapture"
+                android:layout_width="86dp"
+                android:layout_height="86dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <View
+                    android:layout_width="74dp"
+                    android:layout_height="74dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_shutter_outer" />
+
+                <View
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_shutter_inner" />
+
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvCancel"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:gravity="center"
+                android:text="Cancel"
+                android:textColor="#FF4D5D"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ANALYZING OVERLAY -->
+    <LinearLayout
+        android:id="@+id/analyzingOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#66FFF9FF"
+        android:elevation="50dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="38dp"
+        android:paddingTop="120dp"
+        android:paddingEnd="38dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Custom icon. Use transparent PNG: res/drawable/ic_analysis_face.png -->
+        <ImageView
+            android:id="@+id/ivAnalyzingIcon"
+            android:layout_width="160dp"
+            android:layout_height="130dp"
+            android:layout_marginBottom="8dp"
+            android:adjustViewBounds="true"
+            android:contentDescription="Analyzing icon"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_analysis_face" />
+
         <TextView
-            android:id="@+id/btnGallery"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="8dp"
-            android:text="Choose from gallery"
-            android:textColor="#2563EB"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnCapture" />
+            android:fontFamily="@font/apple_garamond_italic"
+            android:gravity="center"
+            android:text="Analyzing your Whiteboard"
+            android:textColor="#171717"
+            android:textSize="27sp" />
 
-        <!-- Progress Bar for OCR Loading State -->
-        <ProgressBar
-            android:id="@+id/progressBarScan"
-            style="?android:attr/progressBarStyleLarge"
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:elevation="10dp"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:layout_marginTop="3dp"
+            android:fontFamily="@font/poppins_regular"
+            android:gravity="center"
+            android:text="Hang on! This may take a few seconds."
+            android:textColor="#66666E"
+            android:textSize="10sp" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="28dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvStepEnhance"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:text="Enhancing Image"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/iconEnhance"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/bg_analysis_pending"
+                android:gravity="center"
+                android:text="1"
+                android:textColor="#8A8A92"
+                android:textSize="10sp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#77FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvStepText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:text="Detecting Texts"
+                android:textColor="#74747C"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/iconText"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/bg_analysis_pending"
+                android:gravity="center"
+                android:text="2"
+                android:textColor="#8A8A92"
+                android:textSize="10sp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#77FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvStepElements"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:text="Detecting Elements"
+                android:textColor="#74747C"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/iconElements"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/bg_analysis_pending"
+                android:gravity="center"
+                android:text="3"
+                android:textColor="#8A8A92"
+                android:textSize="10sp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#77FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvStepStructure"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:text="Structuring Notes"
+                android:textColor="#74747C"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/iconStructure"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/bg_analysis_pending"
+                android:gravity="center"
+                android:text="4"
+                android:textColor="#8A8A92"
+                android:textSize="10sp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#77FFFFFF" />
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBarScan"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
