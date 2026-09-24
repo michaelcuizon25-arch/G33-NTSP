@@ -14,16 +14,11 @@ import com.example.note2snap.R
 import com.example.note2snap.adapters.RecentActivityAdapter
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.Note
-import com.example.note2snap.adapter.StackNoteTransformer
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import kotlin.time.Duration.Companion.seconds
 
 class HomeFragment : Fragment() {
 
@@ -38,9 +33,6 @@ class HomeFragment : Fragment() {
     private var tvStatStreak: TextView? = null
     private var tvEmptyRecent: TextView? = null
     private var vpRecentNotes: ViewPager2? = null
-
-    private var autoSwipeJob: Job? = null
-    private val swipeInterval = 3.5.seconds
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -87,29 +79,14 @@ class HomeFragment : Fragment() {
 
         vpRecentNotes?.apply {
             adapter = recentNotesAdapter
+            orientation = ViewPager2.ORIENTATION_HORIZONTAL
 
-            // 1. Keep depth cards pre-rendered offscreen
-            offscreenPageLimit = 3
+            // Disable 3D depth transformer to prevent text/card overlapping:
+            setPageTransformer(null)
 
-            // 2. Attach 3D stack depth transformer
-            setPageTransformer(
-                StackNoteTransformer(
-                    maxVisibleItems = 3,
-                    scaleOffset = 0.08f,
-                    verticalOffsetDp = 20f
-                )
-            )
-
-            registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                override fun onPageScrollStateChanged(state: Int) {
-                    super.onPageScrollStateChanged(state)
-                    if (state == ViewPager2.SCROLL_STATE_DRAGGING) {
-                        stopAutoSwipe()
-                    } else if (state == ViewPager2.SCROLL_STATE_IDLE) {
-                        startAutoSwipe()
-                    }
-                }
-            })
+            // Allow smooth edge padding/swiping
+            clipToPadding = false
+            clipChildren = false
         }
 
         observeDatabaseData()
@@ -158,52 +135,12 @@ class HomeFragment : Fragment() {
                 if (sortedRecent.isEmpty()) {
                     vpRecentNotes?.visibility = View.GONE
                     tvEmptyRecent?.visibility = View.VISIBLE
-                    stopAutoSwipe()
                 } else {
                     vpRecentNotes?.visibility = View.VISIBLE
                     tvEmptyRecent?.visibility = View.GONE
-
-                    if (vpRecentNotes?.currentItem == 0) {
-                        val middleIndex = (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % sortedRecent.size)
-                        vpRecentNotes?.setCurrentItem(middleIndex, false)
-                    }
-
-                    startAutoSwipe()
                 }
             }
         }
-    }
-
-    private fun startAutoSwipe() {
-        if (recentNotesList.size <= 1) return
-
-        stopAutoSwipe()
-
-        autoSwipeJob = viewLifecycleOwner.lifecycleScope.launch {
-            while (isActive) {
-                delay(swipeInterval)
-                vpRecentNotes?.let { vp ->
-                    if (recentNotesList.size > 1) {
-                        vp.setCurrentItem(vp.currentItem + 1, true)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun stopAutoSwipe() {
-        autoSwipeJob?.cancel()
-        autoSwipeJob = null
-    }
-
-    override fun onResume() {
-        super.onResume()
-        startAutoSwipe()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        stopAutoSwipe()
     }
 
     private fun getEvolvedNoteBadge(noteCount: Int): String {

@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,8 +19,11 @@ import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.ScanHistory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HistoryFragment : Fragment() {
+
+    private var historyAdapter: HistoryAdapter? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -34,31 +36,34 @@ class HistoryFragment : Fragment() {
 
         rvHistory?.layoutManager = LinearLayoutManager(requireContext())
 
-        // Observe Room database for real-time history updates
+        historyAdapter = HistoryAdapter(
+            historyList = emptyList(),
+            onItemClick = { item ->
+                val intent = Intent(requireContext(), PdfViewerActivity::class.java).apply {
+                    putExtra("SCAN_ID", item.id) // Corrected to SCAN_ID to avoid ID collision
+                    putExtra("TITLE", item.title)
+                    putExtra("IMAGE_PATH", item.imagePath)
+                }
+                startActivity(intent)
+            },
+            onItemLongClick = { item ->
+                showOptionsDialog(item)
+            }
+        )
+        rvHistory?.adapter = historyAdapter
+
+        // Observe database updates in real time
         AppDatabase.getDatabase(requireContext()).appDao().getAllScanHistory()
-            .observe(viewLifecycleOwner, Observer { historyList ->
+            .observe(viewLifecycleOwner) { historyList ->
                 if (historyList.isNullOrEmpty()) {
                     llEmptyHistory?.visibility = View.VISIBLE
                     rvHistory?.visibility = View.GONE
                 } else {
                     llEmptyHistory?.visibility = View.GONE
                     rvHistory?.visibility = View.VISIBLE
-
-                    rvHistory?.adapter = HistoryAdapter(
-                        historyList = historyList,
-                        onItemClick = { item ->
-                            val intent = Intent(requireContext(), PdfViewerActivity::class.java).apply {
-                                putExtra("TITLE", item.title)
-                                putExtra("IMAGE_PATH", item.imagePath)
-                            }
-                            startActivity(intent)
-                        },
-                        onItemLongClick = { item ->
-                            showOptionsDialog(item)
-                        }
-                    )
+                    historyAdapter?.updateData(historyList)
                 }
-            })
+            }
 
         return view
     }
@@ -68,12 +73,14 @@ class HistoryFragment : Fragment() {
 
         AlertDialog.Builder(requireContext())
             .setTitle(item.title)
-            .setItems(options) { _, which ->
+            .setItems(options) { dialog, which ->
                 when (which) {
                     0 -> showEditTitleDialog(item)
                     1 -> confirmDeleteNote(item)
                 }
+                dialog.dismiss()
             }
+            .create()
             .show()
     }
 
@@ -81,23 +88,40 @@ class HistoryFragment : Fragment() {
         val input = EditText(requireContext()).apply {
             setText(item.title)
             setSelection(item.title.length)
+            setPadding(40, 32, 40, 32)
         }
 
         AlertDialog.Builder(requireContext())
             .setTitle("Rename Scan")
             .setView(input)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton("Save") { dialog, _ ->
                 val newTitle = input.text.toString().trim()
                 if (newTitle.isNotEmpty()) {
                     lifecycleScope.launch(Dispatchers.IO) {
+                        val dao = AppDatabase.getDatabase(requireContext()).appDao()
+
+                        // 1. Update ScanHistory table
                         val updated = item.copy(title = newTitle)
-                        AppDatabase.getDatabase(requireContext()).appDao().updateScanHistory(updated)
+                        dao.updateScanHistory(updated)
+
+                        // 2. Sync title with Notes table matching imagePath
+                        if (!item.imagePath.isNullOrEmpty()) {
+                            dao.updateNoteTitleByPath(item.imagePath, newTitle)
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(requireContext(), "Title updated", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 } else {
                     Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
                 }
+                dialog.dismiss()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create()
             .show()
     }
 
@@ -105,12 +129,26 @@ class HistoryFragment : Fragment() {
         AlertDialog.Builder(requireContext())
             .setTitle("Delete Scan?")
             .setMessage("Are you sure you want to delete \"${item.title}\"?")
-            .setPositiveButton("Delete") { _, _ ->
+            .setPositiveButton("Delete") { dialog, _ ->
                 lifecycleScope.launch(Dispatchers.IO) {
-                    AppDatabase.getDatabase(requireContext()).appDao().deleteScanHistory(item)
+                    val dao = AppDatabase.getDatabase(requireContext()).appDao()
+
+                    // Delete from both ScanHistory and Notes tables
+                    dao.deleteScanHistory(item)
+                    if (!item.imagePath.isNullOrEmpty()) {
+                        dao.deleteNoteByPath(item.imagePath)
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "History deleted", Toast.LENGTH_SHORT).show()
+                    }
                 }
+                dialog.dismiss()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create()
             .show()
     }
 }

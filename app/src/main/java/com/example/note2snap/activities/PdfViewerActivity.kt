@@ -2,7 +2,7 @@ package com.example.note2snap.activities
 
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.Bitmap
+
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.pdf.PdfDocument
@@ -24,8 +24,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.graphics.scale
 import androidx.core.graphics.toColorInt
 import androidx.core.graphics.withTranslation
+import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.note2snap.R
@@ -46,6 +48,7 @@ import java.util.Locale
 class PdfViewerActivity : AppCompatActivity() {
 
     private var currentNoteId: Int = -1
+    private var currentScanId: Int = -1
     private var currentNote: Note? = null
     private var currentTitle: String = "Untitled Note"
     private var currentRawContent: String = ""
@@ -67,6 +70,7 @@ class PdfViewerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_pdf_viewer)
 
         currentNoteId = intent.getIntExtra("NOTE_ID", -1)
+        currentScanId = intent.getIntExtra("SCAN_ID", -1)
         currentTitle = intent.getStringExtra("TITLE") ?: "Untitled Note"
         currentImagePath = sanitizeFilePath(intent.getStringExtra("IMAGE_PATH"))
         val directContent = intent.getStringExtra("CONTENT")
@@ -84,22 +88,16 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Converts file:// URIs or raw file paths into clean filesystem paths.
-     */
+    // Fixed Warning: Uses String.toUri extension function
     private fun sanitizeFilePath(path: String?): String? {
         if (path.isNullOrBlank()) return null
         return if (path.startsWith("file://")) {
-            Uri.parse(path).path
+            path.toUri().path
         } else {
             path
         }
     }
 
-    /**
-     * Cleans OCR bullet artifacts (e.g. "oLeading Lines" -> "• Leading Lines")
-     * and standardizes line-starting bullet characters.
-     */
     private fun sanitizeOcrText(text: String): String {
         return text.lines().joinToString("\n") { line ->
             var trimmed = line.trim()
@@ -306,8 +304,11 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun fetchNoteFromDatabase() {
         lifecycleScope.launch(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
+
             val note = if (currentNoteId != -1) {
                 db.getNoteById(currentNoteId)
+            } else if (!currentImagePath.isNullOrEmpty()) {
+                db.getNoteByPath(currentImagePath!!)
             } else {
                 db.getNoteByTitle(currentTitle)
             }
@@ -339,7 +340,6 @@ class PdfViewerActivity : AppCompatActivity() {
         val hasRichContent = cleanedText.contains("<table", ignoreCase = true) ||
                 cleanedText.contains("<img", ignoreCase = true)
 
-        // Render Scanned Photo into ImageView if view exists and file is available
         if (ivScannedImage != null) {
             val validPath = currentImagePath
             if (!validPath.isNullOrEmpty() && File(validPath).exists()) {
@@ -565,7 +565,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     title = currentTitle,
                     content = currentRawContent,
                     imagePath = currentImagePath ?: "",
-                    dateEdited = "Updated"
+                    dateEdited = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())
                 )
                 val newId = db.insertNote(newNote)
                 currentNoteId = newId.toInt()
@@ -609,9 +609,14 @@ class PdfViewerActivity : AppCompatActivity() {
             .setMessage("Are you sure you want to delete this note?")
             .setPositiveButton("Delete") { d, _ ->
                 lifecycleScope.launch(Dispatchers.IO) {
-                    currentNote?.let {
-                        AppDatabase.getDatabase(this@PdfViewerActivity).appDao().deleteNote(it)
+                    val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
+
+                    currentNote?.let { db.deleteNote(it) }
+
+                    if (!currentImagePath.isNullOrEmpty()) {
+                        db.deleteScanHistoryByPath(currentImagePath!!)
                     }
+
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@PdfViewerActivity, "Note deleted", Toast.LENGTH_SHORT).show()
                         finish()
@@ -630,11 +635,13 @@ class PdfViewerActivity : AppCompatActivity() {
             val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
             val existingNote = currentNote ?: if (currentNoteId != -1) db.getNoteById(currentNoteId) else null
 
+            // 1. Update/Insert in Notes table
             if (existingNote != null) {
                 val updatedNote = existingNote.copy(
                     title = currentTitle,
                     content = currentRawContent,
-                    imagePath = currentImagePath ?: existingNote.imagePath
+                    imagePath = currentImagePath ?: existingNote.imagePath,
+                    dateEdited = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())
                 )
                 db.updateNote(updatedNote)
                 currentNote = updatedNote
@@ -644,15 +651,32 @@ class PdfViewerActivity : AppCompatActivity() {
                     title = currentTitle,
                     content = currentRawContent,
                     imagePath = currentImagePath ?: "",
-                    dateEdited = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date())
+                    dateEdited = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())
                 )
                 val insertedId = db.insertNote(newNote)
                 currentNoteId = insertedId.toInt()
                 currentNote = newNote.copy(id = currentNoteId)
             }
 
+            // 2. Synchronize Title in ScanHistory table
+            if (currentScanId != -1) {
+                val scanHistory = db.getScanHistoryById(currentScanId)
+                scanHistory?.let {
+                    val updatedScan = it.copy(title = currentTitle)
+                    db.updateScanHistory(updatedScan)
+                }
+            } else if (!currentImagePath.isNullOrEmpty()) {
+                db.updateScanHistoryTitleByPath(currentImagePath!!, currentTitle)
+            }
+
+            // 3. Fallback sync in Notes table matching imagePath
+            if (!currentImagePath.isNullOrEmpty()) {
+                db.updateNoteTitleByPath(currentImagePath!!, currentTitle)
+                db.updateNoteContentByPath(currentImagePath!!, currentRawContent)
+            }
+
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@PdfViewerActivity, "Note saved!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PdfViewerActivity, "Saved successfully!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -686,7 +710,6 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 var currentY = margin
 
-                // 1. Draw Title
                 val titleLayout = createStaticLayout(currentTitle, titlePaint, printableWidth)
                 canvas.withTranslation(margin, currentY) {
                     titleLayout.draw(canvas)
@@ -694,7 +717,6 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 currentY += titleLayout.height + 16f
 
-                // 2. Draw Scanned Photo if available
                 val imgPath = currentImagePath
                 if (!imgPath.isNullOrEmpty()) {
                     val imgFile = File(imgPath)
@@ -706,14 +728,14 @@ class PdfViewerActivity : AppCompatActivity() {
                             val scaledWidth = (bitmap.width * scale).toInt()
                             val scaledHeight = (bitmap.height * scale).toInt()
 
-                            val scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+                            // Fixed Warning: Uses KTX extension function Bitmap.scale
+                            val scaledBitmap = bitmap.scale(scaledWidth, scaledHeight, true)
                             canvas.drawBitmap(scaledBitmap, margin, currentY, null)
                             currentY += scaledHeight + 16f
                         }
                     }
                 }
 
-                // 3. Draw Extracted Text
                 val cleanContent = cleanHtmlAndMarkdown(currentRawContent)
                 val lines = cleanContent.lines()
 

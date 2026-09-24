@@ -26,5 +26,5 @@
     <color name="nav_item_color">#FFFFFF</color>
     <color name="fab_bg_color">#FFFFFF</color>
     <color name="fab_icon_tint">#2563EB</color>
-    <color name="screen_background">#FF03A9F4</color>
+    <color name="screen_background">#FFFFFF</color>
 </resources>

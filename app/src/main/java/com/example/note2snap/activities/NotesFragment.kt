@@ -17,7 +17,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
@@ -29,8 +31,9 @@ import com.example.note2snap.model.Note
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class SortType { NAME, TIME, SIZE, TYPE }
 enum class FilterType { ALL, NOTES, FOLDERS }
@@ -87,11 +90,11 @@ class NotesFragment : Fragment() {
 
         tvNotFound?.setText(R.string.no_file_found)
 
-        // Initialize adapters
         notesAdapter = NotesAdapter(
             notes = emptyList(),
             onItemClick = { note ->
                 val intent = Intent(context, PdfViewerActivity::class.java).apply {
+                    putExtra("NOTE_ID", note.id)
                     putExtra("TITLE", note.title)
                     putExtra("CONTENT", note.content)
                     putExtra("IMAGE_PATH", note.imagePath)
@@ -156,7 +159,7 @@ class NotesFragment : Fragment() {
                 val targetFolder = masterFolderList[index]
                 lifecycleScope.launch(Dispatchers.IO) {
                     AppDatabase.getDatabase(requireContext()).appDao().updateNoteFolder(note.id, targetFolder.id)
-                    launch(Dispatchers.Main) {
+                    withContext(Dispatchers.Main) {
                         Toast.makeText(context, getString(R.string.moved_to_folder, targetFolder.name), Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -212,25 +215,24 @@ class NotesFragment : Fragment() {
     private fun observeDatabaseData() {
         val dao = AppDatabase.getDatabase(requireContext()).appDao()
 
-        lifecycleScope.launch {
-            dao.getAllFolders().collectLatest { fetchedFolders ->
-                masterFolderList.clear()
-                masterFolderList.addAll(fetchedFolders)
-                applySearchAndSort()
-            }
-        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(dao.getAllFolders(), dao.getAllNotes()) { folders, notes ->
+                    Pair(folders, notes)
+                }.collect { (folders, notes) ->
+                    masterFolderList.clear()
+                    masterFolderList.addAll(folders)
 
-        lifecycleScope.launch {
-            dao.getAllNotes().collectLatest { fetchedNotes ->
-                masterNotesList.clear()
-                masterNotesList.addAll(fetchedNotes)
-                applySearchAndSort()
+                    masterNotesList.clear()
+                    masterNotesList.addAll(notes)
+
+                    applySearchAndSort()
+                }
             }
         }
     }
 
     private fun applySearchAndSort() {
-        // 1. FILTER & SORT FOLDERS
         var filteredFolders = if (searchQuery.isEmpty()) {
             masterFolderList
         } else {
@@ -247,7 +249,6 @@ class NotesFragment : Fragment() {
         currentFilteredFolders = filteredFolders
         folderAdapter.updateFolders(currentFilteredFolders)
 
-        // 2. FILTER & SORT ROOT NOTES (Unassigned notes on main screen)
         var filteredNotes = masterNotesList.filter { it.folderId == null }
 
         if (searchQuery.isNotEmpty()) {
@@ -264,7 +265,6 @@ class NotesFragment : Fragment() {
         currentFilteredNotes = filteredNotes
         notesAdapter.updateNotes(currentFilteredNotes)
 
-        // 3. TOGGLE VISIBILITY
         val showFoldersSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.FOLDERS) && currentFilteredFolders.isNotEmpty()
         val showNotesSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.NOTES) && currentFilteredNotes.isNotEmpty()
 
@@ -340,7 +340,7 @@ class NotesFragment : Fragment() {
                     val updatedFolder = folder.copy(name = newName)
                     lifecycleScope.launch(Dispatchers.IO) {
                         AppDatabase.getDatabase(requireContext()).appDao().insertFolder(updatedFolder)
-                        launch(Dispatchers.Main) {
+                        withContext(Dispatchers.Main) {
                             Toast.makeText(context, R.string.folder_updated, Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -362,7 +362,7 @@ class NotesFragment : Fragment() {
             .setPositiveButton(R.string.delete) { d, _ ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     AppDatabase.getDatabase(requireContext()).appDao().deleteFolder(folder)
-                    launch(Dispatchers.Main) {
+                    withContext(Dispatchers.Main) {
                         Toast.makeText(context, R.string.folder_deleted, Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -378,8 +378,17 @@ class NotesFragment : Fragment() {
 
     private fun deleteNote(note: Note) {
         lifecycleScope.launch(Dispatchers.IO) {
-            AppDatabase.getDatabase(requireContext()).appDao().deleteNote(note)
-            launch(Dispatchers.Main) {
+            val dao = AppDatabase.getDatabase(requireContext()).appDao()
+
+            // 1. Delete from Notes table
+            dao.deleteNote(note)
+
+            // 2. Synchronize deletion with ScanHistory table using imagePath
+            if (!note.imagePath.isNullOrEmpty()) {
+                dao.deleteScanHistoryByPath(note.imagePath)
+            }
+
+            withContext(Dispatchers.Main) {
                 Toast.makeText(context, R.string.note_deleted, Toast.LENGTH_SHORT).show()
             }
         }

@@ -19,7 +19,6 @@ interface AppDao {
     @Query("SELECT * FROM folders ORDER BY id DESC")
     fun getAllFolders(): Flow<List<Folder>>
 
-    // Synchronous list fetch for popup/dialog picker choices
     @Query("SELECT * FROM folders ORDER BY name ASC")
     suspend fun getAllFoldersList(): List<Folder>
 
@@ -32,19 +31,17 @@ interface AppDao {
     @Delete
     suspend fun deleteFolder(folder: Folder)
 
+
     // --- NOTES / PHOTOS ---
     @Query("SELECT * FROM notes ORDER BY id DESC")
     fun getAllNotes(): Flow<List<Note>>
 
-    // Notes assigned to a specific folder
     @Query("SELECT * FROM notes WHERE folderId = :folderId ORDER BY id DESC")
     fun getNotesByFolder(folderId: Int): Flow<List<Note>>
 
-    // Notes NOT assigned to any folder (Main Screen / Unassigned)
     @Query("SELECT * FROM notes WHERE folderId IS NULL ORDER BY id DESC")
     fun getUnassignedNotes(): Flow<List<Note>>
 
-    // DIRECT TRANSFER QUERY: Update folder assignment without rewriting the entire Note object
     @Query("UPDATE notes SET folderId = :folderId WHERE id = :noteId")
     suspend fun updateNoteFolder(noteId: Int, folderId: Int?)
 
@@ -63,9 +60,29 @@ interface AppDao {
     @Query("SELECT * FROM notes WHERE title = :title LIMIT 1")
     suspend fun getNoteByTitle(title: String): Note?
 
-    // Delete single note by title (e.g., removing "OOP Discussion")
+    @Query("SELECT * FROM notes WHERE imagePath = :path LIMIT 1")
+    suspend fun getNoteByPath(path: String): Note?
+
+    // Sync Title in Notes table by image path
+    @Query("UPDATE notes SET title = :newTitle WHERE imagePath = :path")
+    suspend fun updateNoteTitleByPath(path: String, newTitle: String)
+
+    // Sync Content in Notes table by image path
+    @Query("UPDATE notes SET content = :newContent WHERE imagePath = :path")
+    suspend fun updateNoteContentByPath(path: String, newContent: String)
+
+    @Query("UPDATE notes SET title = :newTitle, imagePath = :newPath WHERE id = :noteId")
+    suspend fun updateNoteTitleAndPath(noteId: Int, newTitle: String, newPath: String)
+
     @Query("DELETE FROM notes WHERE title = :title")
     suspend fun deleteNoteByTitle(title: String)
+
+    @Query("DELETE FROM notes WHERE imagePath = :path")
+    suspend fun deleteNoteByPath(path: String)
+
+    @Query("UPDATE notes SET folderId = :folderId WHERE id IN (:noteIds)")
+    suspend fun moveNotesToFolder(noteIds: List<Int>, folderId: Int)
+
 
     // --- SCAN HISTORY ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -74,15 +91,31 @@ interface AppDao {
     @Query("SELECT * FROM scan_history ORDER BY timestamp DESC")
     fun getAllScanHistory(): LiveData<List<ScanHistory>>
 
-    @Query("DELETE FROM scan_history")
-    suspend fun clearHistory()
+    @Query("SELECT * FROM scan_history WHERE id = :historyId LIMIT 1")
+    suspend fun getScanHistoryById(historyId: Int): ScanHistory?
+
+    @Query("SELECT * FROM scan_history WHERE imagePath = :path LIMIT 1")
+    suspend fun getScanHistoryByPath(path: String): ScanHistory?
+
+    @Query("SELECT * FROM scan_history WHERE imagePath = :path LIMIT 1")
+    suspend fun getScanHistoryByImagePath(path: String): ScanHistory?
+
+    // Sync Title in History table by image path
+    @Query("UPDATE scan_history SET title = :newTitle WHERE imagePath = :path")
+    suspend fun updateScanHistoryTitleByPath(path: String, newTitle: String)
+
+    @Query("UPDATE scan_history SET title = :newTitle, imagePath = :newPath WHERE id = :historyId")
+    suspend fun updateScanHistoryTitleAndPath(historyId: Int, newTitle: String, newPath: String)
 
     @Delete
     suspend fun deleteScanHistory(history: ScanHistory)
 
+    @Query("DELETE FROM scan_history WHERE imagePath = :path")
+    suspend fun deleteScanHistoryByPath(path: String)
+
     @Update
     suspend fun updateScanHistory(history: ScanHistory)
 
-    @Query("UPDATE notes SET folderId = :folderId WHERE id IN (:noteIds)")
-    suspend fun moveNotesToFolder(noteIds: List<Int>, folderId: Int)
+    @Query("DELETE FROM scan_history")
+    suspend fun clearHistory()
 }

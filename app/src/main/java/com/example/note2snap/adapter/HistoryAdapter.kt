@@ -9,7 +9,7 @@ import com.example.note2snap.R
 import com.example.note2snap.model.ScanHistory
 
 class HistoryAdapter(
-    private val historyList: List<ScanHistory>,
+    private var historyList: List<ScanHistory>,
     private val onItemClick: (ScanHistory) -> Unit,
     private val onItemLongClick: (ScanHistory) -> Unit
 ) : RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder>() {
@@ -40,4 +40,10 @@ class HistoryAdapter(
     }
 
     override fun getItemCount(): Int = historyList.size
+
+    // Method to fix the unresolved reference in HistoryFragment
+    fun updateData(newList: List<ScanHistory>) {
+        this.historyList = newList
+        notifyDataSetChanged()
+    }
 }

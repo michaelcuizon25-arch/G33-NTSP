@@ -7,6 +7,7 @@
     <color name="text_main">#FFFFFF</color>
     <color name="text_sub">#A8A0A8</color>
     <color name="splash_bg">#1A2238</color>
+    <color name="screen_background">#000000</color>
 
     <!-- Folder Swatches -->
     <color name="color_blue">#AFC4F6</color>

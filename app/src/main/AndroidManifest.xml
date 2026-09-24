@@ -4,6 +4,9 @@
 
     <!-- Hardware Features -->
     <uses-feature android:name="android.hardware.camera.any" />
+    <uses-feature
+        android:name="android.hardware.camera.flash"
+        android:required="false" />
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -14,12 +17,12 @@
 
     <application
         android:allowBackup="true"
+        android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="NOTE2SNAP"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Note2Snap"
-        android:extractNativeLibs="true">
+        android:theme="@style/Theme.Note2Snap">
 
         <!-- ML Kit OCR Model Auto-Download -->
         <meta-data
