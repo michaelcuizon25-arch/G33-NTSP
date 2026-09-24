@@ -25,39 +25,40 @@
                 android:id="@+id/tvTitleNote"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:shadowColor="#000000"
+                android:shadowDx="2"
+                android:shadowDy="2"
+                android:shadowRadius="4"
                 android:text="NOTE"
                 android:textColor="#FFFFFF"
                 android:textSize="26sp"
-                android:textStyle="bold"
-                android:shadowColor="#000000"
-                android:shadowRadius="4"
-                android:shadowDx="2"
-                android:shadowDy="2" />
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvTitle2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="2"
-                android:textColor="#FFFFFF"
-                android:textSize="30sp"
-                android:textStyle="bold"
                 android:shadowColor="#000000"
                 android:shadowDx="2"
                 android:shadowDy="2"
-                android:shadowRadius="4" />
+                android:shadowRadius="4"
+                android:text="2"
+                android:textColor="#FFFFFF"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
             <TextView
                 android:id="@+id/tvTitleSnap"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:shadowColor="#000000"
+                android:shadowDx="2"
+                android:shadowDy="2"
+                android:shadowRadius="4"
                 android:text="SNAP"
                 android:textColor="#2563EB"
                 android:textSize="26sp"
-                android:textStyle="bold"
-                android:shadowColor="#000000"
-                android:shadowRadius="4"
-                android:shadowDx="2"
-                android:shadowDy="2"/>
+                android:textStyle="bold" />
 
 
         </LinearLayout>
@@ -71,10 +72,10 @@
             android:contentDescription="Flash Toggle"
             android:padding="8dp"
             android:src="@android:drawable/ic_menu_compass"
-            app:tint="#2563EB"
             app:layout_constraintBottom_toBottomOf="@id/layoutTitle"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/layoutTitle" />
+            app:layout_constraintTop_toTopOf="@id/layoutTitle"
+            app:tint="#2563EB" />
 
         <!-- Subtitle Description -->
         <TextView
@@ -95,9 +96,9 @@
             android:layout_width="0dp"
             android:layout_height="380dp"
             android:layout_marginTop="16dp"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="20dp"
             app:cardElevation="2dp"
-            app:cardBackgroundColor="?attr/colorSurface"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tvSubTitle">
@@ -177,6 +178,19 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/btnCapture" />
+
+        <!-- Progress Bar for OCR Loading State -->
+        <ProgressBar
+            android:id="@+id/progressBarScan"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:elevation="10dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

@@ -27,7 +27,7 @@ interface AppDao {
     suspend fun getFolderById(folderId: Int): Folder?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFolder(folder: Folder)
+    suspend fun insertFolder(folder: Folder): Long
 
     @Delete
     suspend fun deleteFolder(folder: Folder)
@@ -49,7 +49,7 @@ interface AppDao {
     suspend fun updateNoteFolder(noteId: Int, folderId: Int?)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNote(note: Note)
+    suspend fun insertNote(note: Note): Long
 
     @Update
     suspend fun updateNote(note: Note)
@@ -69,7 +69,7 @@ interface AppDao {
 
     // --- SCAN HISTORY ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertScanHistory(history: ScanHistory)
+    suspend fun insertScanHistory(history: ScanHistory): Long
 
     @Query("SELECT * FROM scan_history ORDER BY timestamp DESC")
     fun getAllScanHistory(): LiveData<List<ScanHistory>>

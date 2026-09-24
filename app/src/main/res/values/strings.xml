@@ -37,4 +37,10 @@
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
+    <string name="cd_note_thumbnail">Note preview icon</string>
+    <string name="cd_favorite">Toggle favorite</string>
+    <string name="cd_options">More options</string>
+    <string name="tool_undo">↶</string>
+    <string name="tool_redo">↷</string>
+    <string name="cd_scanned_photo">Scanned Photo</string>
 </resources>

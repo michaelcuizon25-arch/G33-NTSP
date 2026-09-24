@@ -2,11 +2,12 @@ package com.example.note2snap.activities
 
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
-import android.text.Html
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -15,7 +16,6 @@ import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
@@ -26,6 +26,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.graphics.toColorInt
 import androidx.core.graphics.withTranslation
+import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.note2snap.R
 import com.example.note2snap.data.AppDatabase
@@ -37,17 +38,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class PdfViewerActivity : AppCompatActivity() {
 
+    private var currentNoteId: Int = -1
     private var currentNote: Note? = null
     private var currentTitle: String = "Untitled Note"
     private var currentRawContent: String = ""
+    private var currentImagePath: String? = null
 
     private var isEditMode = false
+    private var activeTool: ToolMode = ToolMode.NONE
     private var currentPage = 1
     private var totalPages = 1
 
@@ -61,7 +66,9 @@ class PdfViewerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pdf_viewer)
 
+        currentNoteId = intent.getIntExtra("NOTE_ID", -1)
         currentTitle = intent.getStringExtra("TITLE") ?: "Untitled Note"
+        currentImagePath = sanitizeFilePath(intent.getStringExtra("IMAGE_PATH"))
         val directContent = intent.getStringExtra("CONTENT")
 
         setupHeaderAndMetadata()
@@ -70,78 +77,119 @@ class PdfViewerActivity : AppCompatActivity() {
         setupPageNavigation()
 
         if (!directContent.isNullOrEmpty()) {
-            currentRawContent = directContent
-            renderContent(directContent)
-            fetchNoteFromDatabase()
+            currentRawContent = sanitizeOcrText(directContent)
+            renderContent(currentRawContent)
         } else {
             fetchNoteFromDatabase()
         }
     }
 
+    /**
+     * Converts file:// URIs or raw file paths into clean filesystem paths.
+     */
+    private fun sanitizeFilePath(path: String?): String? {
+        if (path.isNullOrBlank()) return null
+        return if (path.startsWith("file://")) {
+            Uri.parse(path).path
+        } else {
+            path
+        }
+    }
+
+    /**
+     * Cleans OCR bullet artifacts (e.g. "oLeading Lines" -> "• Leading Lines")
+     * and standardizes line-starting bullet characters.
+     */
+    private fun sanitizeOcrText(text: String): String {
+        return text.lines().joinToString("\n") { line ->
+            var trimmed = line.trim()
+            if (trimmed.matches(Regex("^[oO0][A-Z].*"))) {
+                trimmed = "• " + trimmed.substring(1)
+            } else if (trimmed.matches(Regex("^[oO0]\\s+[A-Z].*"))) {
+                trimmed = "• " + trimmed.substring(1).trimStart()
+            } else if (trimmed.startsWith("* ") || trimmed.startsWith("- ") || trimmed.startsWith("· ")) {
+                trimmed = "• " + trimmed.substring(2)
+            }
+            trimmed
+        }
+    }
+
     private fun setupHeaderAndMetadata() {
-        findViewById<TextView>(R.id.tvPdfTitle)?.text = currentTitle
+        val tvTitle = findViewById<TextView>(R.id.tvPdfTitle)
+        tvTitle?.text = currentTitle
+
+        tvTitle?.setOnClickListener {
+            showRenameDialog()
+        }
 
         val currentDate = SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()).format(Date())
         findViewById<TextView>(R.id.tvPdfDate)?.text = currentDate
 
-        findViewById<ImageButton>(R.id.btnPdfBack)?.setOnClickListener { finish() }
+        findViewById<View>(R.id.btnPdfBack)?.setOnClickListener { finish() }
 
-        findViewById<ImageView>(R.id.btnPdfMoreOptions)?.setOnClickListener { view ->
+        findViewById<View>(R.id.btnPdfMoreOptions)?.setOnClickListener { view ->
             showOptionsMenu(view)
         }
     }
 
     private fun setupToolRibbon() {
         val drawingView = findViewById<DrawingView>(R.id.drawingView)
-
-        // Pen inactive by default for normal page touch scrolling
+        activeTool = ToolMode.NONE
         drawingView?.setTool(ToolMode.NONE)
 
-        // Text Edit Tool Button
-        findViewById<TextView>(R.id.btnToolText)?.setOnClickListener {
+        findViewById<View>(R.id.btnToolText)?.setOnClickListener {
             toggleInlineEditMode()
         }
 
-        // Top Toolbar Share Button
-        findViewById<ImageButton>(R.id.btnToolShare)?.setOnClickListener {
+        findViewById<View>(R.id.btnToolShare)?.setOnClickListener {
             shareDocument()
         }
 
-        // Tool Selectors
-        val toolPen = findViewById<TextView>(R.id.btnToolPen)
-        val toolHighlighter = findViewById<TextView>(R.id.btnToolHighlighter)
-        val toolEraser = findViewById<TextView>(R.id.btnToolEraser)
-        val toolShapes = findViewById<TextView>(R.id.btnToolShapes)
-        val toolMic = findViewById<TextView>(R.id.btnToolMic)
-
-        // Undo & Redo Tool Buttons
-        val toolUndo = findViewById<View>(R.id.btnToolUndo)
-        val toolRedo = findViewById<View>(R.id.btnToolRedo)
-
-        toolPen?.setOnClickListener {
-            drawingView?.setTool(ToolMode.PEN)
-            showColorPickerDialog(isHighlighter = false)
+        findViewById<View>(R.id.btnToolPen)?.setOnClickListener {
+            if (activeTool == ToolMode.PEN) {
+                activeTool = ToolMode.NONE
+                drawingView?.setTool(ToolMode.NONE)
+                showToolToast("Pen Off")
+            } else {
+                activeTool = ToolMode.PEN
+                drawingView?.setTool(ToolMode.PEN)
+                showColorPickerDialog(isHighlighter = false)
+            }
         }
 
-        toolHighlighter?.setOnClickListener {
-            drawingView?.setTool(ToolMode.HIGHLIGHTER)
-            showColorPickerDialog(isHighlighter = true)
+        findViewById<View>(R.id.btnToolHighlighter)?.setOnClickListener {
+            if (activeTool == ToolMode.HIGHLIGHTER) {
+                activeTool = ToolMode.NONE
+                drawingView?.setTool(ToolMode.NONE)
+                showToolToast("Highlighter Off")
+            } else {
+                activeTool = ToolMode.HIGHLIGHTER
+                drawingView?.setTool(ToolMode.HIGHLIGHTER)
+                showColorPickerDialog(isHighlighter = true)
+            }
         }
 
-        toolEraser?.setOnClickListener {
-            drawingView?.setTool(ToolMode.ERASER)
-            showToolToast("Eraser Active")
+        findViewById<View>(R.id.btnToolEraser)?.setOnClickListener {
+            if (activeTool == ToolMode.ERASER) {
+                activeTool = ToolMode.NONE
+                drawingView?.setTool(ToolMode.NONE)
+                showToolToast("Eraser Off")
+            } else {
+                activeTool = ToolMode.ERASER
+                drawingView?.setTool(ToolMode.ERASER)
+                showToolToast("Eraser Active")
+            }
         }
 
-        toolShapes?.setOnClickListener { showToolToast("Shape recognition active") }
-        toolMic?.setOnClickListener { showToolToast("Voice note recording") }
+        findViewById<View>(R.id.btnToolShapes)?.setOnClickListener { showToolToast("Shape recognition active") }
+        findViewById<View>(R.id.btnToolMic)?.setOnClickListener { showToolToast("Voice note recording") }
 
-        toolUndo?.setOnClickListener {
+        findViewById<View>(R.id.btnToolUndo)?.setOnClickListener {
             drawingView?.undo()
             showToolToast("Undo")
         }
 
-        toolRedo?.setOnClickListener {
+        findViewById<View>(R.id.btnToolRedo)?.setOnClickListener {
             drawingView?.redo()
             showToolToast("Redo")
         }
@@ -210,16 +258,29 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun setupPageNavigation() {
-        val btnPageUp = findViewById<TextView>(R.id.btnPageUp)
-        val btnPageDown = findViewById<TextView>(R.id.btnPageDown)
+        val btnPageUp = findViewById<View>(R.id.btnPageUp)
+        val btnPageDown = findViewById<View>(R.id.btnPageDown)
+        val scrollView = findViewById<ScrollView>(R.id.scrollViewContent)
 
         updatePageIndicator()
+
+        scrollView?.setOnScrollChangeListener { v: View, _: Int, scrollY: Int, _: Int, _: Int ->
+            val childView = (v as? ScrollView)?.getChildAt(0)
+            if (childView != null && v.height > 0) {
+                val totalContentHeight = childView.height
+                val viewportHeight = v.height
+
+                totalPages = (totalContentHeight / viewportHeight.toFloat()).toInt().coerceAtLeast(1)
+                currentPage = ((scrollY / viewportHeight.toFloat()) + 1).toInt().coerceIn(1, totalPages)
+                updatePageIndicator()
+            }
+        }
 
         btnPageUp?.setOnClickListener {
             if (currentPage > 1) {
                 currentPage--
                 updatePageIndicator()
-                findViewById<ScrollView>(R.id.scrollViewContent)?.fullScroll(View.FOCUS_UP)
+                scrollView?.fullScroll(View.FOCUS_UP)
             }
         }
 
@@ -227,7 +288,7 @@ class PdfViewerActivity : AppCompatActivity() {
             if (currentPage < totalPages) {
                 currentPage++
                 updatePageIndicator()
-                findViewById<ScrollView>(R.id.scrollViewContent)?.fullScroll(View.FOCUS_DOWN)
+                scrollView?.fullScroll(View.FOCUS_DOWN)
             }
         }
     }
@@ -244,12 +305,23 @@ class PdfViewerActivity : AppCompatActivity() {
 
     private fun fetchNoteFromDatabase() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val note = AppDatabase.getDatabase(this@PdfViewerActivity).appDao().getNoteByTitle(currentTitle)
+            val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
+            val note = if (currentNoteId != -1) {
+                db.getNoteById(currentNoteId)
+            } else {
+                db.getNoteByTitle(currentTitle)
+            }
+
             note?.let {
                 currentNote = it
-                currentRawContent = it.content
+                currentNoteId = it.id
+                currentTitle = it.title
+                currentRawContent = sanitizeOcrText(it.content)
+                currentImagePath = sanitizeFilePath(it.imagePath)
+
                 withContext(Dispatchers.Main) {
-                    renderContent(it.content)
+                    findViewById<TextView>(R.id.tvPdfTitle)?.text = currentTitle
+                    renderContent(currentRawContent)
                 }
             }
         }
@@ -260,10 +332,24 @@ class PdfViewerActivity : AppCompatActivity() {
         val tvSectionHeader = findViewById<TextView>(R.id.tvSectionHeader)
         val webViewContent = findViewById<WebView>(R.id.webViewContent)
         val scrollViewContent = findViewById<View>(R.id.scrollViewContent)
+        val ivScannedImage = findViewById<ImageView>(R.id.ivScannedImage)
 
         val dark = isDarkMode()
-        val hasRichContent = rawContent.contains("<table", ignoreCase = true) ||
-                rawContent.contains("<img", ignoreCase = true)
+        val cleanedText = sanitizeOcrText(rawContent)
+        val hasRichContent = cleanedText.contains("<table", ignoreCase = true) ||
+                cleanedText.contains("<img", ignoreCase = true)
+
+        // Render Scanned Photo into ImageView if view exists and file is available
+        if (ivScannedImage != null) {
+            val validPath = currentImagePath
+            if (!validPath.isNullOrEmpty() && File(validPath).exists()) {
+                val bitmap = BitmapFactory.decodeFile(validPath)
+                ivScannedImage.setImageBitmap(bitmap)
+                ivScannedImage.visibility = View.VISIBLE
+            } else {
+                ivScannedImage.visibility = View.GONE
+            }
+        }
 
         if (hasRichContent && webViewContent != null) {
             scrollViewContent?.visibility = View.GONE
@@ -273,6 +359,10 @@ class PdfViewerActivity : AppCompatActivity() {
             val textColorStr = if (dark) "#E0E0E0" else "#000000"
             val headerBgStr = if (dark) "#1F1F1F" else "#F2F2F7"
             val borderColorStr = if (dark) "#333333" else "#CCCCCC"
+
+            val imageHtml = if (!currentImagePath.isNullOrEmpty() && File(currentImagePath!!).exists()) {
+                "<img src=\"file://${currentImagePath}\" style=\"max-width:100%; border-radius:8px; margin-bottom:12px;\"/>"
+            } else ""
 
             val styledHtml = """
                 <html>
@@ -287,7 +377,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     </style>
                 </head>
                 <body>
-                    $rawContent
+                    $imageHtml
+                    $cleanedText
                 </body>
                 </html>
             """.trimIndent()
@@ -307,29 +398,31 @@ class PdfViewerActivity : AppCompatActivity() {
             webViewContent?.visibility = View.GONE
             scrollViewContent?.visibility = View.VISIBLE
 
-            val lines = rawContent.lines()
-            val contentBuilder = StringBuilder()
-            var detectedHeader = currentTitle
+            var detectedSubHeader: String? = null
 
-            for (line in lines) {
+            for (line in cleanedText.lines()) {
                 val trimmed = line.trim()
                 if (trimmed.isEmpty()) continue
 
-                if (trimmed.startsWith("1.") || trimmed.startsWith("Chapter") || trimmed.startsWith("Section")) {
-                    detectedHeader = trimmed
-                } else {
-                    contentBuilder.append(trimmed).append("\n")
+                if ((trimmed.startsWith("Chapter", ignoreCase = true) || trimmed.startsWith("Section", ignoreCase = true))
+                    && !trimmed.equals(currentTitle, ignoreCase = true)) {
+                    detectedSubHeader = trimmed
+                    break
                 }
             }
 
-            tvSectionHeader?.text = detectedHeader
+            if (!detectedSubHeader.isNullOrBlank()) {
+                tvSectionHeader?.text = detectedSubHeader
+                tvSectionHeader?.visibility = View.VISIBLE
+            } else {
+                tvSectionHeader?.visibility = View.GONE
+            }
 
-            val bodyText = contentBuilder.ifEmpty { rawContent }.toString()
-            val htmlFormatted = bodyText
+            val htmlFormatted = cleanedText
                 .replace(Regex("\\*\\*(.*?)\\*\\*"), "<b>$1</b>")
                 .replace("\n", "<br/>")
 
-            tvPdfContent?.text = Html.fromHtml(htmlFormatted, Html.FROM_HTML_MODE_COMPACT)
+            tvPdfContent?.text = HtmlCompat.fromHtml(htmlFormatted, HtmlCompat.FROM_HTML_MODE_COMPACT)
             tvPdfContent?.setTextColor(if (dark) Color.WHITE else "#0F172A".toColorInt())
         }
     }
@@ -338,6 +431,10 @@ class PdfViewerActivity : AppCompatActivity() {
         val tvPdfContent = findViewById<TextView>(R.id.tvPdfContent)
         val etInlineEditor = findViewById<EditText>(R.id.etInlineEditor)
         val btnToolText = findViewById<TextView>(R.id.btnToolText)
+        val drawingView = findViewById<DrawingView>(R.id.drawingView)
+
+        activeTool = ToolMode.NONE
+        drawingView?.setTool(ToolMode.NONE)
 
         if (!isEditMode) {
             val cleanText = cleanHtmlAndMarkdown(currentRawContent)
@@ -359,7 +456,7 @@ class PdfViewerActivity : AppCompatActivity() {
             Toast.makeText(this, "Editing Mode Active", Toast.LENGTH_SHORT).show()
         } else {
             val updatedText = etInlineEditor?.text?.toString() ?: ""
-            currentRawContent = updatedText.replace("\n", "<br/>")
+            currentRawContent = sanitizeOcrText(updatedText.replace("\n", "<br/>"))
 
             etInlineEditor?.visibility = View.GONE
             tvPdfContent?.visibility = View.VISIBLE
@@ -369,6 +466,8 @@ class PdfViewerActivity : AppCompatActivity() {
 
             btnToolText?.setTextColor("#2563EB".toColorInt())
             isEditMode = false
+
+            drawingView?.clear()
 
             renderContent(currentRawContent)
             saveNoteToDatabase()
@@ -436,7 +535,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 folderOptions.addAll(folders.map { it.name })
 
                 AlertDialog.Builder(this@PdfViewerActivity)
-                    .setTitle("Move '${currentTitle}' to Folder")
+                    .setTitle("Move '$currentTitle' to Folder")
                     .setItems(folderOptions.toTypedArray()) { d, index ->
                         if (index == 0) {
                             moveNoteToFolder(null, "Main Screen")
@@ -465,10 +564,11 @@ class PdfViewerActivity : AppCompatActivity() {
                     folderId = folderId,
                     title = currentTitle,
                     content = currentRawContent,
-                    imagePath = intent.getStringExtra("IMAGE_PATH") ?: "",
+                    imagePath = currentImagePath ?: "",
                     dateEdited = "Updated"
                 )
-                db.insertNote(newNote)
+                val newId = db.insertNote(newNote)
+                currentNoteId = newId.toInt()
                 fetchNoteFromDatabase()
             }
 
@@ -528,21 +628,27 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun saveNoteToDatabase() {
         lifecycleScope.launch(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
-            val existingNote = currentNote
+            val existingNote = currentNote ?: if (currentNoteId != -1) db.getNoteById(currentNoteId) else null
 
             if (existingNote != null) {
-                val updatedNote = existingNote.copy(title = currentTitle, content = currentRawContent)
+                val updatedNote = existingNote.copy(
+                    title = currentTitle,
+                    content = currentRawContent,
+                    imagePath = currentImagePath ?: existingNote.imagePath
+                )
                 db.updateNote(updatedNote)
                 currentNote = updatedNote
+                currentNoteId = updatedNote.id
             } else {
                 val newNote = Note(
                     title = currentTitle,
                     content = currentRawContent,
-                    imagePath = intent.getStringExtra("IMAGE_PATH") ?: "",
-                    dateEdited = "Updated"
+                    imagePath = currentImagePath ?: "",
+                    dateEdited = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()).format(Date())
                 )
-                db.insertNote(newNote)
-                currentNote = newNote
+                val insertedId = db.insertNote(newNote)
+                currentNoteId = insertedId.toInt()
+                currentNote = newNote.copy(id = currentNoteId)
             }
 
             withContext(Dispatchers.Main) {
@@ -580,13 +686,34 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 var currentY = margin
 
+                // 1. Draw Title
                 val titleLayout = createStaticLayout(currentTitle, titlePaint, printableWidth)
                 canvas.withTranslation(margin, currentY) {
                     titleLayout.draw(canvas)
                 }
 
-                currentY += titleLayout.height + 20f
+                currentY += titleLayout.height + 16f
 
+                // 2. Draw Scanned Photo if available
+                val imgPath = currentImagePath
+                if (!imgPath.isNullOrEmpty()) {
+                    val imgFile = File(imgPath)
+                    if (imgFile.exists()) {
+                        val bitmap = BitmapFactory.decodeFile(imgFile.absolutePath)
+                        if (bitmap != null) {
+                            val maxImgHeight = 220f
+                            val scale = (printableWidth.toFloat() / bitmap.width).coerceAtMost(maxImgHeight / bitmap.height)
+                            val scaledWidth = (bitmap.width * scale).toInt()
+                            val scaledHeight = (bitmap.height * scale).toInt()
+
+                            val scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+                            canvas.drawBitmap(scaledBitmap, margin, currentY, null)
+                            currentY += scaledHeight + 16f
+                        }
+                    }
+                }
+
+                // 3. Draw Extracted Text
                 val cleanContent = cleanHtmlAndMarkdown(currentRawContent)
                 val lines = cleanContent.lines()
 

@@ -63,17 +63,13 @@ object WhiteboardRuleEngine {
             )
         }
 
-        // First meaningful line is treated as note title
-        val titleCell = items.first()
-        val rawTitle = cleanTitle(titleCell.text)
+        val rawTitle = "Untitled Scan"
 
         val rows = clusterIntoRows(items)
         val blocks = mutableListOf<NoteBlock>()
 
         var index = 0
-        var titleSkipped = false
 
-        // Determine column split for Cornell-style left column questions (approx 32% of page width)
         val maxRight = items.maxOfOrNull { it.box.right } ?: 1000
         val cueColumnSplitX = (maxRight * 0.32).toInt()
         val minBodyLeftX = items.filter { it.box.left > cueColumnSplitX }.minOfOrNull { it.box.left } ?: cueColumnSplitX
@@ -89,32 +85,21 @@ object WhiteboardRuleEngine {
 
             val rowBox = getRowBoundingBox(row)
 
-            // Skip main title from body
-            if (!titleSkipped && approximatelySameText(cleanTitle(rowText), rawTitle)) {
-                titleSkipped = true
-                index++
-                continue
-            }
-
-            // -------------------------------------------------
-            // CORNELL NOTE / TWO-COLUMN CUE CHECK
-            // -------------------------------------------------
             val leftCueCell = row.cells.find {
                 it.box.right <= cueColumnSplitX || isCueQuestion(it.text, cueColumnSplitX, it.box)
             }
             val rightBodyCells = row.cells.filter { it != leftCueCell }
 
-            // Emit left-side cue question if present
             if (leftCueCell != null && leftCueCell.text.isNotBlank()) {
+                val cleanCue = sanitizeOcrText(leftCueCell.text)
                 blocks += NoteBlock(
-                    rawText = leftCueCell.text,
+                    rawText = cleanCue,
                     type = BlockType.SECTION_HEADER,
-                    formattedText = "<b>${leftCueCell.text}</b>",
+                    formattedText = "<b>${cleanCue}</b>",
                     boundingBox = leftCueCell.box
                 )
             }
 
-            // Process right-side body text
             val bodyText = if (rightBodyCells.isNotEmpty()) {
                 rightBodyCells.joinToString(" ") { it.text }.trim()
             } else if (leftCueCell == null) {
@@ -124,13 +109,9 @@ object WhiteboardRuleEngine {
             }
 
             if (bodyText.isNotBlank()) {
-                // Calculate horizontal indentation offset relative to main column
                 val firstCellLeft = rightBodyCells.firstOrNull()?.box?.left ?: row.cells.first().box.left
                 val indentOffset = max(0, firstCellLeft - minBodyLeftX)
 
-                // -------------------------------------------------
-                // TABLE DETECTION
-                // -------------------------------------------------
                 if (isStrongTableRowCandidate(row)) {
                     val tableRows = mutableListOf<TableRow>()
                     var tableIndex = index
@@ -159,7 +140,6 @@ object WhiteboardRuleEngine {
                     }
                 }
 
-                // Normal structured text line
                 blocks += parseSingleLineBlock(
                     text = bodyText,
                     boundingBox = rowBox,
@@ -171,7 +151,7 @@ object WhiteboardRuleEngine {
         }
 
         return StructuredNote(
-            title = rawTitle.ifBlank { "Untitled Scan" },
+            title = rawTitle,
             blocks = blocks
         )
     }
@@ -193,15 +173,31 @@ object WhiteboardRuleEngine {
             )
         }
 
-        val title = cleanTitle(cleanedLines.first())
-        val blocks = cleanedLines.drop(1).map {
+        val title = "Untitled Scan"
+        val blocks = cleanedLines.map {
             parseSingleLineBlock(text = it, boundingBox = null, indentOffset = 0)
         }
 
         return StructuredNote(
-            title = title.ifBlank { "Untitled Scan" },
+            title = title,
             blocks = blocks
         )
+    }
+
+    // =========================================================
+    // OCR SANITIZATION HELPER
+    // =========================================================
+
+    private fun sanitizeOcrText(text: String): String {
+        var cleaned = text.trim()
+
+        cleaned = cleaned.replace(Regex("[\\u200B\\u00A0]"), " ")
+
+        if (cleaned.matches(Regex("^[oO0◦°cve*\\-•●○▪▸►]\\s*([A-Za-z].*)"))) {
+            cleaned = cleaned.replace(Regex("^[oO0◦°cve*\\-•●○▪▸►]\\s*"), "• ")
+        }
+
+        return cleaned.trim()
     }
 
     // =========================================================
@@ -214,13 +210,12 @@ object WhiteboardRuleEngine {
         indentOffset: Int = 0
     ): NoteBlock {
 
-        val trimmed = text.trim()
+        val trimmed = sanitizeOcrText(text)
 
         return when {
 
-            // 1. Bottom Callout / NOTE
             isCalloutRule(trimmed) -> {
-                val content = trimmed.removePrefix("NOTE:").removePrefix("Note:").trim()
+                val content = trimmed.substringAfter(":").trim()
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.SECTION_HEADER,
@@ -229,13 +224,11 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            // 2. Key Definitions (e.g. "Population data (N): info gathered")
             isKeyDefinitionRule(trimmed) -> {
                 val colonIndex = trimmed.indexOf(":")
                 val key = trimmed.substring(0, colonIndex).trim()
                 val value = trimmed.substring(colonIndex + 1).trim()
 
-                // Check if key definition is inside a bullet
                 val bulletPrefix = getBulletSymbol(key)
                 val cleanKey = if (bulletPrefix != null) key.removePrefix(bulletPrefix).trim() else key
                 val indentPrefix = getIndentSpaces(bulletPrefix, indentOffset)
@@ -248,7 +241,6 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            // 3. Bullets (Hierarchical •, ◦, ▸)
             isBulletRule(trimmed) -> {
                 val symbol = getBulletSymbol(trimmed) ?: "•"
                 val cleanText = trimmed.replace(Regex("^([\\-*•●○▪◦▸►])\\s*"), "")
@@ -262,7 +254,6 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            // 4. Numbered list (e.g. "1. Pose a question")
             isNumberedItemRule(trimmed) -> {
                 val match = Regex("^(\\d+)[.)]\\s*(.*)$").find(trimmed)
                 val number = match?.groupValues?.getOrNull(1) ?: ""
@@ -276,7 +267,6 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            // 5. Section Headers & Term Headings
             isSectionHeaderRule(trimmed) -> {
                 val cleanHeader = trimmed.removePrefix("##").trim()
                 NoteBlock(
@@ -287,7 +277,6 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            // 6. Subheading
             isSubheadingRule(trimmed) -> {
                 val cleanText = trimmed.removePrefix("###").trim()
                 NoteBlock(
@@ -298,7 +287,6 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            // 7. Math Equation
             isMathRule(trimmed) -> {
                 NoteBlock(
                     rawText = trimmed,
@@ -308,7 +296,6 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            // 8. Regular text
             else -> {
                 NoteBlock(
                     rawText = trimmed,
@@ -369,7 +356,6 @@ object WhiteboardRuleEngine {
         if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && trimmed.length in 2..45) return true
         if (trimmed.length in 3..40 && trimmed == trimmed.uppercase() && trimmed.any { it.isLetter() }) return true
 
-        // Term headings (short line with capitalized title, e.g. "Scientific Method", "Population (N)")
         if (trimmed.length in 3..35 && !trimmed.endsWith(".") && !trimmed.contains(":") && trimmed.first().isUpperCase() && !isBulletRule(trimmed)) {
             return true
         }
@@ -400,10 +386,6 @@ object WhiteboardRuleEngine {
         val containsNumber = text.any { it.isDigit() }
         return containsOperator && containsNumber
     }
-
-    // =========================================================
-    // ROW CLUSTERING & TABLE HELPERS (PRESERVED)
-    // =========================================================
 
     private fun clusterIntoRows(items: List<SpatialCell>): List<TableRow> {
         val rows = mutableListOf<TableRow>()
@@ -535,20 +517,5 @@ object WhiteboardRuleEngine {
             cells.maxOf { it.box.right },
             cells.maxOf { it.box.bottom }
         )
-    }
-
-    private fun cleanTitle(text: String): String {
-        return text.replace(Regex("^[#*\\-•]+\\s*"), "").trim()
-    }
-
-    private fun approximatelySameText(first: String, second: String): Boolean {
-        val a = normalizeForComparison(first)
-        val b = normalizeForComparison(second)
-        if (a.isBlank() || b.isBlank()) return false
-        return a == b || a.contains(b) || b.contains(a)
-    }
-
-    private fun normalizeForComparison(text: String): String {
-        return text.lowercase().replace(Regex("[^a-z0-9]+"), " ").trim()
     }
 }
