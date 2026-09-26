@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -7,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="#FFF9FF">
 
-    <!-- HISTORY TITLE -->
     <TextView
         android:id="@+id/tvHistoryTitle"
         android:layout_width="wrap_content"
@@ -17,91 +15,95 @@
         android:fontFamily="@font/apple_garamond_italic"
         android:text="History"
         android:textColor="#171717"
-        android:textSize="32sp"
+        android:textSize="34sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- EMPTY STATE -->
-    <LinearLayout
-        android:id="@+id/llEmptyHistory"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+    <TextView
+        android:id="@+id/btnClearHistory"
+        android:layout_width="wrap_content"
+        android:layout_height="38dp"
+        android:layout_marginEnd="24dp"
+        android:background="@drawable/bg_history_clear"
+        android:fontFamily="@font/poppins_semibold"
         android:gravity="center"
-        android:orientation="vertical"
+        android:paddingStart="15dp"
+        android:paddingEnd="15dp"
+        android:text="Clear"
+        android:textColor="#5A7FDB"
+        android:textSize="11sp"
         android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/tvHistoryTitle"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/tvHistoryTitle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tvHistoryTitle" />
+
+    <TextView
+        android:id="@+id/tvHistoryCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="28dp"
+        android:layout_marginTop="4dp"
+        android:fontFamily="@font/poppins_regular"
+        android:text="No scans yet"
+        android:textColor="#83838C"
+        android:textSize="11sp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/tvHistoryTitle" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="92dp"
-            android:layout_height="72dp"
-            app:cardBackgroundColor="#F3F6FC"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#D9E3F8"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="•  •"
-                    android:textColor="#5A7FDB"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="⌒"
-                    android:textColor="#5A7FDB"
-                    android:textSize="26sp" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:fontFamily="@font/poppins_semibold"
-            android:text="No scans yet."
-            android:textColor="#303038"
-            android:textSize="15sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:fontFamily="@font/poppins_regular"
-            android:text="Your scanned notes will appear here."
-            android:textColor="#777780"
-            android:textSize="12sp" />
-
-    </LinearLayout>
-
-    <!-- HISTORY LIST -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvHistory"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginStart="28dp"
         android:layout_marginTop="18dp"
-        android:layout_marginEnd="28dp"
-        android:layout_marginBottom="100dp"
         android:clipToPadding="false"
-        android:paddingBottom="8dp"
-        app:layout_constraintTop_toBottomOf="@id/tvHistoryTitle"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="120dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/tvHistoryCount" />
+
+    <LinearLayout
+        android:id="@+id/llEmptyHistory"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="36dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvHistoryCount">
+
+        <ImageView
+            android:layout_width="82dp"
+            android:layout_height="82dp"
+            android:background="@drawable/bg_history_empty_icon"
+            android:padding="20dp"
+            android:src="@drawable/ic_history"
+            app:tint="#AFC4F6" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:text="No scan history yet"
+            android:textColor="#171717"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="260dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/poppins_regular"
+            android:gravity="center"
+            android:lineSpacingExtra="2dp"
+            android:text="Your captured and imported whiteboards will appear here."
+            android:textColor="#898992"
+            android:textSize="10sp" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
