@@ -2,8 +2,6 @@ package com.example.note2snap.activities
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.view.Gravity
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -18,7 +16,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -34,6 +31,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class SortType { NAME, TIME, SIZE, TYPE }
 enum class FilterType { ALL, NOTES, FOLDERS }
@@ -95,6 +93,7 @@ class NotesFragment : Fragment() {
             notes = emptyList(),
             onItemClick = { note ->
                 val intent = Intent(context, PdfViewerActivity::class.java).apply {
+                    putExtra("NOTE_ID", note.id) // Passed NOTE_ID to prevent duplication in PdfViewerActivity
                     putExtra("TITLE", note.title)
                     putExtra("CONTENT", note.content)
                     putExtra("IMAGE_PATH", note.imagePath)
@@ -146,209 +145,30 @@ class NotesFragment : Fragment() {
     }
 
     private fun showMoveNoteDialog(note: Note) {
-        val dialog = BottomSheetDialog(requireContext())
-
-        val sheet = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(12), dp(18), dp(24))
-            background = roundedBackground("#FFF9FF", 28f)
+        if (masterFolderList.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.no_folders_available, Toast.LENGTH_SHORT).show()
+            return
         }
 
-        sheet.addView(
-            View(requireContext()).apply {
-                background = roundedBackground("#D7D4DC", 3f)
-            },
-            LinearLayout.LayoutParams(dp(42), dp(4)).apply {
-                gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = dp(18)
-            }
-        )
+        val folderNames = masterFolderList.map { it.name }.toTypedArray()
 
-        sheet.addView(
-            TextView(requireContext()).apply {
-                text = "Move note"
-                textSize = 21f
-                setTextColor("#171717".toColorInt())
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-            }
-        )
-
-        sheet.addView(
-            TextView(requireContext()).apply {
-                text = note.title
-                textSize = 11f
-                setTextColor("#777780".toColorInt())
-                setPadding(0, dp(4), 0, dp(14))
-            }
-        )
-
-        val listCard = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            background = roundedBackground("#FFFFFF", 20f, "#ECECF2")
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-        }
-
-        // Main screen / no folder option
-        listCard.addView(
-            createMoveFolderRow(
-                title = "Main Screen",
-                subtitle = "Keep this note outside folders",
-                isCurrent = note.folderId == null
-            ) {
+        val dialog = AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert)
+            .setTitle(getString(R.string.move_note_to_folder_title, note.title))
+            .setItems(folderNames) { d, index ->
+                val targetFolder = masterFolderList[index]
                 lifecycleScope.launch(Dispatchers.IO) {
-                    AppDatabase.getDatabase(requireContext())
-                        .appDao()
-                        .updateNoteFolder(note.id, null)
-
-                    launch(Dispatchers.Main) {
-                        Toast.makeText(
-                            context,
-                            "Moved to Main Screen",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        dialog.dismiss()
+                    AppDatabase.getDatabase(requireContext()).appDao().updateNoteFolder(note.id, targetFolder.id)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, getString(R.string.moved_to_folder, targetFolder.name), Toast.LENGTH_SHORT).show()
                     }
                 }
+                d.dismiss()
             }
-        )
+            .setNegativeButton(R.string.cancel, null)
+            .create()
 
-        if (masterFolderList.isNotEmpty()) {
-            masterFolderList.forEach { folder ->
-                listCard.addView(
-                    createMoveFolderRow(
-                        title = folder.name,
-                        subtitle = "Move note into this folder",
-                        isCurrent = note.folderId == folder.id
-                    ) {
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            AppDatabase.getDatabase(requireContext())
-                                .appDao()
-                                .updateNoteFolder(note.id, folder.id)
-
-                            launch(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    getString(
-                                        R.string.moved_to_folder,
-                                        folder.name
-                                    ),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                dialog.dismiss()
-                            }
-                        }
-                    }
-                )
-            }
-        } else {
-            listCard.addView(
-                TextView(requireContext()).apply {
-                    text = "No folders yet. Create one using the + button in Notes."
-                    textSize = 11f
-                    setTextColor("#777780".toColorInt())
-                    setPadding(dp(12), dp(14), dp(12), dp(14))
-                }
-            )
-        }
-
-        sheet.addView(listCard)
-        dialog.setContentView(sheet)
         dialog.show()
-    }
-
-    private fun createMoveFolderRow(
-        title: String,
-        subtitle: String,
-        isCurrent: Boolean,
-        onClick: () -> Unit
-    ): View {
-        return LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(11), dp(10), dp(11))
-            background = roundedBackground(
-                if (isCurrent) "#EEF2FF" else "#FFFFFF",
-                16f
-            )
-            isClickable = true
-            isFocusable = true
-
-            val icon = TextView(requireContext()).apply {
-                text = if (isCurrent) "✓" else "▣"
-                textSize = 18f
-                gravity = Gravity.CENTER
-                setTextColor(
-                    if (isCurrent) {
-                        "#5A7FDB".toColorInt()
-                    } else {
-                        "#171717".toColorInt()
-                    }
-                )
-                background = roundedBackground(
-                    if (isCurrent) "#DCE6FF" else "#F4F4F7",
-                    14f
-                )
-            }
-
-            addView(
-                icon,
-                LinearLayout.LayoutParams(dp(44), dp(44))
-            )
-
-            val labels = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(12), 0, 0, 0)
-            }
-
-            labels.addView(
-                TextView(requireContext()).apply {
-                    text = title
-                    textSize = 13f
-                    typeface = android.graphics.Typeface.DEFAULT_BOLD
-                    setTextColor("#171717".toColorInt())
-                }
-            )
-
-            labels.addView(
-                TextView(requireContext()).apply {
-                    text = if (isCurrent) "Current location" else subtitle
-                    textSize = 10f
-                    setTextColor(
-                        if (isCurrent) {
-                            "#5A7FDB".toColorInt()
-                        } else {
-                            "#777780".toColorInt()
-                        }
-                    )
-                    setPadding(0, dp(2), 0, 0)
-                }
-            )
-
-            addView(
-                labels,
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
-            )
-
-            if (!isCurrent) {
-                addView(
-                    TextView(requireContext()).apply {
-                        text = "›"
-                        textSize = 22f
-                        gravity = Gravity.CENTER
-                        setTextColor("#9A9AA3".toColorInt())
-                    },
-                    LinearLayout.LayoutParams(dp(28), dp(44))
-                )
-            }
-
-            setOnClickListener {
-                if (!isCurrent) onClick()
-            }
-        }
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.BLACK)
     }
 
     private fun setupFilterListeners() {
@@ -522,7 +342,7 @@ class NotesFragment : Fragment() {
                     val updatedFolder = folder.copy(name = newName)
                     lifecycleScope.launch(Dispatchers.IO) {
                         AppDatabase.getDatabase(requireContext()).appDao().insertFolder(updatedFolder)
-                        launch(Dispatchers.Main) {
+                        withContext(Dispatchers.Main) {
                             Toast.makeText(context, R.string.folder_updated, Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -544,7 +364,7 @@ class NotesFragment : Fragment() {
             .setPositiveButton(R.string.delete) { d, _ ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     AppDatabase.getDatabase(requireContext()).appDao().deleteFolder(folder)
-                    launch(Dispatchers.Main) {
+                    withContext(Dispatchers.Main) {
                         Toast.makeText(context, R.string.folder_deleted, Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -560,8 +380,14 @@ class NotesFragment : Fragment() {
 
     private fun deleteNote(note: Note) {
         lifecycleScope.launch(Dispatchers.IO) {
-            AppDatabase.getDatabase(requireContext()).appDao().deleteNote(note)
-            launch(Dispatchers.Main) {
+            val dao = AppDatabase.getDatabase(requireContext()).appDao()
+            // Delete note entry
+            dao.deleteNote(note)
+            // Delete matching scan history entry
+            if (!note.imagePath.isNullOrEmpty()) {
+                dao.deleteScanHistoryByPath(note.imagePath)
+            }
+            withContext(Dispatchers.Main) {
                 Toast.makeText(context, R.string.note_deleted, Toast.LENGTH_SHORT).show()
             }
         }
@@ -585,33 +411,9 @@ class NotesFragment : Fragment() {
 
         dialog.findViewById<LinearLayout>(R.id.llOptionNote)?.setOnClickListener {
             dialog.dismiss()
-            (activity as? MainActivity)?.loadFragment(ScanFragment())
+            (activity as? MainActivity)?.openScan()
         }
 
         dialog.show()
     }
-
-    private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
-    }
-
-    private fun roundedBackground(
-        fillColor: String,
-        radiusDp: Float,
-        strokeColor: String? = null
-    ): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radiusDp * resources.displayMetrics.density
-            setColor(Color.parseColor(fillColor))
-
-            if (strokeColor != null) {
-                setStroke(
-                    dp(1),
-                    Color.parseColor(strokeColor)
-                )
-            }
-        }
-    }
-
 }

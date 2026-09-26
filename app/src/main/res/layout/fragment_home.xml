@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFF9FF"
+    android:background="@color/screen_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -23,7 +22,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/apple_garamond_italic"
             android:text="Hello! Ready to Study?"
-            android:textColor="#171717"
+            android:textColor="@color/text_primary"
             android:textSize="32sp" />
 
         <!-- DATE -->
@@ -34,7 +33,7 @@
             android:layout_marginTop="0dp"
             android:fontFamily="@font/poppins_regular"
             android:text="Thursday, September 24"
-            android:textColor="#4F4F57"
+            android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
         <!-- OLD HEADER IDS KEPT HIDDEN -->
@@ -90,7 +89,7 @@
             android:layout_width="match_parent"
             android:layout_height="92dp"
             android:layout_marginTop="22dp"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/card_background"
             app:cardCornerRadius="24dp"
             app:cardElevation="2dp">
 
@@ -114,7 +113,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_semibold"
                         android:text="0"
-                        android:textColor="#171717"
+                        android:textColor="@color/text_primary"
                         android:textSize="20sp" />
 
                     <TextView
@@ -123,7 +122,7 @@
                         android:layout_marginTop="3dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Total Notes"
-                        android:textColor="#74747C"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp" />
 
                 </LinearLayout>
@@ -131,7 +130,7 @@
                 <View
                     android:layout_width="1dp"
                     android:layout_height="30dp"
-                    android:background="#ECECF0" />
+                    android:background="@color/card_stroke" />
 
                 <!-- THIS WEEK -->
                 <LinearLayout
@@ -147,7 +146,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_semibold"
                         android:text="0"
-                        android:textColor="#171717"
+                        android:textColor="@color/text_primary"
                         android:textSize="20sp" />
 
                     <TextView
@@ -156,7 +155,7 @@
                         android:layout_marginTop="3dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="This Week"
-                        android:textColor="#74747C"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp" />
 
                 </LinearLayout>
@@ -164,7 +163,7 @@
                 <View
                     android:layout_width="1dp"
                     android:layout_height="30dp"
-                    android:background="#ECECF0" />
+                    android:background="@color/card_stroke" />
 
                 <!-- STREAK -->
                 <LinearLayout
@@ -180,7 +179,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_semibold"
                         android:text="🔥 0 Notes"
-                        android:textColor="#171717"
+                        android:textColor="@color/text_primary"
                         android:textSize="16sp" />
 
                     <TextView
@@ -189,7 +188,7 @@
                         android:layout_marginTop="3dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Study Streak"
-                        android:textColor="#74747C"
+                        android:textColor="@color/text_secondary"
                         android:textSize="10sp" />
 
                 </LinearLayout>
@@ -207,7 +206,7 @@
             android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="#4D78E8"
+            app:cardBackgroundColor="@color/fab_icon_tint"
             app:cardCornerRadius="22dp"
             app:cardElevation="3dp">
 
@@ -272,7 +271,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="#FFFFFF"
+                app:cardBackgroundColor="@color/card_background"
                 app:cardCornerRadius="18dp"
                 app:cardElevation="1dp">
 
@@ -289,7 +288,7 @@
                         android:layout_height="22dp"
                         android:contentDescription="All Notes"
                         android:src="@drawable/ic_notes"
-                        app:tint="#4D78E8" />
+                        app:tint="@color/accent" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -297,7 +296,7 @@
                         android:layout_marginStart="10dp"
                         android:fontFamily="@font/poppins_semibold"
                         android:text="All Notes"
-                        android:textColor="#171717"
+                        android:textColor="@color/text_primary"
                         android:textSize="13sp" />
 
                 </LinearLayout>
@@ -314,7 +313,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="#FFFFFF"
+                app:cardBackgroundColor="@color/card_background"
                 app:cardCornerRadius="18dp"
                 app:cardElevation="1dp">
 
@@ -331,7 +330,7 @@
                         android:layout_height="22dp"
                         android:contentDescription="Folders"
                         android:src="@drawable/ic_folder"
-                        app:tint="#4D78E8" />
+                        app:tint="@color/accent" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -339,7 +338,7 @@
                         android:layout_marginStart="10dp"
                         android:fontFamily="@font/poppins_semibold"
                         android:text="Folders"
-                        android:textColor="#171717"
+                        android:textColor="@color/text_primary"
                         android:textSize="13sp" />
 
                 </LinearLayout>
@@ -355,7 +354,7 @@
             android:layout_marginTop="28dp"
             android:fontFamily="@font/poppins_semibold"
             android:text="Recent Activity"
-            android:textColor="#171717"
+            android:textColor="@color/text_primary"
             android:textSize="16sp" />
 
         <TextView
@@ -365,17 +364,17 @@
             android:layout_marginTop="10dp"
             android:fontFamily="@font/poppins_regular"
             android:text="No recent notes found. Tap 'Scan Notes' to get started!"
-            android:textColor="#696971"
+            android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:visibility="gone" />
 
-        <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/vpRecentNotes"
+        <!-- RECYCLER VIEW FOR RECENT NOTES -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvRecentNotes"
             android:layout_width="match_parent"
-            android:layout_height="90dp"
-            android:layout_marginTop="12dp"
-            android:clipChildren="false"
-            android:clipToPadding="false" />
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never" />
 
     </LinearLayout>
 

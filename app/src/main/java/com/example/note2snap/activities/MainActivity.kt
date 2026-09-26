@@ -2,7 +2,9 @@ package com.example.note2snap.activities
 
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Color
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -12,7 +14,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.note2snap.R
 import com.google.android.material.card.MaterialCardView
-import android.view.View
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,348 +35,111 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNavContainer: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val sharedPref = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
 
-        val sharedPref =
-            getSharedPreferences(
-                "AppSettings",
-                Context.MODE_PRIVATE
-            )
+        val isSystemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val isDarkModeSaved = sharedPref.getBoolean("DARK_MODE", isSystemDark)
 
-        val isSystemDark =
-            (
-                    resources.configuration.uiMode and
-                            Configuration.UI_MODE_NIGHT_MASK
-                    ) ==
-                    Configuration.UI_MODE_NIGHT_YES
+        val targetMode = if (isDarkModeSaved) {
+            AppCompatDelegate.MODE_NIGHT_YES
+        } else {
+            AppCompatDelegate.MODE_NIGHT_NO
+        }
 
-        val isDarkModeSaved =
-            sharedPref.getBoolean(
-                "DARK_MODE",
-                isSystemDark
-            )
-
-        val targetMode =
-            if (isDarkModeSaved) {
-                AppCompatDelegate.MODE_NIGHT_YES
-            } else {
-                AppCompatDelegate.MODE_NIGHT_NO
-            }
-
-        if (
-            AppCompatDelegate.getDefaultNightMode() !=
-            targetMode
-        ) {
-            AppCompatDelegate.setDefaultNightMode(
-                targetMode
-            )
+        if (AppCompatDelegate.getDefaultNightMode() != targetMode) {
+            AppCompatDelegate.setDefaultNightMode(targetMode)
         }
 
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        setContentView(
-            R.layout.activity_main
-        )
-
-        bottomNavContainer =
-            findViewById(
-                R.id.bottomNavContainer
-            )
-
-        navHome =
-            findViewById(
-                R.id.navHome
-            )
-
-        navNotes =
-            findViewById(
-                R.id.navNotes
-            )
-
-        navHistory =
-            findViewById(
-                R.id.navHistory
-            )
-
-        navSettings =
-            findViewById(
-                R.id.navSettings
-            )
-
-        scanFab =
-            findViewById(
-                R.id.scanFab
-            )
-
-        iconHome =
-            findViewById(
-                R.id.iconHome
-            )
-
-        iconNotes =
-            findViewById(
-                R.id.iconNotes
-            )
-
-        iconHistory =
-            findViewById(
-                R.id.iconHistory
-            )
-
-        iconSettings =
-            findViewById(
-                R.id.iconSettings
-            )
-
-        textHome =
-            findViewById(
-                R.id.textHome
-            )
-
-        textNotes =
-            findViewById(
-                R.id.textNotes
-            )
-
-        textHistory =
-            findViewById(
-                R.id.textHistory
-            )
-
-        textSettings =
-            findViewById(
-                R.id.textSettings
-            )
+        initViews()
+        setupClickListeners()
 
         if (savedInstanceState == null) {
-
-            loadFragment(
-                HomeFragment()
-            )
-
-            setActiveTab(
-                "home"
-            )
-        }
-
-        navHome.setOnClickListener {
-
-            loadFragment(
-                HomeFragment()
-            )
-
-            setActiveTab(
-                "home"
-            )
-        }
-
-        navNotes.setOnClickListener {
-
-            loadFragment(
-                NotesFragment()
-            )
-
-            setActiveTab(
-                "notes"
-            )
-        }
-
-        navHistory.setOnClickListener {
-
-            loadFragment(
-                HistoryFragment()
-            )
-
-            setActiveTab(
-                "history"
-            )
-        }
-
-        navSettings.setOnClickListener {
-
-            loadFragment(
-                SettingsFragment()
-            )
-
-            setActiveTab(
-                "settings"
-            )
-        }
-
-        scanFab.setOnClickListener {
-
-            loadFragment(
-                ScanFragment()
-            )
-
-            setActiveTab(
-                "scan"
-            )
+            selectTab(R.id.navHome)
         }
     }
 
-    fun loadFragment(
-        fragment: Fragment
-    ) {
+    private fun initViews() {
+        bottomNavContainer = findViewById(R.id.bottomNavContainer)
 
-        val isScanScreen =
-            fragment is ScanFragment
+        navHome = findViewById(R.id.navHome)
+        navNotes = findViewById(R.id.navNotes)
+        navHistory = findViewById(R.id.navHistory)
+        navSettings = findViewById(R.id.navSettings)
+        scanFab = findViewById(R.id.scanFab)
 
-        bottomNavContainer.visibility =
-            if (isScanScreen) {
-                View.GONE
-            } else {
-                View.VISIBLE
-            }
+        iconHome = findViewById(R.id.iconHome)
+        iconNotes = findViewById(R.id.iconNotes)
+        iconHistory = findViewById(R.id.iconHistory)
+        iconSettings = findViewById(R.id.iconSettings)
 
-        scanFab.visibility =
-            if (isScanScreen) {
-                View.GONE
-            } else {
-                View.VISIBLE
-            }
+        textHome = findViewById(R.id.textHome)
+        textNotes = findViewById(R.id.textNotes)
+        textHistory = findViewById(R.id.textHistory)
+        textSettings = findViewById(R.id.textSettings)
+    }
 
-        supportFragmentManager
-            .beginTransaction()
-            .replace(
-                R.id.fragmentContainer,
-                fragment
-            )
+    private fun setupClickListeners() {
+        navHome.setOnClickListener { selectTab(R.id.navHome) }
+        navNotes.setOnClickListener { selectTab(R.id.navNotes) }
+        navHistory.setOnClickListener { selectTab(R.id.navHistory) }
+        navSettings.setOnClickListener { selectTab(R.id.navSettings) }
+
+        scanFab.setOnClickListener { openScan() }
+    }
+
+    fun selectTab(itemId: Int) {
+        bottomNavContainer.visibility = View.VISIBLE
+
+        val fragment: Fragment = when (itemId) {
+            R.id.navHome, R.id.nav_home -> HomeFragment()
+            R.id.navNotes, R.id.nav_notes -> NotesFragment()
+            R.id.navHistory, R.id.nav_history -> HistoryFragment()
+            R.id.navSettings, R.id.nav_settings -> SettingsFragment()
+            else -> HomeFragment()
+        }
+
+        updateNavUI(itemId)
+
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
             .commit()
     }
 
-    private fun setActiveTab(
-        activeTab: String
-    ) {
+    fun openScan() {
+        bottomNavContainer.visibility = View.GONE
 
-        val activeColor =
-            ContextCompat.getColor(
-                this,
-                R.color.primary
-            )
-
-        val inactiveColor =
-            ContextCompat.getColor(
-                this,
-                R.color.text_secondary
-            )
-
-        iconHome.setColorFilter(
-            if (activeTab == "home")
-                activeColor
-            else
-                inactiveColor
-        )
-
-        textHome.setTextColor(
-            if (activeTab == "home")
-                activeColor
-            else
-                inactiveColor
-        )
-
-        iconNotes.setColorFilter(
-            if (activeTab == "notes")
-                activeColor
-            else
-                inactiveColor
-        )
-
-        textNotes.setTextColor(
-            if (activeTab == "notes")
-                activeColor
-            else
-                inactiveColor
-        )
-
-        iconHistory.setColorFilter(
-            if (activeTab == "history")
-                activeColor
-            else
-                inactiveColor
-        )
-
-        textHistory.setTextColor(
-            if (activeTab == "history")
-                activeColor
-            else
-                inactiveColor
-        )
-
-        iconSettings.setColorFilter(
-            if (activeTab == "settings")
-                activeColor
-            else
-                inactiveColor
-        )
-
-        textSettings.setTextColor(
-            if (activeTab == "settings")
-                activeColor
-            else
-                inactiveColor
-        )
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, ScanFragment())
+            .commit()
     }
 
-    fun selectTab(
-        itemId: Int
-    ) {
+    private fun updateNavUI(selectedId: Int) {
+        val activeColor = Color.parseColor("#4D78E8")   // Active Blue
+        val inactiveColor = Color.parseColor("#9E9E9E") // Inactive Grey
 
-        when (itemId) {
+        resetTabUI(iconHome, textHome, inactiveColor)
+        resetTabUI(iconNotes, textNotes, inactiveColor)
+        resetTabUI(iconHistory, textHistory, inactiveColor)
+        resetTabUI(iconSettings, textSettings, inactiveColor)
 
-            R.id.nav_home -> {
-
-                loadFragment(
-                    HomeFragment()
-                )
-
-                setActiveTab(
-                    "home"
-                )
-            }
-
-            R.id.nav_notes -> {
-
-                loadFragment(
-                    NotesFragment()
-                )
-
-                setActiveTab(
-                    "notes"
-                )
-            }
-
-            R.id.nav_history -> {
-
-                loadFragment(
-                    HistoryFragment()
-                )
-
-                setActiveTab(
-                    "history"
-                )
-            }
-
-            R.id.nav_settings -> {
-
-                loadFragment(
-                    SettingsFragment()
-                )
-
-                setActiveTab(
-                    "settings"
-                )
-            }
+        when (selectedId) {
+            R.id.navHome, R.id.nav_home -> setTabActive(iconHome, textHome, activeColor)
+            R.id.navNotes, R.id.nav_notes -> setTabActive(iconNotes, textNotes, activeColor)
+            R.id.navHistory, R.id.nav_history -> setTabActive(iconHistory, textHistory, activeColor)
+            R.id.navSettings, R.id.nav_settings -> setTabActive(iconSettings, textSettings, activeColor)
         }
     }
 
-    fun openScan() {
+    private fun resetTabUI(icon: ImageView, text: TextView, color: Int) {
+        icon.setColorFilter(color)
+        text.setTextColor(color)
+    }
 
-        loadFragment(
-            ScanFragment()
-        )
-
-        setActiveTab(
-            "scan"
-        )
+    private fun setTabActive(icon: ImageView, text: TextView, color: Int) {
+        icon.setColorFilter(color)
+        text.setTextColor(color)
     }
 }

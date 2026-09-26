@@ -8,6 +8,9 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
 import com.example.note2snap.model.Note
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class RecentActivityAdapter(
     private val notes: MutableList<Note>,
@@ -26,25 +29,27 @@ class RecentActivityAdapter(
     }
 
     override fun onBindViewHolder(holder: RecentViewHolder, position: Int) {
-        if (notes.isEmpty()) return
-
-        val realPosition = position % notes.size
-        val note = notes[realPosition]
+        val note = notes[position]
 
         holder.tvTitle.text = note.title
-        holder.tvDate.text = note.dateEdited ?: ""
+
+        // Uses dateEdited if available; otherwise falls back to formatting timestamp
+        if (!note.dateEdited.isNullOrEmpty()) {
+            holder.tvDate.text = note.dateEdited
+        } else {
+            val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+            holder.tvDate.text = dateFormat.format(Date(note.timestamp))
+        }
 
         holder.itemView.setOnClickListener {
             onItemClick(note)
         }
     }
 
-    override fun getItemCount(): Int {
-        return if (notes.isEmpty()) 0 else Int.MAX_VALUE
-    }
+    override fun getItemCount(): Int = notes.size
 
     /**
-     * Updates notes efficiently using DiffUtil instead of notifyDataSetChanged().
+     * Updates notes efficiently using DiffUtil.
      */
     fun updateNotes(newNotes: List<Note>) {
         val diffCallback = object : DiffUtil.Callback() {
