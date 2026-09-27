@@ -1,68 +1,102 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/cardRecentItem"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="4dp"
-    android:layout_marginVertical="6dp"
+    android:layout_marginVertical="4dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="#FFFFFF"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="1dp">
+    app:cardBackgroundColor="#F6F8FF"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:strokeColor="#111111"
+    app:strokeWidth="1dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="14dp">
+        android:layout_height="68dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="8dp">
 
-        <!-- Document Icon -->
         <ImageView
             android:id="@+id/ivNoteIcon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:background="#104D78E8"
-            android:padding="9dp"
-            android:src="@drawable/ic_notes"
-            app:tint="#4D78E8" />
+            android:contentDescription="Note preview"
+            android:padding="2dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_note_custom" />
 
-        <!-- Title & Date -->
+        <LinearLayout
+            android:id="@+id/layoutRecentActions"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnRecentFavorite"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Favorite note"
+                android:padding="4dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_star_outline_custom"
+                app:tint="#D3A33D" />
+
+            <ImageButton
+                android:id="@+id/btnRecentMore"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="1dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="More note options"
+                android:padding="6dp"
+                android:src="@drawable/ic_tool_more"
+                app:tint="#171717" />
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
-            android:layout_marginStart="14dp"
+            android:layout_marginStart="10dp"
             android:layout_toEndOf="@id/ivNoteIcon"
-            android:orientation="vertical">
+            android:layout_toStartOf="@id/layoutRecentActions"
+            android:orientation="vertical"
+            android:paddingEnd="4dp">
 
             <TextView
                 android:id="@+id/tvRecentNoteTitle"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="@font/poppins_semibold"
+                android:fontFamily="@font/poppins_regular"
                 android:maxLines="1"
                 android:textColor="#171717"
-                android:textSize="15sp"
-                tools:text="Scan 1" />
+                android:textSize="12.5sp"
+                tools:text="OOP Discussion" />
 
             <TextView
                 android:id="@+id/tvRecentNoteDate"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
+                android:ellipsize="end"
                 android:fontFamily="@font/poppins_regular"
-                android:textColor="#74747C"
-                android:textSize="12sp"
-                tools:text="September 25, 2026" />
-        </LinearLayout>
+                android:maxLines="1"
+                android:textColor="#5F5F66"
+                android:textSize="10sp"
+                tools:text="February 13, 2026 | 10:00 AM" />
 
+        </LinearLayout>
     </RelativeLayout>
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

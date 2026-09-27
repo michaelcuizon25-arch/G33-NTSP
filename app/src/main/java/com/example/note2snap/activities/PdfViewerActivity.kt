@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
@@ -11,6 +14,8 @@ import android.os.Bundle
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.text.TextUtils
+import android.util.Base64
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
@@ -24,8 +29,10 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.PopupMenu
 import androidx.core.graphics.toColorInt
+import androidx.core.content.res.ResourcesCompat
+import android.text.style.BackgroundColorSpan
+import android.text.style.LineBackgroundSpan
 import androidx.core.graphics.withTranslation
 import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
@@ -36,10 +43,24 @@ import com.example.note2snap.model.ScanHistory
 import com.example.note2snap.utils.DocxExporter
 import com.example.note2snap.utils.DrawingView
 import com.example.note2snap.utils.ToolMode
+import android.graphics.drawable.GradientDrawable
+import android.text.Editable
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.TextWatcher
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
+import android.view.Gravity
+import android.widget.LinearLayout
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -57,6 +78,70 @@ class PdfViewerActivity : AppCompatActivity() {
     private var activeTool: ToolMode = ToolMode.NONE
     private var currentPage = 1
     private var totalPages = 1
+    private var isTextExpanded = false
+
+    private data class HighlightRange(
+        val start: Int,
+        val end: Int,
+        val color: Int
+    )
+
+    private val highlightRanges = mutableListOf<HighlightRange>()
+
+    private var markupLoaded = false
+
+    private data class PdfMarkupSnapshot(
+        val text: CharSequence,
+        val logicalWidth: Int,
+        val logicalHeight: Int,
+        val strokes: List<DrawingView.VectorStroke>
+    )
+
+    private var pendingPdfSnapshot: PdfMarkupSnapshot? = null
+
+    private val markupMarkerPrefix = "<!--N2S_MARKUP_BASE64:"
+    private val markupMarkerSuffix = "-->"
+
+    // Rich text block helpers
+    private val toggleContentMarker = "\u2063"
+    private var editorWatcherAttached = false
+    private var formattingEditorText = false
+
+    private class ReviewerHeaderBackgroundSpan(
+        private val backgroundColor: Int
+    ) : LineBackgroundSpan {
+
+        override fun drawBackground(
+            canvas: Canvas,
+            paint: Paint,
+            left: Int,
+            right: Int,
+            top: Int,
+            baseline: Int,
+            bottom: Int,
+            text: CharSequence,
+            start: Int,
+            end: Int,
+            lineNumber: Int
+        ) {
+            val oldColor = paint.color
+            val oldStyle = paint.style
+
+            paint.color = backgroundColor
+            paint.style = Paint.Style.FILL
+
+            canvas.drawRect(
+                left.toFloat(),
+                top.toFloat(),
+                right.toFloat(),
+                bottom.toFloat(),
+                paint
+            )
+
+            paint.color = oldColor
+            paint.style = oldStyle
+        }
+    }
 
     private val createPdfLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
@@ -79,8 +164,25 @@ class PdfViewerActivity : AppCompatActivity() {
         setupPageNavigation()
 
         if (!directContent.isNullOrEmpty()) {
-            currentRawContent = sanitizeOcrText(directContent)
+            markupLoaded = false
+            val restored =
+                restoreMarkupFromPersistedContent(
+                    directContent
+                )
+
+            currentRawContent =
+                sanitizeOcrText(
+                    stripPersistedMarkup(
+                        directContent
+                    )
+                )
+
+            if (!restored) {
+                markupLoaded = false
+            }
+
             renderContent(currentRawContent)
+
             // Save/Sync initially so new scans exist in both Notes & History without duplicating
             saveNoteToDatabase()
         } else {
@@ -136,17 +238,53 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
+    private fun leaveTextEditModeForDrawing() {
+        if (!isEditMode) return
+
+        val tvPdfContent = findViewById<TextView>(R.id.tvPdfContent)
+        val etInlineEditor = findViewById<EditText>(R.id.etInlineEditor)
+        val btnToolText = findViewById<ImageButton>(R.id.btnToolText)
+
+        val updatedText = etInlineEditor?.text?.toString() ?: ""
+        currentRawContent = sanitizeOcrText(updatedText.replace("\n", "<br/>"))
+
+        etInlineEditor?.visibility = View.GONE
+        tvPdfContent?.visibility = View.VISIBLE
+
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(etInlineEditor?.windowToken, 0)
+
+        btnToolText?.setColorFilter("#4D78E8".toColorInt())
+        isEditMode = false
+
+        renderContent(currentRawContent)
+        saveNoteToDatabase()
+    }
+
     private fun setupToolRibbon() {
         val drawingView = findViewById<DrawingView>(R.id.drawingView)
+
         activeTool = ToolMode.NONE
         drawingView?.setTool(ToolMode.NONE)
 
-        findViewById<View>(R.id.btnToolText)?.setOnClickListener {
-            toggleInlineEditMode()
+        drawingView?.setHighlighterStrokeListener { startX, startY, endX, endY, color ->
+            snapHighlighterToText(
+                startX = startX,
+                startY = startY,
+                endX = endX,
+                endY = endY,
+                color = color
+            )
         }
 
-        findViewById<View>(R.id.btnToolShare)?.setOnClickListener {
-            shareDocument()
+        drawingView?.setMarkupChangedListener {
+            saveMarkupData()
+        }
+
+        findViewById<View>(R.id.btnToolText)?.setOnClickListener {
+            activeTool = ToolMode.NONE
+            drawingView?.setTool(ToolMode.NONE)
+            showAddBlockSheet()
         }
 
         findViewById<View>(R.id.btnToolPen)?.setOnClickListener {
@@ -155,19 +293,26 @@ class PdfViewerActivity : AppCompatActivity() {
                 drawingView?.setTool(ToolMode.NONE)
                 showToolToast("Pen Off")
             } else {
+                leaveTextEditModeForDrawing()
+
                 activeTool = ToolMode.PEN
+                drawingView?.bringToFront()
                 drawingView?.setTool(ToolMode.PEN)
                 showColorPickerDialog(isHighlighter = false)
             }
         }
 
+        // Manual swipe -> snaps to the words underneath.
         findViewById<View>(R.id.btnToolHighlighter)?.setOnClickListener {
             if (activeTool == ToolMode.HIGHLIGHTER) {
                 activeTool = ToolMode.NONE
                 drawingView?.setTool(ToolMode.NONE)
                 showToolToast("Highlighter Off")
             } else {
+                leaveTextEditModeForDrawing()
+
                 activeTool = ToolMode.HIGHLIGHTER
+                drawingView?.bringToFront()
                 drawingView?.setTool(ToolMode.HIGHLIGHTER)
                 showColorPickerDialog(isHighlighter = true)
             }
@@ -179,67 +324,955 @@ class PdfViewerActivity : AppCompatActivity() {
                 drawingView?.setTool(ToolMode.NONE)
                 showToolToast("Eraser Off")
             } else {
+                leaveTextEditModeForDrawing()
+
                 activeTool = ToolMode.ERASER
+                drawingView?.bringToFront()
                 drawingView?.setTool(ToolMode.ERASER)
                 showToolToast("Eraser Active")
             }
         }
 
-        findViewById<View>(R.id.btnToolShapes)?.setOnClickListener { showToolToast("Shape recognition active") }
-        findViewById<View>(R.id.btnToolMic)?.setOnClickListener { showToolToast("Voice note recording") }
-
         findViewById<View>(R.id.btnToolUndo)?.setOnClickListener {
             drawingView?.undo()
-            showToolToast("Undo")
         }
 
         findViewById<View>(R.id.btnToolRedo)?.setOnClickListener {
             drawingView?.redo()
-            showToolToast("Redo")
         }
     }
 
-    private fun showColorPickerDialog(isHighlighter: Boolean) {
-        val drawingView = findViewById<DrawingView>(R.id.drawingView) ?: return
+    private fun showAddBlockSheet() {
+        val dialog = BottomSheetDialog(this)
 
-        val colorNames = if (isHighlighter) {
-            arrayOf("Yellow 🟡", "Green 🟢", "Blue 🔵", "Pink 🩷", "Orange 🟠")
-        } else {
-            arrayOf("Black ⬛", "Blue 🔵", "Red 🔴", "Green 🟢", "Purple 🟣")
+        val sheet = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(14), dp(18), dp(24))
+            background = roundedBackground("#FFF9FF", 28f)
         }
 
-        val colorValues = if (isHighlighter) {
-            intArrayOf(
-                Color.YELLOW,
-                Color.GREEN,
-                Color.CYAN,
-                Color.MAGENTA,
-                "#FFA500".toColorInt()
-            )
-        } else {
-            intArrayOf(
-                Color.BLACK,
-                Color.BLUE,
-                Color.RED,
-                Color.GREEN,
-                "#800080".toColorInt()
-            )
+        val handle = View(this).apply {
+            background = roundedBackground("#D7D8DE", 99f)
         }
 
-        AlertDialog.Builder(this)
-            .setTitle(if (isHighlighter) "Select Highlighter Color" else "Select Pen Color")
-            .setItems(colorNames) { _, index ->
-                val selectedColor = colorValues[index]
-                if (isHighlighter) {
-                    drawingView.setHighlighterColor(selectedColor)
-                    showToolToast("Highlighter: ${colorNames[index]}")
-                } else {
-                    drawingView.setPenColor(selectedColor)
-                    showToolToast("Pen: ${colorNames[index]}")
+        sheet.addView(
+            handle,
+            LinearLayout.LayoutParams(dp(44), dp(5)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(16)
+            }
+        )
+
+        val addBlockLabel = TextView(this).apply {
+            text = "+  Add block"
+            textSize = 13f
+            setTextColor("#5A7FDB".toColorInt())
+            gravity = Gravity.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            background = roundedBackground("#FFFFFF", 18f, "#E7E8EE")
+            setPadding(dp(14), dp(11), dp(14), dp(11))
+        }
+
+        sheet.addView(
+            addBlockLabel,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(12)
+            }
+        )
+
+        val optionsCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            background = roundedBackground("#FFFFFF", 22f, "#ECECF2")
+            elevation = dp(3).toFloat()
+        }
+
+        optionsCard.addView(
+            createBlockOption(
+                icon = "T",
+                title = "Heading",
+                description = "Add a section title"
+            ) {
+                dialog.dismiss()
+                insertTextBlock(BlockType.HEADING)
+            }
+        )
+
+        optionsCard.addView(dividerView())
+
+        optionsCard.addView(
+            createBlockOption(
+                icon = "☷",
+                title = "Bullet list",
+                description = "Start a list of key points"
+            ) {
+                dialog.dismiss()
+                insertTextBlock(BlockType.BULLET)
+            }
+        )
+
+        optionsCard.addView(dividerView())
+
+        optionsCard.addView(
+            createBlockOption(
+                icon = "›",
+                title = "Toggle",
+                description = "Add a collapsible-style section"
+            ) {
+                dialog.dismiss()
+                insertTextBlock(BlockType.TOGGLE)
+            }
+        )
+
+        optionsCard.addView(dividerView())
+
+        optionsCard.addView(
+            createBlockOption(
+                icon = "¶",
+                title = "Normal text",
+                description = "Add a regular paragraph"
+            ) {
+                dialog.dismiss()
+                insertTextBlock(BlockType.NORMAL)
+            }
+        )
+
+        sheet.addView(
+            optionsCard,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        dialog.setContentView(sheet)
+        dialog.show()
+    }
+
+    private enum class BlockType {
+        HEADING,
+        BULLET,
+        TOGGLE,
+        NORMAL
+    }
+
+    private fun insertTextBlock(type: BlockType) {
+        ensureInlineEditMode()
+
+        val editor = findViewById<EditText>(R.id.etInlineEditor) ?: return
+        val editable = editor.text ?: return
+
+        val cursor = editor.selectionStart.coerceAtLeast(0)
+
+        val prefix =
+            if (cursor > 0 && editable[cursor - 1] != '\n') "\n" else ""
+
+        if (prefix.isNotEmpty()) {
+            editable.insert(cursor, prefix)
+        }
+
+        val start = cursor + prefix.length
+
+        when (type) {
+            BlockType.HEADING -> {
+                val headingText = "Heading"
+                editable.insert(start, headingText)
+
+                val end = start + headingText.length
+
+                editable.setSpan(
+                    StyleSpan(android.graphics.Typeface.BOLD),
+                    start,
+                    end,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                editable.setSpan(
+                    RelativeSizeSpan(1.35f),
+                    start,
+                    end,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                editable.setSpan(
+                    ForegroundColorSpan("#171717".toColorInt()),
+                    start,
+                    end,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                // Highlight placeholder so typing replaces "Heading".
+                editor.setSelection(start, end)
+            }
+
+            BlockType.BULLET -> {
+                val bulletText = "• "
+                editable.insert(start, bulletText)
+                editor.setSelection(start + bulletText.length)
+            }
+
+            BlockType.TOGGLE -> {
+                val titleText = "▸ Toggle"
+                val contentPlaceholder = "Type toggle content"
+                val block =
+                    "$titleText\n$toggleContentMarker$contentPlaceholder"
+
+                editable.insert(start, block)
+
+                val titleEnd = start + titleText.length
+
+                editable.setSpan(
+                    StyleSpan(android.graphics.Typeface.BOLD),
+                    start,
+                    titleEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                editable.setSpan(
+                    ForegroundColorSpan("#5A7FDB".toColorInt()),
+                    start,
+                    start + 1,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                val contentStart =
+                    start +
+                            titleText.length +
+                            1 +
+                            toggleContentMarker.length
+
+                val contentEnd =
+                    contentStart +
+                            contentPlaceholder.length
+
+                // Highlight placeholder so typing replaces it.
+                editor.setSelection(
+                    contentStart,
+                    contentEnd
+                )
+            }
+
+            BlockType.NORMAL -> {
+                editor.setSelection(start)
+            }
+        }
+
+        attachEditorAutoFormatting(editor)
+
+        editor.requestFocus()
+
+        val imm =
+            getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+
+        imm.showSoftInput(
+            editor,
+            InputMethodManager.SHOW_IMPLICIT
+        )
+    }
+
+    private fun ensureInlineEditMode() {
+        if (!isEditMode) {
+            toggleInlineEditMode()
+        }
+    }
+
+    /**
+     * Automatically continues bullet lists when Enter is pressed.
+     * Toggle content lines also keep their invisible marker so they can
+     * collapse properly in view mode.
+     */
+    private fun attachEditorAutoFormatting(editor: EditText) {
+        if (editorWatcherAttached) return
+
+        editor.addTextChangedListener(
+            object : TextWatcher {
+
+                private var insertedNewlineAt = -1
+                private var beforeCount = 0
+                private var addedCount = 0
+
+                override fun beforeTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int
+                ) {
+                    insertedNewlineAt = start
+                    beforeCount = count
+                    addedCount = after
+                }
+
+                override fun onTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int
+                ) {
+                    insertedNewlineAt = start
+                    beforeCount = before
+                    addedCount = count
+                }
+
+                override fun afterTextChanged(editable: Editable?) {
+                    if (formattingEditorText) return
+                    val value = editable ?: return
+
+                    // React only to a single newly inserted newline.
+                    if (
+                        beforeCount != 0 ||
+                        addedCount != 1 ||
+                        insertedNewlineAt < 0 ||
+                        insertedNewlineAt >= value.length ||
+                        value[insertedNewlineAt] != '\n'
+                    ) {
+                        return
+                    }
+
+                    val newlinePos = insertedNewlineAt
+
+                    val previousBreak =
+                        if (newlinePos <= 0) {
+                            -1
+                        } else {
+                            value.lastIndexOf(
+                                '\n',
+                                newlinePos - 1
+                            )
+                        }
+
+                    val previousLineStart =
+                        previousBreak + 1
+
+                    val previousLine =
+                        value.substring(
+                            previousLineStart,
+                            newlinePos
+                        )
+
+                    formattingEditorText = true
+
+                    try {
+                        when {
+                            previousLine == "• " ||
+                                    previousLine == "•" -> {
+                                // Pressing Enter on an empty bullet exits the list.
+                                val deleteEnd =
+                                    newlinePos.coerceAtMost(
+                                        value.length
+                                    )
+
+                                value.delete(
+                                    previousLineStart,
+                                    deleteEnd
+                                )
+
+                                val newCursor =
+                                    previousLineStart.coerceAtMost(
+                                        value.length
+                                    )
+
+                                editor.setSelection(newCursor)
+                            }
+
+                            previousLine.startsWith("• ") -> {
+                                // Continue the bullet list automatically.
+                                val insertAt =
+                                    (newlinePos + 1)
+                                        .coerceAtMost(
+                                            value.length
+                                        )
+
+                                value.insert(
+                                    insertAt,
+                                    "• "
+                                )
+
+                                editor.setSelection(
+                                    (insertAt + 2)
+                                        .coerceAtMost(
+                                            value.length
+                                        )
+                                )
+                            }
+
+                            previousLine.startsWith(toggleContentMarker) -> {
+                                // Continue multi-line toggle content.
+                                val insertAt =
+                                    (newlinePos + 1)
+                                        .coerceAtMost(
+                                            value.length
+                                        )
+
+                                value.insert(
+                                    insertAt,
+                                    toggleContentMarker
+                                )
+
+                                editor.setSelection(
+                                    (insertAt + toggleContentMarker.length)
+                                        .coerceAtMost(
+                                            value.length
+                                        )
+                                )
+                            }
+                        }
+                    } finally {
+                        formattingEditorText = false
+                    }
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        )
+
+        editorWatcherAttached = true
+    }
+
+    private fun createBlockOption(
+        icon: String,
+        title: String,
+        description: String,
+        onClick: () -> Unit
+    ): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = roundedBackground("#FFFFFF", 16f)
+
+            val iconView = TextView(this@PdfViewerActivity).apply {
+                text = icon
+                gravity = Gravity.CENTER
+                textSize = 17f
+                setTextColor("#5A7FDB".toColorInt())
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                background = roundedBackground("#EEF2FF", 14f)
+            }
+
+            addView(
+                iconView,
+                LinearLayout.LayoutParams(dp(42), dp(42))
+            )
+
+            val labels = LinearLayout(this@PdfViewerActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), 0, 0, 0)
+            }
+
+            labels.addView(
+                TextView(this@PdfViewerActivity).apply {
+                    text = title
+                    textSize = 14f
+                    setTextColor("#171717".toColorInt())
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                }
+            )
+
+            labels.addView(
+                TextView(this@PdfViewerActivity).apply {
+                    text = description
+                    textSize = 11f
+                    setTextColor("#777780".toColorInt())
+                    setPadding(0, dp(2), 0, 0)
+                }
+            )
+
+            addView(
+                labels,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
+            setOnClickListener { onClick() }
+        }
+    }
+
+    private fun dividerView(): View {
+        return View(this).apply {
+            setBackgroundColor("#ECECF2".toColorInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(1)
+            ).apply {
+                marginStart = dp(62)
+                marginEnd = dp(8)
+            }
+        }
+    }
+
+    private fun roundedBackground(
+        fillColor: String,
+        radiusDp: Float,
+        strokeColor: String? = null
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(radiusDp.toInt()).toFloat()
+            setColor(fillColor.toColorInt())
+
+            if (strokeColor != null) {
+                setStroke(
+                    dp(1),
+                    strokeColor.toColorInt()
+                )
+            }
+        }
+    }
+
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
+    }
+
+
+    private fun showColorPickerDialog(isHighlighter: Boolean) {
+        val drawingView = findViewById<DrawingView>(R.id.drawingView)
+        val dialog = BottomSheetDialog(this)
+
+        val names = if (isHighlighter) {
+            arrayOf("Yellow", "Mint", "Sky", "Pink", "Orange")
+        } else {
+            arrayOf("Black", "Blue", "Red", "Green", "Purple")
+        }
+
+        val colors = if (isHighlighter) {
+            intArrayOf(
+                "#FFE56B".toColorInt(),
+                "#8EE5B5".toColorInt(),
+                "#8FD3FF".toColorInt(),
+                "#F5A8D0".toColorInt(),
+                "#FFB56B".toColorInt()
+            )
+        } else {
+            intArrayOf(
+                "#171717".toColorInt(),
+                "#5A7FDB".toColorInt(),
+                "#D94B62".toColorInt(),
+                "#37A66B".toColorInt(),
+                "#8A63C7".toColorInt()
+            )
+        }
+
+        val sheet = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(12), dp(22), dp(24))
+            background = roundedBackground("#FFF9FF", 28f)
+        }
+
+        sheet.addView(
+            View(this).apply {
+                background = roundedBackground("#D7D4DC", 3f)
+            },
+            LinearLayout.LayoutParams(dp(42), dp(4)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(18)
+            }
+        )
+
+        sheet.addView(
+            TextView(this).apply {
+                text = if (isHighlighter) "Highlighter color" else "Pen color"
+                textSize = 21f
+                setTextColor("#171717".toColorInt())
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+        )
+
+        sheet.addView(
+            TextView(this).apply {
+                text = if (isHighlighter) {
+                    "Choose a soft color for highlighting."
+                } else {
+                    "Choose your drawing color."
+                }
+                textSize = 11f
+                setTextColor("#777780".toColorInt())
+                setPadding(0, dp(4), 0, dp(18))
+            }
+        )
+
+        val swatchRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
+        colors.forEachIndexed { index, color ->
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                isClickable = true
+                isFocusable = true
+                setPadding(dp(5), 0, dp(5), 0)
+
+                val swatch = View(this@PdfViewerActivity).apply {
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(color)
+                        setStroke(dp(2), "#FFFFFF".toColorInt())
+                    }
+                    elevation = dp(2).toFloat()
+                }
+
+                addView(
+                    swatch,
+                    LinearLayout.LayoutParams(dp(46), dp(46))
+                )
+
+                addView(
+                    TextView(this@PdfViewerActivity).apply {
+                        text = names[index]
+                        textSize = 9f
+                        gravity = Gravity.CENTER
+                        setTextColor("#5F5F68".toColorInt())
+                        setPadding(0, dp(7), 0, 0)
+                    },
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                )
+
+                setOnClickListener {
+                    if (isHighlighter) {
+                        drawingView.setHighlighterColor(color)
+                        activeTool = ToolMode.HIGHLIGHTER
+                    } else {
+                        drawingView.setPenColor(color)
+                        activeTool = ToolMode.PEN
+                    }
+
+                    showToolToast(
+                        if (isHighlighter) {
+                            "Highlighter: ${names[index]}"
+                        } else {
+                            "Pen: ${names[index]}"
+                        }
+                    )
+                    dialog.dismiss()
+                }
+            }
+
+            swatchRow.addView(
+                item,
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            )
+        }
+
+        sheet.addView(swatchRow)
+
+        val cancel = TextView(this).apply {
+            text = "Cancel"
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setTextColor("#777780".toColorInt())
+            setPadding(0, dp(18), 0, dp(2))
+            isClickable = true
+            setOnClickListener { dialog.dismiss() }
+        }
+        sheet.addView(cancel)
+
+        dialog.setContentView(sheet)
+        dialog.show()
+    }
+
+    private fun snapHighlighterToText(
+        startX: Float,
+        startY: Float,
+        endX: Float,
+        endY: Float,
+        color: Int
+    ) {
+        val textView = findViewById<TextView>(R.id.tvPdfContent) ?: return
+        val layout = textView.layout ?: return
+        val displayedText = textView.text ?: return
+
+        if (displayedText.isEmpty() || layout.lineCount == 0) return
+
+        // DrawingView and TextView occupy the same padded FrameLayout area,
+        // so their local coordinates already match. Do NOT subtract
+        // textView.left/top here.
+        val middleY = ((startY + endY) / 2f)
+            .toInt()
+            .coerceIn(0, (textView.height - 1).coerceAtLeast(0))
+
+        val line = layout.getLineForVertical(middleY)
+        val lineStart = layout.getLineStart(line)
+        val lineEnd = layout.getLineEnd(line)
+
+        val minX = minOf(startX, endX).coerceAtLeast(0f)
+        val maxX = maxOf(startX, endX).coerceAtLeast(minX)
+
+        var start = layout.getOffsetForHorizontal(line, minX)
+            .coerceIn(lineStart, lineEnd)
+
+        var end = layout.getOffsetForHorizontal(line, maxX)
+            .coerceIn(lineStart, lineEnd)
+
+        if (start > end) {
+            val temp = start
+            start = end
+            end = temp
+        }
+
+        // A tiny swipe should still select the word directly underneath it.
+        if (start == end) {
+            end = (end + 1).coerceAtMost(lineEnd)
+        }
+
+        // Trim whitespace first.
+        while (start < end && displayedText[start].isWhitespace()) start++
+        while (end > start && displayedText[end - 1].isWhitespace()) end--
+
+        if (end <= start) return
+
+        // Snap only to the touched word boundaries INSIDE this same visual line.
+        // This prevents a one-word swipe from pulling neighboring lines/phrases.
+        while (
+            start > lineStart &&
+            !displayedText[start - 1].isWhitespace() &&
+            displayedText[start - 1] != '\n'
+        ) {
+            start--
+        }
+
+        while (
+            end < lineEnd &&
+            end < displayedText.length &&
+            !displayedText[end].isWhitespace() &&
+            displayedText[end] != '\n'
+        ) {
+            end++
+        }
+
+        if (end <= start) return
+
+        // Replace an exact duplicate instead of stacking multiple spans.
+        highlightRanges.removeAll {
+            it.start == start && it.end == end
+        }
+
+        highlightRanges.add(
+            HighlightRange(
+                start = start,
+                end = end,
+                color = color
+            )
+        )
+
+        applySavedHighlightsToDisplayedText()
+        saveMarkupData()
+    }
+
+    private fun applySavedHighlightsToDisplayedText() {
+        val textView =
+            findViewById<TextView>(
+                R.id.tvPdfContent
+            ) ?: return
+
+        val plain =
+            textView.text.toString()
+
+        val styled =
+            buildReviewerStyledText(
+                plain
+            )
+
+        textView.text = styled
+    }
+
+    private fun buildReviewerStyledText(
+        plainText: String
+    ): SpannableStringBuilder {
+        val styled =
+            SpannableStringBuilder(
+                plainText
+            )
+
+        val blue =
+            "#244F8F".toColorInt()
+
+        var lineStart = 0
+
+        val lines =
+            plainText.split("\n")
+
+        for ((index, line) in lines.withIndex()) {
+            val trimmed =
+                line.trim()
+
+            val lineEnd =
+                lineStart + line.length
+
+            if (
+                trimmed.isNotEmpty() &&
+                isReviewerSectionHeader(
+                    trimmed
+                )
+            ) {
+                styled.setSpan(
+                    ReviewerHeaderBackgroundSpan(
+                        blue
+                    ),
+                    lineStart,
+                    lineEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                styled.setSpan(
+                    ForegroundColorSpan(
+                        Color.WHITE
+                    ),
+                    lineStart,
+                    lineEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                styled.setSpan(
+                    StyleSpan(
+                        Typeface.BOLD
+                    ),
+                    lineStart,
+                    lineEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                styled.setSpan(
+                    RelativeSizeSpan(
+                        0.93f
+                    ),
+                    lineStart,
+                    lineEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            } else if (
+                trimmed.isNotEmpty() &&
+                isReviewerSubheading(
+                    trimmed
+                )
+            ) {
+                styled.setSpan(
+                    StyleSpan(
+                        Typeface.BOLD
+                    ),
+                    lineStart,
+                    lineEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+
+            if (index < lines.lastIndex) {
+                lineStart =
+                    lineEnd + 1
+            }
+        }
+
+        for (range in highlightRanges) {
+            val safeStart =
+                range.start.coerceIn(
+                    0,
+                    styled.length
+                )
+
+            val safeEnd =
+                range.end.coerceIn(
+                    safeStart,
+                    styled.length
+                )
+
+            if (safeEnd > safeStart) {
+                styled.setSpan(
+                    BackgroundColorSpan(
+                        range.color
+                    ),
+                    safeStart,
+                    safeEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        }
+
+        return styled
+    }
+
+    private fun isReviewerSectionHeader(
+        text: String
+    ): Boolean {
+        if (text.length > 72) {
+            return false
+        }
+
+        if (
+            text.matches(
+                Regex(
+                    "^\\\\d+(?:\\\\.\\\\d+)*[.)]?\\\\s+.+"
+                )
+            )
+        ) {
+            return true
+        }
+
+        val lower =
+            text.lowercase(
+                Locale.getDefault()
+            )
+
+        val prefixes =
+            listOf(
+                "introduction",
+                "advantages",
+                "disadvantages",
+                "brief history",
+                "what ",
+                "why ",
+                "where ",
+                "when ",
+                "how ",
+                "chapter ",
+                "section "
+            )
+
+        return prefixes.any {
+            lower.startsWith(it)
+        } ||
+                (
+                        text.endsWith("?") &&
+                                text.length <= 55
+                        )
+    }
+
+    private fun isReviewerSubheading(
+        text: String
+    ): Boolean {
+        if (text.length > 52) {
+            return false
+        }
+
+        if (
+            text.startsWith("•") ||
+            text.startsWith("-")
+        ) {
+            return false
+        }
+
+        return text.endsWith(":") ||
+                text.matches(
+                    Regex(
+                        "^[A-Z][A-Za-z0-9 /&()-]{2,40}$"
+                    )
+                )
+    }
+
+    private fun createPdfTextWithHighlights(): CharSequence {
+        return buildReviewerStyledText(
+            cleanHtmlAndMarkdown(
+                currentRawContent
+            )
+        )
     }
 
     private fun setupBottomActions() {
@@ -252,6 +1285,13 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.btnActionDownload)?.setOnClickListener {
+            if (isEditMode) {
+                toggleInlineEditMode()
+            }
+
+            saveMarkupData()
+            pendingPdfSnapshot = buildPdfMarkupSnapshot()
+
             val sanitizedFileName = currentTitle.replace("[^a-zA-Z0-9._-]".toRegex(), "_")
             createPdfLauncher.launch("$sanitizedFileName.pdf")
         }
@@ -324,10 +1364,27 @@ class PdfViewerActivity : AppCompatActivity() {
                 currentNote = it
                 currentNoteId = it.id
                 currentTitle = it.title
-                currentRawContent = sanitizeOcrText(it.content)
                 currentImagePath = sanitizeFilePath(it.imagePath)
 
                 withContext(Dispatchers.Main) {
+                    markupLoaded = false
+
+                    val restored =
+                        restoreMarkupFromPersistedContent(
+                            it.content
+                        )
+
+                    currentRawContent =
+                        sanitizeOcrText(
+                            stripPersistedMarkup(
+                                it.content
+                            )
+                        )
+
+                    if (!restored) {
+                        markupLoaded = false
+                    }
+
                     findViewById<TextView>(R.id.tvPdfTitle)?.text = currentTitle
                     renderContent(currentRawContent)
                 }
@@ -341,6 +1398,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val webViewContent = findViewById<WebView>(R.id.webViewContent)
         val scrollViewContent = findViewById<View>(R.id.scrollViewContent)
         val ivScannedImage = findViewById<ImageView>(R.id.ivScannedImage)
+        val cardScannedImage = findViewById<View>(R.id.cardScannedImage)
 
         val cleanedText = sanitizeOcrText(rawContent)
         val hasRichContent = cleanedText.contains("<table", ignoreCase = true) ||
@@ -352,8 +1410,10 @@ class PdfViewerActivity : AppCompatActivity() {
                 val bitmap = BitmapFactory.decodeFile(validPath)
                 ivScannedImage.setImageBitmap(bitmap)
                 ivScannedImage.visibility = View.VISIBLE
+                cardScannedImage?.visibility = View.VISIBLE
             } else {
                 ivScannedImage.visibility = View.GONE
+                cardScannedImage?.visibility = View.GONE
             }
         }
 
@@ -430,6 +1490,12 @@ class PdfViewerActivity : AppCompatActivity() {
 
             tvPdfContent?.text = HtmlCompat.fromHtml(htmlFormatted, HtmlCompat.FROM_HTML_MODE_COMPACT)
             tvPdfContent?.setTextColor("#202127".toColorInt())
+
+            applySavedHighlightsToDisplayedText()
+
+            findViewById<DrawingView>(R.id.drawingView)?.post {
+                loadMarkupData()
+            }
         }
     }
 
@@ -443,41 +1509,351 @@ class PdfViewerActivity : AppCompatActivity() {
         drawingView?.setTool(ToolMode.NONE)
 
         if (!isEditMode) {
-            val cleanText = cleanHtmlAndMarkdown(currentRawContent)
-            etInlineEditor?.setText(cleanText)
+            val editorContent = createEditorContent(currentRawContent)
+
+            etInlineEditor?.setText(editorContent)
             tvPdfContent?.visibility = View.GONE
             etInlineEditor?.visibility = View.VISIBLE
+            findViewById<TextView>(R.id.btnExpandText)?.visibility = View.GONE
+
+            etInlineEditor?.let {
+                attachEditorAutoFormatting(it)
+            }
 
             etInlineEditor?.requestFocus()
 
-            if (cleanText.isNotEmpty()) {
-                etInlineEditor?.setSelection(cleanText.length)
+            if (editorContent.isNotEmpty()) {
+                etInlineEditor?.setSelection(editorContent.length)
             }
 
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showSoftInput(etInlineEditor, InputMethodManager.SHOW_IMPLICIT)
+            val imm =
+                getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+
+            imm.showSoftInput(
+                etInlineEditor,
+                InputMethodManager.SHOW_IMPLICIT
+            )
 
             btnToolText?.setColorFilter("#16A34A".toColorInt())
             isEditMode = true
-            Toast.makeText(this, "Editing Mode Active", Toast.LENGTH_SHORT).show()
+
+            Toast.makeText(
+                this,
+                "Editing Mode Active",
+                Toast.LENGTH_SHORT
+            ).show()
+
         } else {
-            val updatedText = etInlineEditor?.text?.toString() ?: ""
-            currentRawContent = sanitizeOcrText(updatedText.replace("\n", "<br/>"))
+            val updatedText = etInlineEditor?.text
+
+            currentRawContent =
+                if (updatedText is Spanned) {
+                    HtmlCompat.toHtml(
+                        updatedText,
+                        HtmlCompat.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE
+                    )
+                } else {
+                    updatedText?.toString()?.replace("\n", "<br/>") ?: ""
+                }
 
             etInlineEditor?.visibility = View.GONE
             tvPdfContent?.visibility = View.VISIBLE
 
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.hideSoftInputFromWindow(etInlineEditor?.windowToken, 0)
+            val imm =
+                getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
-            btnToolText?.setColorFilter("#3B62C6".toColorInt())
+            imm.hideSoftInputFromWindow(
+                etInlineEditor?.windowToken,
+                0
+            )
+
+            btnToolText?.setColorFilter("#5A7FDB".toColorInt())
             isEditMode = false
-
-            drawingView?.clear()
+            isTextExpanded = false
 
             renderContent(currentRawContent)
             saveNoteToDatabase()
         }
+    }
+
+    private fun createEditorContent(rawContent: String): SpannableStringBuilder {
+        val source =
+            if (rawContent.contains("<", ignoreCase = true)) {
+                HtmlCompat.fromHtml(
+                    rawContent,
+                    HtmlCompat.FROM_HTML_MODE_COMPACT
+                )
+            } else {
+                rawContent
+            }
+
+        val editorText = SpannableStringBuilder(source)
+
+        for (range in highlightRanges) {
+            val safeStart = range.start.coerceIn(0, editorText.length)
+            val safeEnd = range.end.coerceIn(safeStart, editorText.length)
+
+            if (safeEnd > safeStart) {
+                editorText.setSpan(
+                    BackgroundColorSpan(range.color),
+                    safeStart,
+                    safeEnd,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        }
+
+        return editorText
+    }
+
+    private fun buildMarkupJson(): JSONObject {
+        val drawingView = findViewById<DrawingView>(R.id.drawingView)
+
+        val root = JSONObject()
+
+        val highlightsJson = JSONArray()
+        for (range in highlightRanges) {
+            highlightsJson.put(
+                JSONObject().apply {
+                    put("start", range.start)
+                    put("end", range.end)
+                    put("color", range.color)
+                }
+            )
+        }
+        root.put("highlights", highlightsJson)
+
+        val strokesJson = JSONArray()
+        for (stroke in drawingView?.getVectorStrokes().orEmpty()) {
+            val pointsJson = JSONArray()
+
+            for (point in stroke.points) {
+                pointsJson.put(
+                    JSONObject().apply {
+                        put("x", point.x)
+                        put("y", point.y)
+                    }
+                )
+            }
+
+            strokesJson.put(
+                JSONObject().apply {
+                    put("color", stroke.color)
+                    put("width", stroke.width)
+                    put("alpha", stroke.alpha)
+                    put("points", pointsJson)
+                }
+            )
+        }
+
+        root.put("strokes", strokesJson)
+
+        return root
+    }
+
+    private fun buildPersistedContent(): String {
+        val cleanContent = stripPersistedMarkup(currentRawContent)
+
+        val encoded = Base64.encodeToString(
+            buildMarkupJson().toString().toByteArray(Charsets.UTF_8),
+            Base64.NO_WRAP
+        )
+
+        return cleanContent +
+                "\n" +
+                markupMarkerPrefix +
+                encoded +
+                markupMarkerSuffix
+    }
+
+    private fun stripPersistedMarkup(content: String): String {
+        val start = content.indexOf(markupMarkerPrefix)
+
+        if (start == -1) {
+            return content
+        }
+
+        return content.substring(0, start).trimEnd()
+    }
+
+    private fun restoreMarkupFromPersistedContent(content: String): Boolean {
+        val start = content.indexOf(markupMarkerPrefix)
+
+        if (start == -1) {
+            return false
+        }
+
+        val encodedStart =
+            start + markupMarkerPrefix.length
+
+        val end =
+            content.indexOf(
+                markupMarkerSuffix,
+                encodedStart
+            )
+
+        if (end == -1) {
+            return false
+        }
+
+        return try {
+            val encoded =
+                content.substring(
+                    encodedStart,
+                    end
+                )
+
+            val decoded =
+                String(
+                    Base64.decode(
+                        encoded,
+                        Base64.DEFAULT
+                    ),
+                    Charsets.UTF_8
+                )
+
+            restoreMarkupFromJson(
+                JSONObject(decoded)
+            )
+
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun restoreMarkupFromJson(
+        root: JSONObject
+    ) {
+        highlightRanges.clear()
+
+        val highlightsJson =
+            root.optJSONArray("highlights")
+                ?: JSONArray()
+
+        for (index in 0 until highlightsJson.length()) {
+            val item =
+                highlightsJson.optJSONObject(index)
+                    ?: continue
+
+            highlightRanges.add(
+                HighlightRange(
+                    start = item.optInt("start"),
+                    end = item.optInt("end"),
+                    color = item.optInt("color")
+                )
+            )
+        }
+
+        val strokes =
+            mutableListOf<DrawingView.VectorStroke>()
+
+        val strokesJson =
+            root.optJSONArray("strokes")
+                ?: JSONArray()
+
+        for (index in 0 until strokesJson.length()) {
+            val strokeObject =
+                strokesJson.optJSONObject(index)
+                    ?: continue
+
+            val points =
+                mutableListOf<DrawingView.StrokePoint>()
+
+            val pointsJson =
+                strokeObject.optJSONArray("points")
+                    ?: JSONArray()
+
+            for (pointIndex in 0 until pointsJson.length()) {
+                val pointObject =
+                    pointsJson.optJSONObject(pointIndex)
+                        ?: continue
+
+                points.add(
+                    DrawingView.StrokePoint(
+                        x = pointObject.optDouble("x").toFloat(),
+                        y = pointObject.optDouble("y").toFloat()
+                    )
+                )
+            }
+
+            if (points.size >= 2) {
+                strokes.add(
+                    DrawingView.VectorStroke(
+                        points = points,
+                        color = strokeObject.optInt("color"),
+                        width = strokeObject.optDouble("width").toFloat(),
+                        alpha = strokeObject.optInt("alpha", 255)
+                    )
+                )
+            }
+        }
+
+        findViewById<DrawingView>(R.id.drawingView)
+            ?.setVectorStrokes(strokes)
+
+        markupLoaded = true
+    }
+
+    private fun markupFile(): File? {
+        val directory = File(filesDir, "annotations").apply {
+            mkdirs()
+        }
+
+        val path = currentImagePath?.takeIf { it.isNotBlank() }
+
+        val stableName =
+            if (path != null) {
+                "image_${path.hashCode().toUInt().toString(16)}_markup.json"
+            } else if (currentNoteId > 0) {
+                "note_${currentNoteId}_markup.json"
+            } else {
+                return null
+            }
+
+        return File(directory, stableName)
+    }
+
+    private fun saveMarkupData() {
+        val file = markupFile() ?: return
+
+        try {
+            file.writeText(
+                buildMarkupJson().toString()
+            )
+        } catch (_: Exception) {
+            // The database copy is the primary persistence path.
+        }
+    }
+
+    private fun loadMarkupData() {
+        if (markupLoaded) {
+            applySavedHighlightsToDisplayedText()
+            return
+        }
+
+        val file = markupFile()
+
+        if (file == null || !file.exists()) {
+            markupLoaded = true
+            applySavedHighlightsToDisplayedText()
+            return
+        }
+
+        try {
+            restoreMarkupFromJson(
+                JSONObject(file.readText())
+            )
+        } catch (_: Exception) {
+            markupLoaded = true
+        }
+
+        applySavedHighlightsToDisplayedText()
+    }
+
+    override fun onPause() {
+        saveMarkupData()
+        super.onPause()
     }
 
     private fun shareDocument() {
@@ -489,7 +1865,8 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun cleanHtmlAndMarkdown(text: String): String {
-        return text.replace(Regex("<br\\s*/?>"), "\n")
+        return stripPersistedMarkup(text)
+            .replace(Regex("<br\\s*/?>"), "\n")
             .replace(Regex("</p>"), "\n")
             .replace(Regex("</tr>"), "\n")
             .replace(Regex("</td>"), " | ")
@@ -500,35 +1877,184 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun showOptionsMenu(anchorView: View) {
-        val popup = PopupMenu(this, anchorView)
+        val dialog = BottomSheetDialog(this)
 
-        popup.menu.add(0, 1, 0, "Edit Note Text")
-        popup.menu.add(0, 2, 1, "Rename Title")
-        popup.menu.add(0, 3, 2, "Move Note to Folder")
-        popup.menu.add(0, 4, 3, "Delete Note")
-
-        popup.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                1 -> {
-                    toggleInlineEditMode()
-                    true
-                }
-                2 -> {
-                    showRenameDialog()
-                    true
-                }
-                3 -> {
-                    showMoveToFolderDialog()
-                    true
-                }
-                4 -> {
-                    showDeleteConfirmationDialog()
-                    true
-                }
-                else -> false
-            }
+        val sheet = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(14), dp(18), dp(24))
+            background = roundedBackground("#FFF9FF", 28f)
         }
-        popup.show()
+
+        val handle = View(this).apply {
+            background = roundedBackground("#D7D8DE", 99f)
+        }
+
+        sheet.addView(
+            handle,
+            LinearLayout.LayoutParams(dp(44), dp(5)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(16)
+            }
+        )
+
+        val title = TextView(this).apply {
+            text = "More options"
+            textSize = 20f
+            setTextColor("#171717".toColorInt())
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding(dp(4), 0, 0, dp(3))
+        }
+
+        val subtitle = TextView(this).apply {
+            text = "Manage and organize this note"
+            textSize = 11f
+            setTextColor("#7A7A84".toColorInt())
+            setPadding(dp(4), 0, 0, dp(14))
+        }
+
+        sheet.addView(title)
+        sheet.addView(subtitle)
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            background = roundedBackground("#FFFFFF", 22f, "#ECECF2")
+            elevation = dp(3).toFloat()
+        }
+
+        card.addView(
+            createMoreOption(
+                iconRes = R.drawable.ic_option_edit,
+                title = "Edit note text",
+                subtitle = "Modify extracted and structured content",
+                accent = "#5A7FDB"
+            ) {
+                dialog.dismiss()
+                toggleInlineEditMode()
+            }
+        )
+
+        card.addView(dividerView())
+
+        card.addView(
+            createMoreOption(
+                iconRes = R.drawable.ic_option_rename,
+                title = "Rename title",
+                subtitle = "Change the name of this note",
+                accent = "#5A7FDB"
+            ) {
+                dialog.dismiss()
+                showRenameDialog()
+            }
+        )
+
+        card.addView(dividerView())
+
+        card.addView(
+            createMoreOption(
+                iconRes = R.drawable.ic_option_move,
+                title = "Move to folder",
+                subtitle = "Organize this note inside a folder",
+                accent = "#5A7FDB"
+            ) {
+                dialog.dismiss()
+                showMoveToFolderDialog()
+            }
+        )
+
+        card.addView(dividerView())
+
+        card.addView(
+            createMoreOption(
+                iconRes = R.drawable.ic_option_delete,
+                title = "Delete note",
+                subtitle = "Permanently remove this note",
+                accent = "#D94A4A"
+            ) {
+                dialog.dismiss()
+                showDeleteConfirmationDialog()
+            }
+        )
+
+        sheet.addView(card)
+
+        dialog.setContentView(sheet)
+        dialog.show()
+    }
+
+    private fun createMoreOption(
+        iconRes: Int,
+        title: String,
+        subtitle: String,
+        accent: String,
+        onClick: () -> Unit
+    ): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(11), dp(10), dp(11))
+            background = roundedBackground("#FFFFFF", 16f)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onClick() }
+        }
+
+        val iconWrap = LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            background = roundedBackground(
+                if (accent == "#D94A4A") "#FFF0F0" else "#EEF3FF",
+                16f
+            )
+        }
+
+        val icon = ImageView(this).apply {
+            setImageResource(iconRes)
+            setColorFilter(accent.toColorInt())
+            contentDescription = title
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+        }
+
+        iconWrap.addView(
+            icon,
+            LinearLayout.LayoutParams(dp(48), dp(48))
+        )
+
+        val textWrap = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
+
+        val titleView = TextView(this).apply {
+            text = title
+            textSize = 14f
+            setTextColor(
+                if (accent == "#D94A4A") "#C53E3E".toColorInt()
+                else "#171717".toColorInt()
+            )
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+
+        val subtitleView = TextView(this).apply {
+            text = subtitle
+            textSize = 10.5f
+            setTextColor("#7A7A84".toColorInt())
+            setPadding(0, dp(2), 0, 0)
+        }
+
+        textWrap.addView(titleView)
+        textWrap.addView(subtitleView)
+
+        row.addView(iconWrap)
+        row.addView(
+            textWrap,
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
+        return row
     }
 
     private fun showMoveToFolderDialog() {
@@ -569,7 +2095,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 val newNote = Note(
                     folderId = folderId,
                     title = currentTitle,
-                    content = currentRawContent,
+                    content = buildPersistedContent(),
                     imagePath = currentImagePath ?: "",
                     dateEdited = "Updated"
                 )
@@ -622,6 +2148,7 @@ class PdfViewerActivity : AppCompatActivity() {
                         if (!it.imagePath.isNullOrEmpty()) {
                             db.deleteScanHistoryByPath(it.imagePath)
                         }
+                        markupFile()?.delete()
                     }
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@PdfViewerActivity, "Note deleted", Toast.LENGTH_SHORT).show()
@@ -651,7 +2178,7 @@ class PdfViewerActivity : AppCompatActivity() {
             if (existingNote != null) {
                 val updatedNote = existingNote.copy(
                     title = currentTitle,
-                    content = currentRawContent,
+                    content = buildPersistedContent(),
                     imagePath = path ?: existingNote.imagePath
                 )
                 db.updateNote(updatedNote)
@@ -667,7 +2194,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 // Insert new note
                 val newNote = Note(
                     title = currentTitle,
-                    content = currentRawContent,
+                    content = buildPersistedContent(),
                     imagePath = path ?: "",
                     dateEdited = formattedDate
                 )
@@ -693,109 +2220,333 @@ class PdfViewerActivity : AppCompatActivity() {
             }
 
             withContext(Dispatchers.Main) {
+                saveMarkupData()
                 Toast.makeText(this@PdfViewerActivity, "Note saved!", Toast.LENGTH_SHORT).show()
             }
         }
     }
+    private fun buildPdfMarkupSnapshot(): PdfMarkupSnapshot? {
+        val textView = findViewById<TextView>(R.id.tvPdfContent) ?: return null
+        val drawingView = findViewById<DrawingView>(R.id.drawingView) ?: return null
+
+        val width = textView.width.coerceAtLeast(1)
+        val height = maxOf(
+            textView.height,
+            drawingView.height,
+            1
+        )
+
+        return PdfMarkupSnapshot(
+            text = buildReviewerStyledText(
+                textView.text.toString()
+            ),
+            logicalWidth = width,
+            logicalHeight = height,
+            strokes = drawingView.getVectorStrokes()
+        )
+    }
+
     private fun writePdfToUri(uri: Uri) {
+        val snapshot = pendingPdfSnapshot
+
+        if (snapshot == null) {
+            Toast.makeText(
+                this,
+                "Unable to prepare PDF layout.",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val pdfDocument = PdfDocument()
+
                 val pageWidth = 595
                 val pageHeight = 842
-                val margin = 40f
-                val printableWidth = (pageWidth - (margin * 2)).toInt()
+                val outerMargin = 20f
+                val columnGap = 14f
+                val contentWidth = pageWidth - (outerMargin * 2)
+                val columnWidth = (contentWidth - columnGap) / 2f
 
-                var pageNumber = 1
-                var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
-                var page = pdfDocument.startPage(pageInfo)
-                var canvas = page.canvas
+                val titleTypeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_semibold
+                    )
+
+                val bodyTypeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
 
                 val titlePaint = TextPaint().apply {
-                    textSize = 18f
+                    textSize = 10.5f
                     color = Color.BLACK
-                    isFakeBoldText = true
+                    typeface = titleTypeface
                     isAntiAlias = true
                 }
 
-                val bodyPaint = TextPaint().apply {
-                    textSize = 12f
+                // The logical body layout uses the same width as the phone note.
+                // We then SCALE that exact layout into two PDF columns.
+                // This preserves the exact pen/highlighter-to-text relationship.
+                val logicalBodyPaint = TextPaint().apply {
+                    textSize = 11.5f * resources.displayMetrics.scaledDensity
                     color = Color.BLACK
+                    typeface = bodyTypeface
                     isAntiAlias = true
                 }
 
-                var currentY = margin
+                val logicalLayout =
+                    StaticLayout.Builder.obtain(
+                        snapshot.text,
+                        0,
+                        snapshot.text.length,
+                        logicalBodyPaint,
+                        snapshot.logicalWidth
+                    )
+                        .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                        .setLineSpacing(
+                            2f * resources.displayMetrics.density,
+                            1f
+                        )
+                        .setIncludePad(false)
+                        .build()
 
-                // 1. Draw Title
-                val titleLayout = createStaticLayout(currentTitle, titlePaint, printableWidth)
-                canvas.withTranslation(margin, currentY) {
-                    titleLayout.draw(canvas)
-                }
+                val logicalHeight =
+                    maxOf(
+                        logicalLayout.height,
+                        snapshot.logicalHeight
+                    ).toFloat()
 
-                currentY += titleLayout.height + 16f
+                val scale =
+                    columnWidth /
+                            snapshot.logicalWidth.coerceAtLeast(1).toFloat()
 
-                // 2. Draw Scanned Photo if available
-                val imgPath = currentImagePath
-                if (!imgPath.isNullOrEmpty()) {
-                    val imgFile = File(imgPath)
-                    if (imgFile.exists()) {
-                        val bitmap = BitmapFactory.decodeFile(imgFile.absolutePath)
-                        if (bitmap != null) {
-                            val maxImgHeight = 220f
-                            val scale = (printableWidth.toFloat() / bitmap.width).coerceAtMost(maxImgHeight / bitmap.height)
-                            val scaledWidth = (bitmap.width * scale).toInt()
-                            val scaledHeight = (bitmap.height * scale).toInt()
+                var sourceY = 0f
+                var pageNumber = 1
+                var firstPage = true
 
-                            val scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
-                            canvas.drawBitmap(scaledBitmap, margin, currentY, null)
-                            currentY += scaledHeight + 16f
+                while (sourceY < logicalHeight || firstPage) {
+                    val pageInfo =
+                        PdfDocument.PageInfo.Builder(
+                            pageWidth,
+                            pageHeight,
+                            pageNumber
+                        ).create()
+
+                    val page =
+                        pdfDocument.startPage(pageInfo)
+
+                    val canvas = page.canvas
+                    var bodyTop = outerMargin
+
+                    if (firstPage) {
+                        val titleLayout =
+                            createStaticLayout(
+                                currentTitle,
+                                titlePaint,
+                                contentWidth.toInt()
+                            )
+
+                        canvas.withTranslation(
+                            outerMargin,
+                            bodyTop
+                        ) {
+                            titleLayout.draw(canvas)
                         }
-                    }
-                }
 
-                // 3. Draw Extracted Text
-                val cleanContent = cleanHtmlAndMarkdown(currentRawContent)
-                val lines = cleanContent.lines()
-
-                for (line in lines) {
-                    val lineLayout = createStaticLayout(line, bodyPaint, printableWidth)
-
-                    if (currentY + lineLayout.height > pageHeight - margin) {
-                        pdfDocument.finishPage(page)
-                        pageNumber++
-                        pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
-                        page = pdfDocument.startPage(pageInfo)
-                        canvas = page.canvas
-                        currentY = margin
+                        bodyTop += titleLayout.height + 10f
                     }
 
-                    canvas.withTranslation(margin, currentY) {
-                        lineLayout.draw(canvas)
+                    val availablePdfHeight =
+                        pageHeight - outerMargin - bodyTop
+
+                    val logicalBandHeight =
+                        availablePdfHeight / scale
+
+                    for (column in 0 until 2) {
+                        if (sourceY >= logicalHeight) break
+
+                        val targetBottom =
+                            sourceY +
+                                    logicalBandHeight
+
+                        val lastCandidateLine =
+                            logicalLayout.getLineForVertical(
+                                targetBottom
+                                    .toInt()
+                                    .coerceAtMost(
+                                        logicalLayout.height
+                                            .coerceAtLeast(1) - 1
+                                    )
+                            )
+
+                        val bandEnd =
+                            if (
+                                lastCandidateLine >= 0 &&
+                                lastCandidateLine <
+                                logicalLayout.lineCount
+                            ) {
+                                logicalLayout
+                                    .getLineBottom(
+                                        lastCandidateLine
+                                    )
+                                    .toFloat()
+                                    .coerceAtMost(
+                                        logicalHeight
+                                    )
+                            } else {
+                                minOf(
+                                    targetBottom,
+                                    logicalHeight
+                                )
+                            }
+
+                        val safeBandEnd =
+                            if (bandEnd <= sourceY) {
+                                minOf(
+                                    sourceY +
+                                            logicalBandHeight,
+                                    logicalHeight
+                                )
+                            } else {
+                                bandEnd
+                            }
+
+                        val x =
+                            outerMargin +
+                                    column *
+                                    (columnWidth + columnGap)
+
+                        val renderedHeight =
+                            (safeBandEnd -
+                                    sourceY) * scale
+
+                        canvas.save()
+
+                        canvas.clipRect(
+                            x,
+                            bodyTop,
+                            x + columnWidth,
+                            bodyTop +
+                                    renderedHeight
+                        )
+
+                        canvas.translate(
+                            x,
+                            bodyTop
+                        )
+
+                        canvas.scale(
+                            scale,
+                            scale
+                        )
+
+                        canvas.translate(
+                            0f,
+                            -sourceY
+                        )
+
+                        logicalLayout.draw(
+                            canvas
+                        )
+
+                        drawSnapshotStrokes(
+                            canvas = canvas,
+                            snapshot = snapshot
+                        )
+
+                        canvas.restore()
+
+                        sourceY =
+                            safeBandEnd
                     }
 
-                    currentY += lineLayout.height + 4f
+                    pdfDocument.finishPage(page)
+
+                    firstPage = false
+                    pageNumber++
+
+                    if (sourceY >= logicalHeight) break
                 }
 
-                pdfDocument.finishPage(page)
+                contentResolver
+                    .openOutputStream(uri)
+                    ?.use { outputStream ->
+                        pdfDocument.writeTo(outputStream)
+                    }
 
-                contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    pdfDocument.writeTo(outputStream)
-                }
                 pdfDocument.close()
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@PdfViewerActivity, "PDF saved successfully!", Toast.LENGTH_SHORT).show()
+                    pendingPdfSnapshot = null
+
+                    Toast.makeText(
+                        this@PdfViewerActivity,
+                        "PDF saved successfully!",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
+
             } catch (e: Exception) {
                 e.printStackTrace()
+
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@PdfViewerActivity, "Failed to save PDF.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@PdfViewerActivity,
+                        "Failed to save PDF.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
 
-    private fun createStaticLayout(text: String, paint: TextPaint, width: Int): StaticLayout {
+    private fun drawSnapshotStrokes(
+        canvas: Canvas,
+        snapshot: PdfMarkupSnapshot
+    ) {
+        val logicalWidth =
+            snapshot.logicalWidth.coerceAtLeast(1).toFloat()
+
+        val logicalHeight =
+            snapshot.logicalHeight.coerceAtLeast(1).toFloat()
+
+        for (stroke in snapshot.strokes) {
+            if (stroke.points.size < 2) continue
+
+            val paint = Paint().apply {
+                isAntiAlias = true
+                style = Paint.Style.STROKE
+                strokeJoin = Paint.Join.ROUND
+                strokeCap = Paint.Cap.ROUND
+                color = stroke.color
+                alpha = stroke.alpha
+                strokeWidth = stroke.width
+            }
+
+            val path = android.graphics.Path()
+            val first = stroke.points.first()
+
+            path.moveTo(
+                first.x * logicalWidth,
+                first.y * logicalHeight
+            )
+
+            for (point in stroke.points.drop(1)) {
+                path.lineTo(
+                    point.x * logicalWidth,
+                    point.y * logicalHeight
+                )
+            }
+
+            canvas.drawPath(path, paint)
+        }
+    }
+
+    private fun createStaticLayout(text: CharSequence, paint: TextPaint, width: Int): StaticLayout {
         return StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .build()

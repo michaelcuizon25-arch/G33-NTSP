@@ -2,14 +2,16 @@
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/screen_background">
+    android:background="@color/nts_background">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -18,18 +20,16 @@
             android:paddingStart="28dp"
             android:paddingTop="30dp"
             android:paddingEnd="28dp"
-            android:paddingBottom="110dp">
+            android:paddingBottom="120dp">
 
-            <!-- NOTES TITLE -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/apple_garamond_italic"
                 android:text="Notes"
-                android:textColor="@color/text_primary"
+                android:textColor="@color/nts_text"
                 android:textSize="32sp" />
 
-            <!-- OLD TITLE IDS KEPT HIDDEN FOR COMPATIBILITY -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -52,18 +52,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="SNAP" />
-
             </LinearLayout>
 
-            <!-- SEARCH BAR -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="26dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="15dp"
+                app:cardBackgroundColor="@color/nts_surface"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
+                app:strokeColor="@color/nts_outline"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
@@ -71,41 +69,39 @@
                     android:layout_height="match_parent"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp">
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp">
 
                     <ImageView
                         android:layout_width="20dp"
                         android:layout_height="20dp"
                         android:contentDescription="Search"
                         android:src="@android:drawable/ic_menu_search"
-                        app:tint="@color/text_secondary" />
+                        app:tint="@color/nts_text_secondary" />
 
                     <EditText
                         android:id="@+id/etSearchNotes"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="9dp"
                         android:layout_weight="1"
                         android:background="@null"
                         android:fontFamily="@font/poppins_regular"
-                        android:hint="Search Notes"
+                        android:hint="Search notes or folders"
                         android:imeOptions="actionSearch"
                         android:inputType="text"
                         android:padding="0dp"
-                        android:textColor="@color/text_primary"
-                        android:textColorHint="@color/text_secondary"
-                        android:textSize="13sp" />
+                        android:textColor="@color/nts_text"
+                        android:textColorHint="@color/nts_text_secondary"
+                        android:textSize="12sp" />
 
                 </LinearLayout>
-
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- FILTERS -->
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="12dp"
                 android:scrollbars="none">
 
                 <LinearLayout
@@ -116,53 +112,51 @@
                     <TextView
                         android:id="@+id/chipAll"
                         android:layout_width="wrap_content"
-                        android:layout_height="34dp"
+                        android:layout_height="32dp"
                         android:background="@drawable/bg_filter_active"
-                        android:fontFamily="@font/poppins_medium"
+                        android:fontFamily="@font/poppins_regular"
                         android:gravity="center"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
+                        android:paddingStart="17dp"
+                        android:paddingEnd="17dp"
                         android:text="All"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12sp" />
+                        android:textColor="@color/nts_text"
+                        android:textSize="11sp" />
 
                     <TextView
                         android:id="@+id/chipNotes"
                         android:layout_width="wrap_content"
-                        android:layout_height="34dp"
-                        android:layout_marginStart="8dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="7dp"
                         android:background="@drawable/bg_chip_unselected"
-                        android:fontFamily="@font/poppins_medium"
+                        android:fontFamily="@font/poppins_regular"
                         android:gravity="center"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
+                        android:paddingStart="17dp"
+                        android:paddingEnd="17dp"
                         android:text="Notes"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="11sp" />
 
                     <TextView
                         android:id="@+id/chipFolders"
                         android:layout_width="wrap_content"
-                        android:layout_height="34dp"
-                        android:layout_marginStart="8dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="7dp"
                         android:background="@drawable/bg_chip_unselected"
-                        android:fontFamily="@font/poppins_medium"
+                        android:fontFamily="@font/poppins_regular"
                         android:gravity="center"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
+                        android:paddingStart="17dp"
+                        android:paddingEnd="17dp"
                         android:text="Folders"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="11sp" />
 
                 </LinearLayout>
-
             </HorizontalScrollView>
 
-            <!-- SORT + VIEW -->
             <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_marginTop="10dp">
+                android:layout_height="38dp"
+                android:layout_marginTop="8dp">
 
                 <TextView
                     android:id="@+id/tvResultCount"
@@ -171,8 +165,8 @@
                     android:layout_alignParentStart="true"
                     android:layout_centerVertical="true"
                     android:fontFamily="@font/poppins_regular"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp"
+                    android:textColor="@color/nts_text_secondary"
+                    android:textSize="10.5sp"
                     android:visibility="gone" />
 
                 <LinearLayout
@@ -184,121 +178,111 @@
 
                     <ImageView
                         android:id="@+id/btnSort"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Sort"
                         android:padding="6dp"
                         android:src="@android:drawable/ic_menu_sort_by_size"
-                        app:tint="@color/text_secondary" />
+                        app:tint="@color/nts_text_secondary" />
 
                     <ImageView
                         android:id="@+id/btnViewMode"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_marginStart="6dp"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:layout_marginStart="4dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="View mode"
                         android:padding="6dp"
                         android:src="@android:drawable/ic_menu_agenda"
-                        app:tint="@color/text_secondary" />
-
+                        app:tint="@color/nts_text_secondary" />
                 </LinearLayout>
-
             </RelativeLayout>
 
-            <!-- EMPTY STATE -->
             <LinearLayout
                 android:id="@+id/emptyStateContainer"
                 android:layout_width="match_parent"
-                android:layout_height="220dp"
+                android:layout_height="210dp"
                 android:gravity="center"
                 android:orientation="vertical"
                 android:visibility="gone">
 
                 <ImageView
-                    android:layout_width="76dp"
-                    android:layout_height="76dp"
-                    android:alpha="0.55"
+                    android:layout_width="78dp"
+                    android:layout_height="78dp"
                     android:contentDescription="Empty Notes"
-                    android:src="@drawable/ic_folder"
-                    app:tint="@color/primary" />
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_folder_custom" />
 
                 <TextView
                     android:id="@+id/tvNotFound"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:fontFamily="@font/poppins_semibold"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="@font/poppins_regular"
                     android:text="Feels empty here."
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp" />
+                    android:textColor="@color/nts_text"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="3dp"
                     android:fontFamily="@font/poppins_regular"
-                    android:text="+ Add One?"
-                    android:textColor="@color/accent"
-                    android:textSize="12sp" />
-
+                    android:text="+ Add one?"
+                    android:textColor="@color/nts_blue"
+                    android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- FOLDERS LABEL -->
             <TextView
                 android:id="@+id/tvFoldersLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="@font/poppins_semibold"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/poppins_regular"
                 android:text="Folders"
-                android:textColor="@color/text_primary"
-                android:textSize="15sp" />
+                android:textColor="@color/nts_text"
+                android:textSize="14sp" />
 
-            <!-- FOLDERS LIST -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvFolders"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:nestedScrollingEnabled="false" />
 
-            <!-- NOTES LABEL -->
             <TextView
                 android:id="@+id/tvNotesLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:fontFamily="@font/poppins_semibold"
+                android:layout_marginTop="18dp"
+                android:fontFamily="@font/poppins_regular"
                 android:text="Notes"
-                android:textColor="@color/text_primary"
-                android:textSize="15sp" />
+                android:textColor="@color/nts_text"
+                android:textSize="14sp" />
 
-            <!-- NOTES LIST -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvNotes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:nestedScrollingEnabled="false" />
 
         </LinearLayout>
-
     </androidx.core.widget.NestedScrollView>
 
-    <!-- ADD BUTTON -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddNotes"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="24dp"
-        android:layout_marginBottom="100dp"
+        android:layout_marginBottom="82dp"
         android:contentDescription="Add Notes"
         android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="@color/primary"
-        app:elevation="6dp"
-        app:tint="@color/text_main" />
+        app:backgroundTint="@color/nts_yellow"
+        app:borderWidth="1dp"
+        app:elevation="4dp"
+        app:tint="@color/nts_text" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

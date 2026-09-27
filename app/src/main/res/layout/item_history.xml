@@ -1,97 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/historyItemRoot"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    app:cardBackgroundColor="#FFFFFF"
-    app:cardCornerRadius="24dp"
-    app:cardElevation="0dp"
-    app:strokeColor="#ECECF2"
-    app:strokeWidth="1dp">
+    android:layout_height="68dp"
+    android:background="@android:color/transparent"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="112dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="14dp">
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/historyThumbCard"
+        android:layout_width="50dp"
+        android:layout_height="38dp"
+        android:layout_marginStart="1dp"
+        app:cardBackgroundColor="#FFFFFF"
+        app:cardCornerRadius="1dp"
+        app:cardElevation="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:strokeColor="#AFC4F6"
+        app:strokeWidth="1dp">
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="78dp"
-            android:layout_height="78dp"
-            app:cardBackgroundColor="#F3F5FC"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="0dp"
-            app:strokeColor="#E1E5F2"
-            app:strokeWidth="1dp">
+        <ImageView
+            android:id="@+id/ivHistoryThumbnail"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="Scan thumbnail"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_note_custom" />
 
-            <ImageView
-                android:id="@+id/ivHistoryThumbnail"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:contentDescription="Scan thumbnail"
-                android:scaleType="centerCrop"
-                android:src="@drawable/ic_history" />
+    </com.google.android.material.card.MaterialCardView>
 
-        </com.google.android.material.card.MaterialCardView>
+    <TextView
+        android:id="@+id/tvHistoryTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/poppins_regular"
+        android:maxLines="1"
+        android:textColor="#111111"
+        android:textSize="12.5sp"
+        app:layout_constraintEnd_toStartOf="@id/tvHistoryDate"
+        app:layout_constraintStart_toEndOf="@id/historyThumbCard"
+        app:layout_constraintTop_toTopOf="@id/historyThumbCard"
+        tools:text="Scan 5" />
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+    <ImageView
+        android:id="@+id/ivLocalStatus"
+        android:layout_width="13dp"
+        android:layout_height="13dp"
+        android:layout_marginStart="9dp"
+        android:layout_marginTop="1dp"
+        android:src="@android:drawable/ic_menu_save"
+        app:layout_constraintStart_toEndOf="@id/historyThumbCard"
+        app:layout_constraintTop_toBottomOf="@id/tvHistoryTitle"
+        app:tint="#A5A5A5" />
 
-            <TextView
-                android:id="@+id/tvScanTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/poppins_semibold"
-                android:maxLines="1"
-                android:text="Scanned Note"
-                android:textColor="#171717"
-                android:textSize="14sp" />
+    <TextView
+        android:id="@+id/tvHistoryStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="3dp"
+        android:fontFamily="@font/poppins_regular"
+        android:text="Synced to Local"
+        android:textColor="#A6A6A6"
+        android:textSize="7.5sp"
+        app:layout_constraintBottom_toBottomOf="@id/ivLocalStatus"
+        app:layout_constraintStart_toEndOf="@id/ivLocalStatus"
+        app:layout_constraintTop_toTopOf="@id/ivLocalStatus" />
 
-            <TextView
-                android:id="@+id/tvScanDate"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:fontFamily="@font/poppins_regular"
-                android:text="Sep 24, 2026 • 09:30 PM"
-                android:textColor="#85858E"
-                android:textSize="10sp" />
+    <TextView
+        android:id="@+id/tvHistoryDate"
+        android:layout_width="72dp"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:fontFamily="@font/poppins_regular"
+        android:maxLines="1"
+        android:textColor="#A7A7A7"
+        android:textSize="7.5sp"
+        app:layout_constraintBottom_toBottomOf="@id/historyThumbCard"
+        app:layout_constraintEnd_toStartOf="@id/btnHistoryMore"
+        app:layout_constraintTop_toTopOf="@id/historyThumbCard"
+        tools:text="March 17, 2026" />
 
-            <TextView
-                android:id="@+id/tvScanSyncStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:background="@drawable/bg_history_status"
-                android:fontFamily="@font/poppins_medium"
-                android:paddingStart="9dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="9dp"
-                android:paddingBottom="4dp"
-                android:text="Saved locally"
-                android:textColor="#5A7FDB"
-                android:textSize="9sp" />
+    <ImageButton
+        android:id="@+id/btnHistoryMore"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="History options"
+        android:padding="7dp"
+        android:src="@drawable/ic_tool_more"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="#171717" />
 
-        </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/btnHistoryMore"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="History options"
-            android:padding="10dp"
-            android:src="@drawable/ic_tool_more"
-            app:tint="#8D8D96" />
-
-    </LinearLayout>
-
-</com.google.android.material.card.MaterialCardView>
+</androidx.constraintlayout.widget.ConstraintLayout>

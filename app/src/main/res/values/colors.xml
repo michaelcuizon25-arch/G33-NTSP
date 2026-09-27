@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#FFFFFF</color>
+
+    <!-- ORIGINAL / LEGACY COLORS USED BY EXISTING SCREENS -->
+    <color name="primary">#AFC4F6</color>
     <color name="secondary">#FFF79A</color>
     <color name="accent">#5A7FDB</color>
-    <color name="background">#FFFFFF</color>
-    <color name="text_main">#111111</color>
-    <color name="text_sub">#666666</color>
-    <color name="splash_bg">#DCE6FF</color>
 
-    <!-- Folder Swatches -->
+    <color name="background">#F7F8FC</color>
+    <color name="text_main">#171717</color>
+    <color name="text_sub">#74747C</color>
+
+    <color name="splash_bg">#DCE6FF</color>
+    <color name="screen_background">#EEF3FF</color>
+
+    <!-- Folder swatches -->
     <color name="color_blue">#AFC4F6</color>
     <color name="color_green">#C7EAC2</color>
     <color name="color_yellow">#FFF79A</color>
@@ -19,19 +24,36 @@
     <color name="color_gray">#E3E3E3</color>
 
     <color name="card_bg">#FFFFFF</color>
+    <color name="search_bg">#F8FAFF</color>
 
-
-    <color name="search_bg">#F0F0F0</color>
-    <color name="nav_wave_color">#2563EB</color>
-    <color name="nav_item_color">#FFFFFF</color>
-    <color name="fab_bg_color">#FFFFFF</color>
-    <color name="fab_icon_tint">#2563EB</color>
-    <color name="screen_background">#FFF9FF</color>
-
+    <color name="nav_wave_color">#6F8FEA</color>
+    <color name="nav_item_color">#171717</color>
+    <color name="fab_bg_color">#FFF79A</color>
+    <color name="fab_icon_tint">#171717</color>
 
     <color name="card_background">#FFFFFF</color>
-    <color name="card_stroke">#EFEFF3</color>
+    <color name="card_stroke">#111111</color>
     <color name="text_primary">#171717</color>
     <color name="text_secondary">#74747C</color>
+
+    <!-- NEW NOTE2SNAP SOFT COLOR SYSTEM -->
+    <color name="nts_background">#EEF3FF</color>
+
+    <color name="nts_surface">#FFFFFF</color>
+    <color name="nts_surface_blue">#F6F8FF</color>
+    <color name="nts_surface_blue_soft">#F8FAFF</color>
+    <color name="nts_surface_cream">#FFFDF5</color>
+    <color name="nts_surface_mint">#F2FAF6</color>
+
+    <color name="nts_blue">#6F8FEA</color>
+    <color name="nts_blue_soft">#DDE7FF</color>
+    <color name="nts_blue_line">#D7E2F6</color>
+
+    <color name="nts_yellow">#FFF79A</color>
+    <color name="nts_green">#78B690</color>
+
+    <color name="nts_text">#171717</color>
+    <color name="nts_text_secondary">#74747C</color>
+    <color name="nts_outline">#111111</color>
 
 </resources>

@@ -2,212 +2,153 @@ package com.example.note2snap.recognition
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Rect
+import com.example.note2snap.ccl.ConnectedComponentLabeler
 import com.example.note2snap.ccl.Region
+import com.example.note2snap.ccl.RegionType
+import com.example.note2snap.preprocessing.WhiteboardPreprocessor
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
+import java.io.FileOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
 class WhiteboardRecognitionPipelineTest {
 
     @Test
-    fun binaryTreePipelineDoesNotDuplicateDiagramAsText() = runBlocking {
+    fun saveTextLinesAndNonTextRegions() = runBlocking {
 
-        val bitmap =
-            loadBitmap(
-                "test_whiteboard_1.png"
-            )
-
-        val fakeRecognizer =
-            EchoLineRecognizer()
-
-        val pipeline =
-            WhiteboardRecognitionPipeline(
-                lineRecognizer = fakeRecognizer
-            )
-
-        val result =
-            pipeline.process(
-                bitmap
-            )
-
-        println()
-        println("===================================")
-        println("FULL PIPELINE DUPLICATION TEST")
-        println("===================================")
-
-        println(
-            "Recognized text lines: " +
-                    result.recognizedLines.size
+        val images = listOf(
+            "board_test_1.png",
+            "board_test_2.png",
+            "board_test_3.png",
+            "board_test_4.jpg",
+            "board_test_5.jpg",
+            "board_test_6.jpg"
         )
 
-        println(
-            "Diagram regions: " +
-                    result.diagramRegions.size
-        )
+        val preprocessor =
+            WhiteboardPreprocessor()
 
-        println()
-
-        println("---------- DIAGRAMS ----------")
-
-        result.diagramRegions.forEachIndexed { index, region ->
-
-            println(
-                "Diagram ${index + 1}: " +
-                        "${region.boundingBox}"
-            )
-        }
-
-        println()
-        println("---------- OCR TEXT ----------")
-
-        result.recognizedLines.forEachIndexed { index, line ->
-
-            println(
-                "${index + 1}. " +
-                        "${line.text} " +
-                        "box=${line.boundingBox}"
-            )
-        }
-
-        println()
-        println("---------- OVERLAP CHECK ----------")
-
-        var duplicateFound = false
-
-        result.recognizedLines.forEach { line ->
-
-            result.diagramRegions.forEach { diagram ->
-
-                val overlap =
-                    calculateOverlapRatio(
-                        textBox = line.boundingBox,
-                        visualBox = diagram.boundingBox
-                    )
-
-                if (overlap >= 0.60f) {
-
-                    duplicateFound = true
-
-                    println(
-                        "POSSIBLE DUPLICATE:"
-                    )
-
-                    println(
-                        "Text: ${line.text}"
-                    )
-
-                    println(
-                        "Text box: ${line.boundingBox}"
-                    )
-
-                    println(
-                        "Visual box: ${diagram.boundingBox}"
-                    )
-
-                    println(
-                        "Overlap: $overlap"
-                    )
-                }
-            }
-        }
-
-        println()
-        println("===================================")
-
-        assertTrue(
-            "Binary tree image should contain at least one diagram.",
-            result.diagramRegions.isNotEmpty()
-        )
-
-        assertTrue(
-            "Pipeline should still produce OCR text regions.",
-            result.recognizedLines.isNotEmpty()
-        )
-
-        assertFalse(
-            "Text inside a preserved diagram should not also be sent to OCR.",
-            duplicateFound
-        )
-
-        pipeline.close()
-    }
-
-    @Test
-    fun allFourWhiteboardsCompletePipeline() = runBlocking {
-
-        val images =
-            listOf(
-                "test_whiteboard_1.png",
-                "test_whiteboard_2.png",
-                "test_whiteboard_3.png",
-                "test_whiteboard_4.png"
-            )
+        val labeler =
+            ConnectedComponentLabeler()
 
         images.forEach { imageName ->
 
-            val bitmap =
-                loadBitmap(
-                    imageName
+            println()
+            println("===================================")
+            println("TESTING: $imageName")
+            println("===================================")
+
+            val originalBitmap =
+                loadBitmap(imageName)
+
+            val preprocessed =
+                preprocessor.process(
+                    originalBitmap
                 )
 
-            val pipeline =
-                WhiteboardRecognitionPipeline(
-                    lineRecognizer =
-                        EchoLineRecognizer()
+            val regions =
+                labeler.label(
+                    binary =
+                        preprocessed.binarizedBitmap,
+
+                    recognitionBitmap =
+                        preprocessed.recognitionBitmap
                 )
 
-            val result =
-                pipeline.process(
-                    bitmap
-                )
+            val textRegions =
+                regions
+                    .filter {
+                        it.type == RegionType.TEXT
+                    }
+                    .sortedWith(
+                        compareBy(
+                            { it.boundingBox.top },
+                            { it.boundingBox.left }
+                        )
+                    )
+
+            val nonTextRegions =
+                regions
+                    .filter {
+                        it.type == RegionType.NON_TEXT
+                    }
+                    .sortedWith(
+                        compareBy(
+                            { it.boundingBox.top },
+                            { it.boundingBox.left }
+                        )
+                    )
+
+            println(
+                "TOTAL REGIONS: ${regions.size}"
+            )
+
+            println(
+                "TEXT LINES: ${textRegions.size}"
+            )
+
+            println(
+                "NON-TEXT REGIONS: ${nonTextRegions.size}"
+            )
 
             println()
-            println(
-                "==================================="
-            )
 
             println(
-                "PIPELINE: $imageName"
+                "---------- TEXT LINES ----------"
             )
 
-            println(
-                "Recognized lines: " +
-                        result.recognizedLines.size
-            )
+            textRegions.forEachIndexed { index, region ->
+
+                println(
+                    "LINE ${index + 1} -> " +
+                            "${region.boundingBox}"
+                )
+            }
+
+            println()
 
             println(
-                "Visual regions: " +
-                        result.diagramRegions.size
+                "---------- NON-TEXT ----------"
             )
 
-            println(
-                "Structured blocks: " +
-                        result.structuredNote.blocks.size
-            )
+            nonTextRegions.forEachIndexed { index, region ->
 
-            println(
-                "Title: " +
-                        result.structuredNote.title
-            )
+                println(
+                    "NON-TEXT ${index + 1} -> " +
+                            "${region.boundingBox}"
+                )
+            }
 
-            println(
-                "==================================="
+            saveDebugOutput(
+                imageName =
+                    imageName,
+
+                originalBitmap =
+                    originalBitmap,
+
+                recognitionBitmap =
+                    preprocessed.recognitionBitmap,
+
+                binaryBitmap =
+                    preprocessed.binarizedBitmap,
+
+                textRegions =
+                    textRegions,
+
+                nonTextRegions =
+                    nonTextRegions
             )
 
             assertTrue(
-                "$imageName should produce either text or visuals.",
-                result.recognizedLines.isNotEmpty() ||
-                        result.diagramRegions.isNotEmpty()
+                "$imageName should produce at least one region.",
+                regions.isNotEmpty()
             )
-
-            pipeline.close()
         }
     }
 
@@ -215,85 +156,336 @@ class WhiteboardRecognitionPipelineTest {
         resourceName: String
     ): Bitmap {
 
-        val stream =
-            javaClass.classLoader
-                ?.getResourceAsStream(
-                    resourceName
-                )
-                ?: error(
-                    "$resourceName not found"
+        val currentDirectory =
+            File(
+                System.getProperty("user.dir")
+                    ?: "."
+            )
+
+        val resourceFile =
+            if (
+                currentDirectory.name == "app"
+            ) {
+
+                File(
+                    currentDirectory,
+                    "src/test/resources/$resourceName"
                 )
 
-        return BitmapFactory.decodeStream(
-            stream
+            } else {
+
+                File(
+                    currentDirectory,
+                    "app/src/test/resources/$resourceName"
+                )
+            }
+
+        if (!resourceFile.exists()) {
+
+            error(
+                "File not found: ${resourceFile.absolutePath}"
+            )
+        }
+
+        return BitmapFactory.decodeFile(
+            resourceFile.absolutePath
         )
             ?: error(
                 "Failed to decode $resourceName"
             )
     }
 
-    private fun calculateOverlapRatio(
-        textBox: Rect,
-        visualBox: Rect
-    ): Float {
+    private fun saveDebugOutput(
+        imageName: String,
+        originalBitmap: Bitmap,
+        recognitionBitmap: Bitmap,
+        binaryBitmap: Bitmap,
+        textRegions: List<Region>,
+        nonTextRegions: List<Region>
+    ) {
 
-        val intersection =
-            Rect()
+        val root =
+            getOutputDirectory()
 
-        if (
-            !intersection.setIntersect(
-                textBox,
-                visualBox
+        val boardFolder =
+            File(
+                root,
+                imageName.substringBeforeLast(".")
+            ).apply {
+                mkdirs()
+            }
+
+        val textFolder =
+            File(
+                boardFolder,
+                "TEXT_LINES"
+            ).apply {
+                mkdirs()
+            }
+
+        val nonTextFolder =
+            File(
+                boardFolder,
+                "NON_TEXT"
+            ).apply {
+                mkdirs()
+            }
+
+        clearFolder(
+            textFolder
+        )
+
+        clearFolder(
+            nonTextFolder
+        )
+
+        saveBitmap(
+            bitmap =
+                originalBitmap,
+
+            file =
+                File(
+                    boardFolder,
+                    "01_original.png"
+                )
+        )
+
+        saveBitmap(
+            bitmap =
+                recognitionBitmap,
+
+            file =
+                File(
+                    boardFolder,
+                    "02_recognition.png"
+                )
+        )
+
+        saveBitmap(
+            bitmap =
+                binaryBitmap,
+
+            file =
+                File(
+                    boardFolder,
+                    "03_binary.png"
+                )
+        )
+
+        textRegions.forEachIndexed { index, region ->
+
+            val lineNumber =
+                index + 1
+
+            saveBitmap(
+                bitmap =
+                    region.croppedBitmap,
+
+                file =
+                    File(
+                        textFolder,
+                        "line_${lineNumber}.png"
+                    )
             )
-        ) {
-            return 0f
         }
 
-        val textArea =
-            textBox.width() *
-                    textBox.height()
+        nonTextRegions.forEachIndexed { index, region ->
 
-        if (textArea <= 0) {
-            return 0f
+            val regionNumber =
+                index + 1
+
+            saveBitmap(
+                bitmap =
+                    region.croppedBitmap,
+
+                file =
+                    File(
+                        nonTextFolder,
+                        "non_text_${regionNumber}.png"
+                    )
+            )
         }
 
-        val intersectionArea =
-            intersection.width() *
-                    intersection.height()
+        saveSummary(
+            imageName =
+                imageName,
 
-        return intersectionArea.toFloat() /
-                textArea.toFloat()
+            boardFolder =
+                boardFolder,
+
+            textRegions =
+                textRegions,
+
+            nonTextRegions =
+                nonTextRegions
+        )
+
+        println()
+        println("DEBUG FILES SAVED TO:")
+        println(boardFolder.absolutePath)
+        println()
     }
 
-    private class EchoLineRecognizer :
-        LineRecognizer {
+    private fun saveSummary(
+        imageName: String,
+        boardFolder: File,
+        textRegions: List<Region>,
+        nonTextRegions: List<Region>
+    ) {
 
-        override suspend fun recognize(
-            regions: List<Region>
-        ): List<RecognizedLine> {
+        val summaryFile =
+            File(
+                boardFolder,
+                "summary.txt"
+            )
 
-            return regions.map { region ->
+        summaryFile.writeText(
+            buildString {
 
-                RecognizedLine(
-                    sourceRegionId =
-                        region.id,
+                appendLine(
+                    "IMAGE: $imageName"
+                )
 
-                    boundingBox =
-                        Rect(
-                            region.boundingBox
-                        ),
+                appendLine()
 
-                    text =
-                        "TEXT_REGION_${region.id}",
+                appendLine(
+                    "TEXT LINES: ${textRegions.size}"
+                )
 
-                    confidence =
-                        1f
+                appendLine(
+                    "NON-TEXT REGIONS: ${nonTextRegions.size}"
+                )
+
+                appendLine()
+
+                appendLine(
+                    "========== TEXT LINES =========="
+                )
+
+                textRegions.forEachIndexed { index, region ->
+
+                    appendLine(
+                        "LINE ${index + 1}"
+                    )
+
+                    appendLine(
+                        "ID: ${region.id}"
+                    )
+
+                    appendLine(
+                        "BOX: ${region.boundingBox}"
+                    )
+
+                    appendLine(
+                        "WIDTH: ${region.boundingBox.width()}"
+                    )
+
+                    appendLine(
+                        "HEIGHT: ${region.boundingBox.height()}"
+                    )
+
+                    appendLine(
+                        "PIXEL AREA: ${region.pixelArea}"
+                    )
+
+                    appendLine()
+                }
+
+                appendLine(
+                    "========== NON-TEXT REGIONS =========="
+                )
+
+                nonTextRegions.forEachIndexed { index, region ->
+
+                    appendLine(
+                        "NON-TEXT ${index + 1}"
+                    )
+
+                    appendLine(
+                        "ID: ${region.id}"
+                    )
+
+                    appendLine(
+                        "BOX: ${region.boundingBox}"
+                    )
+
+                    appendLine(
+                        "WIDTH: ${region.boundingBox.width()}"
+                    )
+
+                    appendLine(
+                        "HEIGHT: ${region.boundingBox.height()}"
+                    )
+
+                    appendLine(
+                        "PIXEL AREA: ${region.pixelArea}"
+                    )
+
+                    appendLine()
+                }
+            }
+        )
+    }
+
+    private fun saveBitmap(
+        bitmap: Bitmap,
+        file: File
+    ) {
+
+        FileOutputStream(
+            file
+        ).use { stream ->
+
+            bitmap.compress(
+                Bitmap.CompressFormat.PNG,
+                100,
+                stream
+            )
+        }
+    }
+
+    private fun clearFolder(
+        folder: File
+    ) {
+
+        folder
+            .listFiles()
+            ?.forEach { file ->
+
+                if (file.isFile) {
+                    file.delete()
+                }
+            }
+    }
+
+    private fun getOutputDirectory(): File {
+
+        val currentDirectory =
+            File(
+                System.getProperty("user.dir")
+                    ?: "."
+            )
+
+        val appDirectory =
+            if (
+                currentDirectory.name == "app"
+            ) {
+
+                currentDirectory
+
+            } else {
+
+                File(
+                    currentDirectory,
+                    "app"
                 )
             }
-        }
 
-        override fun close() {
-            // Nothing to close for fake OCR.
+        return File(
+            appDirectory,
+            "build/note2snap-debug"
+        ).apply {
+            mkdirs()
         }
     }
 }

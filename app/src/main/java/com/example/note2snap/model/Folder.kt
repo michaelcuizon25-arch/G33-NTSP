@@ -9,5 +9,6 @@ data class Folder(
     val id: Int = 0,
     val name: String,
     val dateCreated: String,
-    val timestamp: Long = System.currentTimeMillis() // Required for Time sorting
+    val timestamp: Long = System.currentTimeMillis(),
+    val colorHex: String = "#AFC4F6"
 )
