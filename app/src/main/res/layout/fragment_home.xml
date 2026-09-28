@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/screen_background"
+    android:background="@color/nts_background"
     android:fillViewport="true"
     android:scrollbars="none">
 
@@ -83,10 +83,10 @@
             android:layout_width="match_parent"
             android:layout_height="78dp"
             android:layout_marginTop="16dp"
-            app:cardBackgroundColor="#F8FAFF"
+            app:cardBackgroundColor="@color/nts_surface_blue_soft"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
-            app:strokeColor="#111111"
+            app:strokeColor="@color/nts_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -108,7 +108,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_regular"
                         android:text="0"
-                        android:textColor="#171717"
+                        android:textColor="@color/nts_text"
                         android:textSize="18sp" />
 
                     <TextView
@@ -117,14 +117,14 @@
                         android:layout_marginTop="1dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Total Notes"
-                        android:textColor="#74747C"
+                        android:textColor="@color/nts_text_secondary"
                         android:textSize="9.5sp" />
                 </LinearLayout>
 
                 <View
                     android:layout_width="1dp"
                     android:layout_height="28dp"
-                    android:background="#D7E2F6" />
+                    android:background="@color/nts_blue_line" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -139,7 +139,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_regular"
                         android:text="0"
-                        android:textColor="#171717"
+                        android:textColor="@color/nts_text"
                         android:textSize="18sp" />
 
                     <TextView
@@ -148,14 +148,14 @@
                         android:layout_marginTop="1dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="This Week"
-                        android:textColor="#74747C"
+                        android:textColor="@color/nts_text_secondary"
                         android:textSize="9.5sp" />
                 </LinearLayout>
 
                 <View
                     android:layout_width="1dp"
                     android:layout_height="28dp"
-                    android:background="#D7E2F6" />
+                    android:background="@color/nts_blue_line" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -184,7 +184,7 @@
                             android:layout_marginStart="4dp"
                             android:fontFamily="@font/poppins_regular"
                             android:text="0 Notes"
-                            android:textColor="#171717"
+                            android:textColor="@color/nts_text"
                             android:textSize="13sp" />
                     </LinearLayout>
 
@@ -194,7 +194,7 @@
                         android:layout_marginTop="1dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Study Streak"
-                        android:textColor="#74747C"
+                        android:textColor="@color/nts_text_secondary"
                         android:textSize="9.5sp" />
                 </LinearLayout>
 
@@ -209,10 +209,10 @@
             android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="#F6F8FF"
+            app:cardBackgroundColor="@color/nts_surface_blue"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
-            app:strokeColor="#111111"
+            app:strokeColor="@color/nts_outline"
             app:strokeWidth="1dp">
 
             <RelativeLayout
@@ -230,7 +230,7 @@
                     android:contentDescription="Scan Notes"
                     android:padding="6dp"
                     android:src="@drawable/ic_camera"
-                    app:tint="#6F8FEA" />
+                    app:tint="@color/nts_blue" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -245,7 +245,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Scan Notes"
-                        android:textColor="#171717"
+                        android:textColor="@color/nts_text"
                         android:textSize="13sp" />
 
                     <TextView
@@ -254,7 +254,7 @@
                         android:layout_marginTop="1dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Digitize whiteboard or paper instantly"
-                        android:textColor="#6F6F77"
+                        android:textColor="@color/nts_text_secondary"
                         android:textSize="9.5sp" />
                 </LinearLayout>
             </RelativeLayout>
@@ -275,10 +275,10 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="#FFFDF5"
+                app:cardBackgroundColor="@color/nts_surface_cream"
                 app:cardCornerRadius="15dp"
                 app:cardElevation="0dp"
-                app:strokeColor="#111111"
+                app:strokeColor="@color/nts_outline"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
@@ -294,7 +294,7 @@
                         android:contentDescription="All Notes"
                         android:padding="5dp"
                         android:src="@drawable/ic_notes"
-                        app:tint="#6F8FEA" />
+                        app:tint="@color/nts_blue" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -302,7 +302,7 @@
                         android:layout_marginStart="7dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="All Notes"
-                        android:textColor="#171717"
+                        android:textColor="@color/nts_text"
                         android:textSize="11.5sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -316,10 +316,10 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="#F2FAF6"
+                app:cardBackgroundColor="@color/nts_surface_mint"
                 app:cardCornerRadius="15dp"
                 app:cardElevation="0dp"
-                app:strokeColor="#111111"
+                app:strokeColor="@color/nts_outline"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
@@ -335,7 +335,7 @@
                         android:contentDescription="Folders"
                         android:padding="5dp"
                         android:src="@drawable/ic_folder"
-                        app:tint="#78B690" />
+                        app:tint="@color/nts_green" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -343,7 +343,7 @@
                         android:layout_marginStart="7dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Folders"
-                        android:textColor="#171717"
+                        android:textColor="@color/nts_text"
                         android:textSize="11.5sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -356,7 +356,7 @@
             android:layout_marginTop="18dp"
             android:fontFamily="@font/poppins_regular"
             android:text="Recent Scans"
-            android:textColor="#171717"
+            android:textColor="@color/nts_text"
             android:textSize="14sp" />
 
         <TextView
@@ -368,7 +368,7 @@
             android:gravity="center"
             android:padding="14dp"
             android:text="No recent notes found. Tap 'Scan Notes' to get started!"
-            android:textColor="#74747C"
+            android:textColor="@color/nts_text_secondary"
             android:textSize="10.5sp"
             android:visibility="gone" />
 

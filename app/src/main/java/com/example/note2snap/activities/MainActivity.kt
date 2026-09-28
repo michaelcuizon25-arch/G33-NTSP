@@ -2,7 +2,6 @@ package com.example.note2snap.activities
 
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageView
@@ -10,6 +9,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.note2snap.R
 import com.google.android.material.card.MaterialCardView
@@ -204,10 +204,16 @@ class MainActivity : AppCompatActivity() {
         selectedId: Int
     ) {
         val activeColor =
-            Color.parseColor("#303030")
+            ContextCompat.getColor(
+                this,
+                R.color.nav_active
+            )
 
         val inactiveColor =
-            Color.parseColor("#777777")
+            ContextCompat.getColor(
+                this,
+                R.color.nav_inactive
+            )
 
         resetTabUI(
             navHome,

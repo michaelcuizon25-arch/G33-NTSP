@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/screen_background"
+    android:background="@color/nts_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -16,25 +15,23 @@
         android:paddingEnd="28dp"
         android:paddingBottom="110dp">
 
-        <!-- TITLE -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="@font/apple_garamond_italic"
             android:text="Settings"
-            android:textColor="#171717"
+            android:textColor="@color/nts_text"
             android:textSize="32sp" />
 
-        <!-- DARK MODE -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/rlDarkMode"
             android:layout_width="match_parent"
             android:layout_height="72dp"
             android:layout_marginTop="20dp"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/nts_surface"
             app:cardCornerRadius="18dp"
             app:cardElevation="1dp"
-            app:strokeColor="#EFEFF3"
+            app:strokeColor="@color/nts_blue_line"
             app:strokeWidth="1dp">
 
             <RelativeLayout
@@ -54,7 +51,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_semibold"
                         android:text="Dark Mode"
-                        android:textColor="#171717"
+                        android:textColor="@color/nts_text"
                         android:textSize="14sp" />
 
                     <TextView
@@ -63,9 +60,8 @@
                         android:layout_marginTop="2dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Use a darker app theme"
-                        android:textColor="#777780"
+                        android:textColor="@color/nts_text_secondary"
                         android:textSize="11sp" />
-
                 </LinearLayout>
 
                 <com.google.android.material.materialswitch.MaterialSwitch
@@ -74,24 +70,20 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
                     android:layout_centerVertical="true"
-                    app:thumbTint="#FFFFFF"
-                    app:trackTint="#AFC4F6" />
-
+                    app:thumbTint="@color/nts_surface"
+                    app:trackTint="@color/nts_blue" />
             </RelativeLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- BACKUP & SYNC -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="68dp"
             android:layout_marginTop="12dp"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/nts_surface_blue"
             app:cardCornerRadius="18dp"
             app:cardElevation="1dp"
-            app:strokeColor="#EFEFF3"
+            app:strokeColor="@color/nts_blue_line"
             app:strokeWidth="1dp">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -99,14 +91,12 @@
                 android:orientation="horizontal"
                 android:paddingStart="16dp"
                 android:paddingEnd="14dp">
-
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:contentDescription="Backup and Sync"
                     android:src="@android:drawable/stat_notify_sync"
-                    app:tint="#5A7FDB" />
-
+                    app:tint="@color/nts_blue" />
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -114,32 +104,27 @@
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_medium"
                     android:text="Backup &amp; Sync"
-                    android:textColor="#171717"
+                    android:textColor="@color/nts_text"
                     android:textSize="14sp" />
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/poppins_regular"
                     android:text="›"
-                    android:textColor="#9A9AA1"
+                    android:textColor="@color/nts_text_secondary"
                     android:textSize="22sp" />
-
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- STORAGE -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="68dp"
             android:layout_marginTop="10dp"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/nts_surface_blue"
             app:cardCornerRadius="18dp"
             app:cardElevation="1dp"
-            app:strokeColor="#EFEFF3"
+            app:strokeColor="@color/nts_blue_line"
             app:strokeWidth="1dp">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -147,14 +132,12 @@
                 android:orientation="horizontal"
                 android:paddingStart="16dp"
                 android:paddingEnd="14dp">
-
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:contentDescription="Storage"
                     android:src="@android:drawable/ic_menu_save"
-                    app:tint="#5A7FDB" />
-
+                    app:tint="@color/nts_blue" />
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -162,32 +145,27 @@
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_medium"
                     android:text="Storage"
-                    android:textColor="#171717"
+                    android:textColor="@color/nts_text"
                     android:textSize="14sp" />
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/poppins_regular"
                     android:text="›"
-                    android:textColor="#9A9AA1"
+                    android:textColor="@color/nts_text_secondary"
                     android:textSize="22sp" />
-
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- ABOUT -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="68dp"
             android:layout_marginTop="10dp"
-            app:cardBackgroundColor="#FFFFFF"
+            app:cardBackgroundColor="@color/nts_surface_blue"
             app:cardCornerRadius="18dp"
             app:cardElevation="1dp"
-            app:strokeColor="#EFEFF3"
+            app:strokeColor="@color/nts_blue_line"
             app:strokeWidth="1dp">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -195,14 +173,12 @@
                 android:orientation="horizontal"
                 android:paddingStart="16dp"
                 android:paddingEnd="14dp">
-
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:contentDescription="About"
                     android:src="@android:drawable/ic_menu_info_details"
-                    app:tint="#5A7FDB" />
-
+                    app:tint="@color/nts_blue" />
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -210,22 +186,18 @@
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_medium"
                     android:text="About"
-                    android:textColor="#171717"
+                    android:textColor="@color/nts_text"
                     android:textSize="14sp" />
-
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/poppins_regular"
                     android:text="›"
-                    android:textColor="#9A9AA1"
+                    android:textColor="@color/nts_text_secondary"
                     android:textSize="22sp" />
-
             </LinearLayout>
-
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- VERSION -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -233,9 +205,7 @@
             android:fontFamily="@font/poppins_regular"
             android:gravity="center"
             android:text="Note2Snap • Version 1.0.0"
-            android:textColor="#8A8A92"
+            android:textColor="@color/nts_text_secondary"
             android:textSize="11sp" />
-
     </LinearLayout>
-
 </ScrollView>

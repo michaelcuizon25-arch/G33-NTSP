@@ -15,7 +15,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/bottomNavContainer" />
 
-    <!-- BOTTOM NAV PILL -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomNavContainer"
         android:layout_width="0dp"
@@ -23,10 +22,10 @@
         android:layout_marginStart="22dp"
         android:layout_marginEnd="22dp"
         android:layout_marginBottom="16dp"
-        app:cardBackgroundColor="#FFFFFF"
+        app:cardBackgroundColor="@color/nav_surface"
         app:cardCornerRadius="36dp"
         app:cardElevation="5dp"
-        app:strokeColor="#F0F0F0"
+        app:strokeColor="@color/nav_stroke"
         app:strokeWidth="1dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -40,7 +39,6 @@
             android:paddingStart="6dp"
             android:paddingEnd="6dp">
 
-            <!-- HOME -->
             <LinearLayout
                 android:id="@+id/navHome"
                 android:layout_width="0dp"
@@ -58,7 +56,7 @@
                     android:layout_height="25dp"
                     android:contentDescription="Home"
                     android:src="@drawable/ic_home"
-                    app:tint="#777777" />
+                    app:tint="@color/nav_inactive" />
 
                 <TextView
                     android:id="@+id/textHome"
@@ -67,11 +65,10 @@
                     android:layout_marginTop="1dp"
                     android:fontFamily="@font/poppins_regular"
                     android:text="Home"
-                    android:textColor="#555555"
+                    android:textColor="@color/nav_inactive"
                     android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- NOTES -->
             <LinearLayout
                 android:id="@+id/navNotes"
                 android:layout_width="0dp"
@@ -89,7 +86,7 @@
                     android:layout_height="25dp"
                     android:contentDescription="Notes"
                     android:src="@drawable/ic_notes"
-                    app:tint="#777777" />
+                    app:tint="@color/nav_inactive" />
 
                 <TextView
                     android:id="@+id/textNotes"
@@ -98,11 +95,10 @@
                     android:layout_marginTop="1dp"
                     android:fontFamily="@font/poppins_regular"
                     android:text="Notes"
-                    android:textColor="#555555"
+                    android:textColor="@color/nav_inactive"
                     android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- CENTER SLOT: LABEL ONLY -->
             <LinearLayout
                 android:id="@+id/navScanSlot"
                 android:layout_width="0dp"
@@ -118,11 +114,10 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/poppins_regular"
                     android:text="Scan"
-                    android:textColor="#111111"
+                    android:textColor="@color/nav_active"
                     android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- HISTORY -->
             <LinearLayout
                 android:id="@+id/navHistory"
                 android:layout_width="0dp"
@@ -140,7 +135,7 @@
                     android:layout_height="25dp"
                     android:contentDescription="History"
                     android:src="@drawable/ic_history"
-                    app:tint="#777777" />
+                    app:tint="@color/nav_inactive" />
 
                 <TextView
                     android:id="@+id/textHistory"
@@ -149,11 +144,10 @@
                     android:layout_marginTop="1dp"
                     android:fontFamily="@font/poppins_regular"
                     android:text="History"
-                    android:textColor="#555555"
+                    android:textColor="@color/nav_inactive"
                     android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- SETTINGS -->
             <LinearLayout
                 android:id="@+id/navSettings"
                 android:layout_width="0dp"
@@ -171,7 +165,7 @@
                     android:layout_height="25dp"
                     android:contentDescription="Settings"
                     android:src="@drawable/ic_setting"
-                    app:tint="#777777" />
+                    app:tint="@color/nav_inactive" />
 
                 <TextView
                     android:id="@+id/textSettings"
@@ -180,14 +174,13 @@
                     android:layout_marginTop="1dp"
                     android:fontFamily="@font/poppins_regular"
                     android:text="Settings"
-                    android:textColor="#555555"
+                    android:textColor="@color/nav_inactive"
                     android:textSize="11sp" />
             </LinearLayout>
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- CENTER SCAN LENS -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/scanFab"
         android:layout_width="78dp"
@@ -195,10 +188,10 @@
         android:clickable="true"
         android:focusable="true"
         android:elevation="12dp"
-        app:cardBackgroundColor="#FFFFFF"
+        app:cardBackgroundColor="@color/nav_surface"
         app:cardCornerRadius="39dp"
         app:cardElevation="8dp"
-        app:strokeColor="#D7D7D7"
+        app:strokeColor="@color/nav_stroke"
         app:strokeWidth="1dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
