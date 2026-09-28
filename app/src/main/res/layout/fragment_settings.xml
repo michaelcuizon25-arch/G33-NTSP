@@ -26,24 +26,26 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/rlDarkMode"
             android:layout_width="match_parent"
-            android:layout_height="72dp"
+            android:layout_height="64dp"
             android:layout_marginTop="20dp"
             app:cardBackgroundColor="@color/nts_surface"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="1dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
             app:strokeColor="@color/nts_blue_line"
             app:strokeWidth="1dp">
 
-            <RelativeLayout
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:paddingStart="16dp"
-                android:paddingEnd="14dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="18dp"
+                android:paddingEnd="12dp">
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_centerVertical="true"
+                    android:layout_weight="1"
                     android:orientation="vertical">
 
                     <TextView
@@ -52,27 +54,29 @@
                         android:fontFamily="@font/poppins_semibold"
                         android:text="Dark Mode"
                         android:textColor="@color/nts_text"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="1dp"
                         android:fontFamily="@font/poppins_regular"
                         android:text="Use a darker app theme"
                         android:textColor="@color/nts_text_secondary"
-                        android:textSize="11sp" />
+                        android:textSize="9sp" />
+
                 </LinearLayout>
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switchDarkMode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    app:thumbTint="@color/nts_surface"
-                    app:trackTint="@color/nts_blue" />
-            </RelativeLayout>
+                    android:layout_width="52dp"
+                    android:layout_height="32dp"
+                    app:thumbTint="@color/switch_thumb_tint"
+                    app:trackTint="@color/switch_track_tint"
+                    app:trackDecorationTint="@android:color/transparent" />
+
+            </LinearLayout>
+
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView

@@ -31,6 +31,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.toColorInt
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.content.ContextCompat
 import android.text.style.BackgroundColorSpan
 import android.text.style.LineBackgroundSpan
 import androidx.core.graphics.withTranslation
@@ -254,7 +255,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(etInlineEditor?.windowToken, 0)
 
-        btnToolText?.setColorFilter("#4D78E8".toColorInt())
+        btnToolText?.setColorFilter(ContextCompat.getColor(this, R.color.nts_blue))
         isEditMode = false
 
         renderContent(currentRawContent)
@@ -348,11 +349,11 @@ class PdfViewerActivity : AppCompatActivity() {
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(14), dp(18), dp(24))
-            background = roundedBackground("#FFF9FF", 28f)
+            background = roundedBackground(colorHex(R.color.nts_background), 28f)
         }
 
         val handle = View(this).apply {
-            background = roundedBackground("#D7D8DE", 99f)
+            background = roundedBackground(colorHex(R.color.nts_blue_line), 99f)
         }
 
         sheet.addView(
@@ -366,10 +367,10 @@ class PdfViewerActivity : AppCompatActivity() {
         val addBlockLabel = TextView(this).apply {
             text = "+  Add block"
             textSize = 13f
-            setTextColor("#5A7FDB".toColorInt())
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_blue))
             gravity = Gravity.CENTER
             typeface = android.graphics.Typeface.DEFAULT_BOLD
-            background = roundedBackground("#FFFFFF", 18f, "#E7E8EE")
+            background = roundedBackground(colorHex(R.color.nts_surface), 18f, colorHex(R.color.nts_blue_line))
             setPadding(dp(14), dp(11), dp(14), dp(11))
         }
 
@@ -386,7 +387,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val optionsCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(6), dp(8), dp(6))
-            background = roundedBackground("#FFFFFF", 22f, "#ECECF2")
+            background = roundedBackground(colorHex(R.color.nts_surface), 22f, colorHex(R.color.nts_blue_line))
             elevation = dp(3).toFloat()
         }
 
@@ -498,7 +499,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 )
 
                 editable.setSpan(
-                    ForegroundColorSpan("#171717".toColorInt()),
+                    ForegroundColorSpan(ContextCompat.getColor(this, R.color.nts_text)),
                     start,
                     end,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -532,7 +533,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 )
 
                 editable.setSpan(
-                    ForegroundColorSpan("#5A7FDB".toColorInt()),
+                    ForegroundColorSpan(ContextCompat.getColor(this, R.color.nts_blue)),
                     start,
                     start + 1,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -741,15 +742,15 @@ class PdfViewerActivity : AppCompatActivity() {
             isClickable = true
             isFocusable = true
             setPadding(dp(10), dp(10), dp(10), dp(10))
-            background = roundedBackground("#FFFFFF", 16f)
+            background = roundedBackground(colorHex(R.color.nts_surface), 16f)
 
             val iconView = TextView(this@PdfViewerActivity).apply {
                 text = icon
                 gravity = Gravity.CENTER
                 textSize = 17f
-                setTextColor("#5A7FDB".toColorInt())
+                setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_blue))
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
-                background = roundedBackground("#EEF2FF", 14f)
+                background = roundedBackground(colorHex(R.color.nts_blue_soft), 14f)
             }
 
             addView(
@@ -766,7 +767,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 TextView(this@PdfViewerActivity).apply {
                     text = title
                     textSize = 14f
-                    setTextColor("#171717".toColorInt())
+                    setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text))
                     typeface = android.graphics.Typeface.DEFAULT_BOLD
                 }
             )
@@ -775,7 +776,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 TextView(this@PdfViewerActivity).apply {
                     text = description
                     textSize = 11f
-                    setTextColor("#777780".toColorInt())
+                    setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text_secondary))
                     setPadding(0, dp(2), 0, 0)
                 }
             )
@@ -795,7 +796,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
     private fun dividerView(): View {
         return View(this).apply {
-            setBackgroundColor("#ECECF2".toColorInt())
+            setBackgroundColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_blue_line))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(1)
@@ -861,12 +862,12 @@ class PdfViewerActivity : AppCompatActivity() {
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(22), dp(12), dp(22), dp(24))
-            background = roundedBackground("#FFF9FF", 28f)
+            background = roundedBackground(colorHex(R.color.nts_background), 28f)
         }
 
         sheet.addView(
             View(this).apply {
-                background = roundedBackground("#D7D4DC", 3f)
+                background = roundedBackground(colorHex(R.color.nts_blue_line), 3f)
             },
             LinearLayout.LayoutParams(dp(42), dp(4)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
@@ -878,7 +879,7 @@ class PdfViewerActivity : AppCompatActivity() {
             TextView(this).apply {
                 text = if (isHighlighter) "Highlighter color" else "Pen color"
                 textSize = 21f
-                setTextColor("#171717".toColorInt())
+                setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text))
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
         )
@@ -891,7 +892,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     "Choose your drawing color."
                 }
                 textSize = 11f
-                setTextColor("#777780".toColorInt())
+                setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text_secondary))
                 setPadding(0, dp(4), 0, dp(18))
             }
         )
@@ -913,7 +914,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     background = GradientDrawable().apply {
                         shape = GradientDrawable.OVAL
                         setColor(color)
-                        setStroke(dp(2), "#FFFFFF".toColorInt())
+                        setStroke(dp(2), ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_outline))
                     }
                     elevation = dp(2).toFloat()
                 }
@@ -928,7 +929,7 @@ class PdfViewerActivity : AppCompatActivity() {
                         text = names[index]
                         textSize = 9f
                         gravity = Gravity.CENTER
-                        setTextColor("#5F5F68".toColorInt())
+                        setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text_secondary))
                         setPadding(0, dp(7), 0, 0)
                     },
                     LinearLayout.LayoutParams(
@@ -969,7 +970,7 @@ class PdfViewerActivity : AppCompatActivity() {
             text = "Cancel"
             textSize = 12f
             gravity = Gravity.CENTER
-            setTextColor("#777780".toColorInt())
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text_secondary))
             setPadding(0, dp(18), 0, dp(2))
             isClickable = true
             setOnClickListener { dialog.dismiss() }
@@ -1347,6 +1348,11 @@ class PdfViewerActivity : AppCompatActivity() {
         return currentNightMode == Configuration.UI_MODE_NIGHT_YES
     }
 
+    private fun colorHex(colorRes: Int): String {
+        val color = ContextCompat.getColor(this, colorRes)
+        return String.format("#%06X", 0xFFFFFF and color)
+    }
+
     private fun fetchNoteFromDatabase() {
         lifecycleScope.launch(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
@@ -1421,10 +1427,10 @@ class PdfViewerActivity : AppCompatActivity() {
             scrollViewContent?.visibility = View.GONE
             webViewContent.visibility = View.VISIBLE
 
-            val bgColorStr = "#FFFFFF"
-            val textColorStr = "#202127"
-            val headerBgStr = "#F2F2F7"
-            val borderColorStr = "#CCCCCC"
+            val bgColorStr = colorHex(R.color.pdf_web_bg)
+            val textColorStr = colorHex(R.color.nts_text)
+            val headerBgStr = colorHex(R.color.nts_surface_blue)
+            val borderColorStr = colorHex(R.color.nts_blue_line)
 
             val imageHtml = if (!currentImagePath.isNullOrEmpty() && File(currentImagePath!!).exists()) {
                 "<img src=\"file://${currentImagePath}\" style=\"max-width:100%; border-radius:8px; margin-bottom:12px;\"/>"
@@ -1489,7 +1495,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 .replace("\n", "<br/>")
 
             tvPdfContent?.text = HtmlCompat.fromHtml(htmlFormatted, HtmlCompat.FROM_HTML_MODE_COMPACT)
-            tvPdfContent?.setTextColor("#202127".toColorInt())
+            tvPdfContent?.setTextColor(ContextCompat.getColor(this, R.color.nts_text))
 
             applySavedHighlightsToDisplayedText()
 
@@ -1567,7 +1573,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 0
             )
 
-            btnToolText?.setColorFilter("#5A7FDB".toColorInt())
+            btnToolText?.setColorFilter(ContextCompat.getColor(this, R.color.nts_blue))
             isEditMode = false
             isTextExpanded = false
 
@@ -1882,11 +1888,11 @@ class PdfViewerActivity : AppCompatActivity() {
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(14), dp(18), dp(24))
-            background = roundedBackground("#FFF9FF", 28f)
+            background = roundedBackground(colorHex(R.color.nts_background), 28f)
         }
 
         val handle = View(this).apply {
-            background = roundedBackground("#D7D8DE", 99f)
+            background = roundedBackground(colorHex(R.color.nts_blue_line), 99f)
         }
 
         sheet.addView(
@@ -1900,7 +1906,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val title = TextView(this).apply {
             text = "More options"
             textSize = 20f
-            setTextColor("#171717".toColorInt())
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text))
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setPadding(dp(4), 0, 0, dp(3))
         }
@@ -1908,7 +1914,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val subtitle = TextView(this).apply {
             text = "Manage and organize this note"
             textSize = 11f
-            setTextColor("#7A7A84".toColorInt())
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text_secondary))
             setPadding(dp(4), 0, 0, dp(14))
         }
 
@@ -1918,7 +1924,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(6), dp(8), dp(6))
-            background = roundedBackground("#FFFFFF", 22f, "#ECECF2")
+            background = roundedBackground(colorHex(R.color.nts_surface), 22f, colorHex(R.color.nts_blue_line))
             elevation = dp(3).toFloat()
         }
 
@@ -1993,7 +1999,7 @@ class PdfViewerActivity : AppCompatActivity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(10), dp(11), dp(10), dp(11))
-            background = roundedBackground("#FFFFFF", 16f)
+            background = roundedBackground(colorHex(R.color.nts_surface), 16f)
             isClickable = true
             isFocusable = true
             setOnClickListener { onClick() }
@@ -2002,7 +2008,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val iconWrap = LinearLayout(this).apply {
             gravity = Gravity.CENTER
             background = roundedBackground(
-                if (accent == "#D94A4A") "#FFF0F0" else "#EEF3FF",
+                if (accent == "#D94A4A") "#FFF0F0" else colorHex(R.color.nts_blue_soft),
                 16f
             )
         }
@@ -2029,7 +2035,7 @@ class PdfViewerActivity : AppCompatActivity() {
             textSize = 14f
             setTextColor(
                 if (accent == "#D94A4A") "#C53E3E".toColorInt()
-                else "#171717".toColorInt()
+                else ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text)
             )
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
@@ -2037,7 +2043,7 @@ class PdfViewerActivity : AppCompatActivity() {
         val subtitleView = TextView(this).apply {
             text = subtitle
             textSize = 10.5f
-            setTextColor("#7A7A84".toColorInt())
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text_secondary))
             setPadding(0, dp(2), 0, 0)
         }
 

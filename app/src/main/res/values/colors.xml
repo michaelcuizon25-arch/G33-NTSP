@@ -56,4 +56,7 @@
     <color name="nts_text_secondary">#74747C</color>
     <color name="nts_outline">#111111</color>
 
+    <color name="switch_track">#6F8FEA</color>
+    <color name="switch_thumb">#FFFFFF</color>
+
 </resources>

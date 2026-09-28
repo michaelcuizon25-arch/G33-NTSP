@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pdf_tool_text_bg">#EDF2FF</color>
+    <color name="pdf_tool_pen_bg">#F5F2FF</color>
+    <color name="pdf_tool_highlighter_bg">#FFF7CF</color>
+    <color name="pdf_tool_eraser_bg">#FFF0F3</color>
+    <color name="pdf_tool_neutral_bg">#F4F5F8</color>
+    <color name="pdf_tool_neutral_tint">#4B4B52</color>
+    <color name="pdf_editor_bg">#FFFDFE</color>
+    <color name="pdf_web_bg">#FFFFFF</color>
+    <color name="pdf_action_blue">#3B62C6</color>
+</resources>

@@ -122,6 +122,37 @@ class MainActivity : AppCompatActivity() {
             findViewById(R.id.textSettings)
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        val sharedPref =
+            getSharedPreferences(
+                "AppSettings",
+                Context.MODE_PRIVATE
+            )
+
+        val shouldBeDark =
+            sharedPref.getBoolean(
+                "DARK_MODE",
+                false
+            )
+
+        val isCurrentlyDark =
+            (resources.configuration.uiMode and
+                    Configuration.UI_MODE_NIGHT_MASK) ==
+                    Configuration.UI_MODE_NIGHT_YES
+
+        if (shouldBeDark != isCurrentlyDark) {
+            AppCompatDelegate.setDefaultNightMode(
+                if (shouldBeDark) {
+                    AppCompatDelegate.MODE_NIGHT_YES
+                } else {
+                    AppCompatDelegate.MODE_NIGHT_NO
+                }
+            )
+        }
+    }
+
     private fun setupClickListeners() {
         navHome.setOnClickListener {
             selectTab(R.id.navHome)

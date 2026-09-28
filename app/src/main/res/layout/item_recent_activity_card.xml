@@ -10,10 +10,10 @@
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="#F6F8FF"
+    app:cardBackgroundColor="@color/nts_surface_blue"
     app:cardCornerRadius="14dp"
     app:cardElevation="0dp"
-    app:strokeColor="#111111"
+    app:strokeColor="@color/nts_outline"
     app:strokeWidth="1dp">
 
     <RelativeLayout
@@ -49,8 +49,7 @@
                 android:contentDescription="Favorite note"
                 android:padding="4dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/ic_star_outline_custom"
-                app:tint="#D3A33D" />
+                android:src="@drawable/ic_star_outline_custom" />
 
             <ImageButton
                 android:id="@+id/btnRecentMore"
@@ -61,7 +60,7 @@
                 android:contentDescription="More note options"
                 android:padding="6dp"
                 android:src="@drawable/ic_tool_more"
-                app:tint="#171717" />
+                app:tint="@color/nts_text" />
         </LinearLayout>
 
         <LinearLayout
@@ -81,7 +80,7 @@
                 android:ellipsize="end"
                 android:fontFamily="@font/poppins_regular"
                 android:maxLines="1"
-                android:textColor="#171717"
+                android:textColor="@color/nts_text"
                 android:textSize="12.5sp"
                 tools:text="OOP Discussion" />
 
@@ -93,7 +92,7 @@
                 android:ellipsize="end"
                 android:fontFamily="@font/poppins_regular"
                 android:maxLines="1"
-                android:textColor="#5F5F66"
+                android:textColor="@color/nts_text_secondary"
                 android:textSize="10sp"
                 tools:text="February 13, 2026 | 10:00 AM" />
 

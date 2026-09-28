@@ -43,4 +43,7 @@
     <color name="nts_text">#F5F7FF</color>
     <color name="nts_text_secondary">#AEB6C8</color>
     <color name="nts_outline">#5B657A</color>
+
+    <color name="switch_track">#8FA9F5</color>
+    <color name="switch_thumb">#1A2030</color>
 </resources>
