@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
 import com.example.note2snap.model.Folder
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.card.MaterialCardView
 
 class FolderAdapter(
     private var folderList: List<Folder>,
@@ -30,6 +31,11 @@ class FolderAdapter(
     class FolderViewHolder(
         view: View
     ) : RecyclerView.ViewHolder(view) {
+
+        val cardFolder: MaterialCardView =
+            view.findViewById(
+                R.id.cardFolder
+            )
 
         val ivFolderIcon: ImageView =
             view.findViewById(
@@ -93,6 +99,42 @@ class FolderAdapter(
                 ColorStateList.valueOf(
                     folderColor
                 )
+            )
+
+        val isDarkMode =
+            (holder.itemView.resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+        val neutralSurface =
+            ContextCompat.getColor(
+                holder.itemView.context,
+                if (isDarkMode) {
+                    R.color.nts_surface
+                } else {
+                    R.color.nts_surface_blue_soft
+                }
+            )
+
+        val cardColor =
+            androidx.core.graphics.ColorUtils.blendARGB(
+                neutralSurface,
+                folderColor,
+                if (isDarkMode) 0.28f else 0.18f
+            )
+
+        holder.cardFolder.setCardBackgroundColor(
+            cardColor
+        )
+
+        holder.cardFolder.strokeColor =
+            androidx.core.graphics.ColorUtils.blendARGB(
+                ContextCompat.getColor(
+                    holder.itemView.context,
+                    R.color.nts_outline
+                ),
+                folderColor,
+                if (isDarkMode) 0.45f else 0.30f
             )
 
         holder.itemView
