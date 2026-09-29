@@ -196,11 +196,297 @@ class PdfViewerActivity : AppCompatActivity() {
 
             renderContent(currentRawContent)
 
+            findViewById<View>(
+                R.id.tvPdfContent
+            )?.post {
+                maybeShowOcrReviewWarning()
+            }
+
             // Save/Sync initially so new scans exist in both Notes & History without duplicating
             saveNoteToDatabase()
         } else {
             fetchNoteFromDatabase()
         }
+    }
+
+    private fun maybeShowOcrReviewWarning() {
+        val count =
+            intent.getIntExtra(
+                "OCR_REVIEW_COUNT",
+                0
+            )
+
+        val reviewLines =
+            intent.getStringArrayListExtra(
+                "OCR_REVIEW_LINES"
+            ).orEmpty()
+
+        if (
+            count <= 0 &&
+            reviewLines.isEmpty()
+        ) {
+            return
+        }
+
+        val dialog =
+            BottomSheetDialog(this)
+
+        val sheet =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+
+                setPadding(
+                    dp(18),
+                    dp(12),
+                    dp(18),
+                    dp(24)
+                )
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_background
+                        ),
+                        28f
+                    )
+            }
+
+        sheet.addView(
+            View(this).apply {
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_blue_line
+                        ),
+                        99f
+                    )
+            },
+            LinearLayout.LayoutParams(
+                dp(42),
+                dp(4)
+            ).apply {
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+                bottomMargin =
+                    dp(16)
+            }
+        )
+
+        sheet.addView(
+            TextView(this).apply {
+                text =
+                    "Some text needs review"
+
+                textSize =
+                    22f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.apple_garamond_bold
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text
+                    )
+                )
+            }
+        )
+
+        sheet.addView(
+            TextView(this).apply {
+                text =
+                    if (count == 1) {
+                        "1 OCR line may be inaccurate."
+                    } else {
+                        "$count OCR lines may be inaccurate."
+                    }
+
+                textSize =
+                    10.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    0,
+                    dp(3),
+                    0,
+                    dp(12)
+                )
+            }
+        )
+
+        if (reviewLines.isNotEmpty()) {
+            val previewCard =
+                LinearLayout(this).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+
+                    background =
+                        roundedBackground(
+                            colorHex(
+                                R.color.nts_surface
+                            ),
+                            18f,
+                            colorHex(
+                                R.color.nts_blue_line
+                            )
+                        )
+
+                    setPadding(
+                        dp(12),
+                        dp(10),
+                        dp(12),
+                        dp(10)
+                    )
+                }
+
+            reviewLines
+                .take(4)
+                .forEach { line ->
+                    previewCard.addView(
+                        TextView(this).apply {
+                            text =
+                                "• $line"
+
+                            textSize =
+                                10.5f
+
+                            typeface =
+                                ResourcesCompat.getFont(
+                                    this@PdfViewerActivity,
+                                    R.font.poppins_regular
+                                )
+
+                            setTextColor(
+                                ContextCompat.getColor(
+                                    this@PdfViewerActivity,
+                                    R.color.nts_text
+                                )
+                            )
+
+                            setPadding(
+                                0,
+                                dp(4),
+                                0,
+                                dp(4)
+                            )
+                        }
+                    )
+                }
+
+            sheet.addView(
+                previewCard
+            )
+        }
+
+        val hint =
+            TextView(this).apply {
+                text =
+                    "Review the extracted text and edit anything that does not match the original whiteboard."
+
+                textSize =
+                    9.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    0,
+                    dp(12),
+                    0,
+                    dp(12)
+                )
+            }
+
+        sheet.addView(
+            hint
+        )
+
+        val reviewButton =
+            TextView(this).apply {
+                text =
+                    "Review now"
+
+                gravity =
+                    Gravity.CENTER
+
+                textSize =
+                    11.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_semibold
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text
+                    )
+                )
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_yellow
+                        ),
+                        16f,
+                        colorHex(
+                            R.color.nts_outline
+                        )
+                    )
+
+                setPadding(
+                    dp(16),
+                    dp(11),
+                    dp(16),
+                    dp(11)
+                )
+
+                setOnClickListener {
+                    dialog.dismiss()
+
+                    if (!isEditMode) {
+                        toggleInlineEditMode()
+                    }
+                }
+            }
+
+        sheet.addView(
+            reviewButton
+        )
+
+        dialog.setContentView(
+            sheet
+        )
+
+        dialog.show()
     }
 
     /**

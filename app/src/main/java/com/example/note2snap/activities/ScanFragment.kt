@@ -75,13 +75,12 @@ class ScanFragment : Fragment() {
     private var backButtonContainerView: View? = null
     private var flashControlView: View? = null
 
-    private val minimumAnalyzingDurationMs = 2400L
 
     // Gallery Picker Contract
     private val selectImageLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { processImageUri(it) }
+        uri?.let { processImageUri(it, cropToGuide = false) }
     }
 
     // Camera Permission Contract
@@ -313,8 +312,6 @@ class ScanFragment : Fragment() {
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
-        setLoading(true)
-
         capture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(safeContext),
@@ -328,13 +325,21 @@ class ScanFragment : Fragment() {
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     if (!isAdded) return
-                    processImageUri(Uri.fromFile(photoFile), photoFile.absolutePath)
+                    processImageUri(
+                        rawUri = Uri.fromFile(photoFile),
+                        rawFilePath = photoFile.absolutePath,
+                        cropToGuide = true
+                    )
                 }
             }
         )
     }
 
-    private fun processImageUri(rawUri: Uri, rawFilePath: String? = null) {
+    private fun processImageUri(
+        rawUri: Uri,
+        rawFilePath: String? = null,
+        cropToGuide: Boolean = false
+    ) {
         val safeContext = context ?: return
         setLoading(true)
 
@@ -353,18 +358,26 @@ class ScanFragment : Fragment() {
 
             val imageFile = File(filePath)
 
-            val croppedFilePath =
-                cropImageToVisibleGuideFrame(
-                    imageFile = imageFile
-                ) ?: filePath
+            val sourceFilePath =
+                if (cropToGuide) {
+                    cropImageToVisibleGuideFrame(
+                        imageFile = imageFile
+                    ) ?: filePath
+                } else {
+                    filePath
+                }
 
-            val croppedFile =
-                File(croppedFilePath)
+            val sourceFile =
+                File(sourceFilePath)
+
+            showActualAnalysisState(
+                AnalysisStage.DETECTING_TEXT
+            )
 
             val image =
                 InputImage.fromFilePath(
                     safeContext,
-                    Uri.fromFile(croppedFile)
+                    Uri.fromFile(sourceFile)
                 )
 
             val recognizer =
@@ -375,12 +388,29 @@ class ScanFragment : Fragment() {
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
                     if (!isAdded) return@addOnSuccessListener
+                    showActualAnalysisState(
+                        AnalysisStage.CHECKING_RECOGNITION
+                    )
+
                     val extractedText = visionText.text
-                    val finalText = if (extractedText.isBlank()) "[No text detected]" else extractedText
+                    val finalText =
+                        extractedText.ifBlank {
+                            "[No text detected]"
+                        }
+
+                    val ocrIssues =
+                        findOcrIssues(
+                            visionText
+                        )
+
+                    showActualAnalysisState(
+                        AnalysisStage.STRUCTURING_NOTES
+                    )
 
                     finishAnalyzingAndNavigate(
                         content = finalText,
-                        imagePath = croppedFilePath
+                        imagePath = sourceFilePath,
+                        ocrIssues = ocrIssues
                     )
                 }
                 .addOnFailureListener { e ->
@@ -394,6 +424,109 @@ class ScanFragment : Fragment() {
             Log.e("ScanFragment", "Error processing image", e)
             Toast.makeText(safeContext, "Error loading image", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun findOcrIssues(
+        visionText: com.google.mlkit.vision.text.Text
+    ): List<String> {
+
+        if (visionText.text.isBlank()) {
+            return listOf(
+                "No text was recognized."
+            )
+        }
+
+        val issues =
+            mutableListOf<String>()
+
+        visionText.textBlocks
+            .flatMap { it.lines }
+            .forEach { line ->
+
+                val text =
+                    line.text.trim()
+
+                if (text.isBlank()) {
+                    return@forEach
+                }
+
+                val compact =
+                    text.filterNot {
+                        it.isWhitespace()
+                    }
+
+                val alphaNumericCount =
+                    compact.count {
+                        it.isLetterOrDigit()
+                    }
+
+                val suspiciousCount =
+                    compact.count {
+                        !it.isLetterOrDigit() &&
+                                it !in ".,:;!?()[]{}'\"/-+%&@#₱$"
+                    }
+
+                val suspiciousRatio =
+                    if (compact.isNotEmpty()) {
+                        suspiciousCount.toFloat() /
+                                compact.length.toFloat()
+                    } else {
+                        0f
+                    }
+
+                val repeatedNoise =
+                    Regex(
+                        """([^\p{L}\p{N}\s])\1{2,}"""
+                    ).containsMatchIn(
+                        text
+                    )
+
+                val noReadableCharacters =
+                    alphaNumericCount == 0 &&
+                            compact.length >= 2
+
+                val likelyGarbled =
+                    compact.length >= 4 &&
+                            suspiciousRatio >= 0.35f
+
+                val words =
+                    text.split(
+                        Regex("\\s+")
+                    ).filter {
+                        it.isNotBlank()
+                    }
+
+                val looksTruncated =
+                    words.size >= 2 &&
+                            text.firstOrNull()?.isLowerCase() == true &&
+                            !text.endsWith(".") &&
+                            !text.endsWith("!") &&
+                            !text.endsWith("?") &&
+                            !text.endsWith(":") &&
+                            !text.endsWith(";")
+
+                val validSingleLabel =
+                    compact.length == 1 &&
+                            compact[0].isLetterOrDigit()
+
+                if (
+                    !validSingleLabel &&
+                    (
+                            noReadableCharacters ||
+                                    repeatedNoise ||
+                                    likelyGarbled ||
+                                    looksTruncated
+                            )
+                ) {
+                    issues.add(
+                        text
+                    )
+                }
+            }
+
+        return issues
+            .distinct()
+            .take(8)
     }
 
     /**
@@ -724,7 +857,8 @@ class ScanFragment : Fragment() {
 
     private fun navigateToPdfViewer(
         content: String,
-        imagePath: String
+        imagePath: String,
+        ocrIssues: List<String> = emptyList()
     ) {
         val safeContext = context ?: return
 
@@ -806,6 +940,16 @@ class ScanFragment : Fragment() {
                             "IMAGE_PATH",
                             imagePath
                         )
+
+                        putExtra(
+                            "OCR_REVIEW_COUNT",
+                            ocrIssues.size
+                        )
+
+                        putStringArrayListExtra(
+                            "OCR_REVIEW_LINES",
+                            ArrayList(ocrIssues)
+                        )
                     }
 
                 startActivity(
@@ -848,7 +992,9 @@ class ScanFragment : Fragment() {
 
         if (!analysisSequenceStarted) {
             analysisSequenceStarted = true
-            runAnalysisStepAnimation()
+            showActualAnalysisState(
+                AnalysisStage.PREPARING_IMAGE
+            )
         }
     }
 
@@ -869,99 +1015,135 @@ class ScanFragment : Fragment() {
 
     private fun finishAnalyzingAndNavigate(
         content: String,
-        imagePath: String
+        imagePath: String,
+        ocrIssues: List<String> = emptyList()
     ) {
-        val elapsed =
-            SystemClock.elapsedRealtime() - analyzingStartedAt
+        view?.post {
+            if (!isAdded) return@post
 
-        val remaining =
-            (minimumAnalyzingDurationMs - elapsed)
-                .coerceAtLeast(0L)
+            showActualAnalysisState(
+                AnalysisStage.COMPLETE
+            )
 
-        view?.postDelayed({
-            if (!isAdded) return@postDelayed
+            hideAnalyzingOverlay()
 
-            completeAllAnalysisSteps()
-
-            view?.postDelayed({
-                if (!isAdded) return@postDelayed
-
-                hideAnalyzingOverlay()
-                navigateToPdfViewer(
-                    content,
-                    imagePath
-                )
-            }, 180L)
-
-        }, remaining)
+            navigateToPdfViewer(
+                content = content,
+                imagePath = imagePath,
+                ocrIssues = ocrIssues
+            )
+        }
     }
 
-    private fun runAnalysisStepAnimation() {
-        val root = view ?: return
+    private enum class AnalysisStage {
+        PREPARING_IMAGE,
+        DETECTING_TEXT,
+        CHECKING_RECOGNITION,
+        STRUCTURING_NOTES,
+        COMPLETE
+    }
 
-        setAnalysisStep(
-            textId = R.id.tvStepEnhance,
-            iconId = R.id.iconEnhance,
-            state = AnalysisStepState.ACTIVE
-        )
+    private fun showActualAnalysisState(
+        stage: AnalysisStage
+    ) {
+        val root =
+            view ?: return
 
-        root.postDelayed({
-            if (!isAdded) return@postDelayed
+        root.findViewById<TextView>(
+            R.id.tvStepEnhance
+        )?.text =
+            "Preparing Image"
 
-            setAnalysisStep(
-                R.id.tvStepEnhance,
-                R.id.iconEnhance,
-                AnalysisStepState.DONE
-            )
+        root.findViewById<TextView>(
+            R.id.tvStepText
+        )?.text =
+            "Detecting Text"
 
-            setAnalysisStep(
-                R.id.tvStepText,
-                R.id.iconText,
-                AnalysisStepState.ACTIVE
-            )
-        }, 550L)
+        root.findViewById<TextView>(
+            R.id.tvStepElements
+        )?.text =
+            "Checking Recognition"
 
-        root.postDelayed({
-            if (!isAdded) return@postDelayed
+        root.findViewById<TextView>(
+            R.id.tvStepStructure
+        )?.text =
+            "Structuring Notes"
 
-            setAnalysisStep(
-                R.id.tvStepText,
-                R.id.iconText,
-                AnalysisStepState.DONE
-            )
+        resetAnalysisSteps()
 
-            setAnalysisStep(
-                R.id.tvStepElements,
-                R.id.iconElements,
-                AnalysisStepState.ACTIVE
-            )
-        }, 1100L)
+        when (stage) {
+            AnalysisStage.PREPARING_IMAGE -> {
+                setAnalysisStep(
+                    R.id.tvStepEnhance,
+                    R.id.iconEnhance,
+                    AnalysisStepState.ACTIVE
+                )
+            }
 
-        root.postDelayed({
-            if (!isAdded) return@postDelayed
+            AnalysisStage.DETECTING_TEXT -> {
+                setAnalysisStep(
+                    R.id.tvStepEnhance,
+                    R.id.iconEnhance,
+                    AnalysisStepState.DONE
+                )
 
-            setAnalysisStep(
-                R.id.tvStepElements,
-                R.id.iconElements,
-                AnalysisStepState.DONE
-            )
+                setAnalysisStep(
+                    R.id.tvStepText,
+                    R.id.iconText,
+                    AnalysisStepState.ACTIVE
+                )
+            }
 
-            setAnalysisStep(
-                R.id.tvStepStructure,
-                R.id.iconStructure,
-                AnalysisStepState.ACTIVE
-            )
-        }, 1650L)
+            AnalysisStage.CHECKING_RECOGNITION -> {
+                setAnalysisStep(
+                    R.id.tvStepEnhance,
+                    R.id.iconEnhance,
+                    AnalysisStepState.DONE
+                )
 
-        root.postDelayed({
-            if (!isAdded) return@postDelayed
+                setAnalysisStep(
+                    R.id.tvStepText,
+                    R.id.iconText,
+                    AnalysisStepState.DONE
+                )
 
-            setAnalysisStep(
-                R.id.tvStepStructure,
-                R.id.iconStructure,
-                AnalysisStepState.DONE
-            )
-        }, 2200L)
+                setAnalysisStep(
+                    R.id.tvStepElements,
+                    R.id.iconElements,
+                    AnalysisStepState.ACTIVE
+                )
+            }
+
+            AnalysisStage.STRUCTURING_NOTES -> {
+                setAnalysisStep(
+                    R.id.tvStepEnhance,
+                    R.id.iconEnhance,
+                    AnalysisStepState.DONE
+                )
+
+                setAnalysisStep(
+                    R.id.tvStepText,
+                    R.id.iconText,
+                    AnalysisStepState.DONE
+                )
+
+                setAnalysisStep(
+                    R.id.tvStepElements,
+                    R.id.iconElements,
+                    AnalysisStepState.DONE
+                )
+
+                setAnalysisStep(
+                    R.id.tvStepStructure,
+                    R.id.iconStructure,
+                    AnalysisStepState.ACTIVE
+                )
+            }
+
+            AnalysisStage.COMPLETE -> {
+                completeAllAnalysisSteps()
+            }
+        }
     }
 
     private enum class AnalysisStepState {
