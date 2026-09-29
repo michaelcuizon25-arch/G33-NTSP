@@ -61,6 +61,15 @@ class DrawingView @JvmOverloads constructor(
 
     private var markupChangedListener: (() -> Unit)? = null
 
+    // Lets PdfViewerActivity capture ONE full markup snapshot before a pen
+    // or eraser gesture starts, so Undo/Redo can restore both drawings
+    // and text highlights together.
+    private var beforeMarkupChangeListener: (() -> Unit)? = null
+
+    // Eraser coordinates are also forwarded to PdfViewerActivity so it can
+    // remove snapped text-highlight ranges, not only pen strokes.
+    private var eraserTouchListener: ((Float, Float) -> Unit)? = null
+
     fun setTool(tool: ToolMode) {
         currentTool = tool
 
@@ -90,6 +99,18 @@ class DrawingView @JvmOverloads constructor(
         listener: (() -> Unit)?
     ) {
         markupChangedListener = listener
+    }
+
+    fun setBeforeMarkupChangeListener(
+        listener: (() -> Unit)?
+    ) {
+        beforeMarkupChangeListener = listener
+    }
+
+    fun setEraserTouchListener(
+        listener: ((Float, Float) -> Unit)?
+    ) {
+        eraserTouchListener = listener
     }
 
     fun getVectorStrokes(): List<VectorStroke> {
@@ -207,6 +228,9 @@ class DrawingView @JvmOverloads constructor(
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
+
+                // Capture the complete markup state before this new stroke.
+                beforeMarkupChangeListener?.invoke()
                 undoneStrokes.clear()
 
                 currentPenPoints =
@@ -352,6 +376,16 @@ class DrawingView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN,
             MotionEvent.ACTION_MOVE -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
+
+                if (event.action == MotionEvent.ACTION_DOWN) {
+                    // One snapshot per eraser gesture.
+                    beforeMarkupChangeListener?.invoke()
+                    undoneStrokes.clear()
+                }
+
+                // Give the Activity the same eraser position so snapped
+                // text highlights can be removed too.
+                eraserTouchListener?.invoke(x, y)
 
                 val nx =
                     if (width > 0) x / width else 0f

@@ -63,6 +63,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -88,6 +89,20 @@ class PdfViewerActivity : AppCompatActivity() {
     )
 
     private val highlightRanges = mutableListOf<HighlightRange>()
+
+    private data class MarkupState(
+        val strokes: List<DrawingView.VectorStroke>,
+        val highlights: List<HighlightRange>,
+        val content: String,
+        val wasEditMode: Boolean,
+        val selectionStart: Int,
+        val selectionEnd: Int
+    )
+
+    private val markupUndoStack = mutableListOf<MarkupState>()
+    private val markupRedoStack = mutableListOf<MarkupState>()
+    private var restoringMarkupState = false
+    private var suppressTextHistory = false
 
     private var markupLoaded = false
 
@@ -268,7 +283,16 @@ class PdfViewerActivity : AppCompatActivity() {
         activeTool = ToolMode.NONE
         drawingView?.setTool(ToolMode.NONE)
 
+        // Pen and eraser gestures tell us BEFORE they mutate the drawing.
+        drawingView?.setBeforeMarkupChangeListener {
+            pushMarkupUndoState()
+        }
+
+        // A snapped text highlight lives in PdfViewerActivity, so capture
+        // history immediately before adding it.
         drawingView?.setHighlighterStrokeListener { startX, startY, endX, endY, color ->
+            pushMarkupUndoState()
+
             snapHighlighterToText(
                 startX = startX,
                 startY = startY,
@@ -278,8 +302,18 @@ class PdfViewerActivity : AppCompatActivity() {
             )
         }
 
+        // The eraser now removes both freehand strokes and snapped highlights.
+        drawingView?.setEraserTouchListener { x, y ->
+            eraseHighlightAt(
+                x = x,
+                y = y
+            )
+        }
+
         drawingView?.setMarkupChangedListener {
-            saveMarkupData()
+            if (!restoringMarkupState) {
+                saveMarkupData()
+            }
         }
 
         findViewById<View>(R.id.btnToolText)?.setOnClickListener {
@@ -303,7 +337,6 @@ class PdfViewerActivity : AppCompatActivity() {
             }
         }
 
-        // Manual swipe -> snaps to the words underneath.
         findViewById<View>(R.id.btnToolHighlighter)?.setOnClickListener {
             if (activeTool == ToolMode.HIGHLIGHTER) {
                 activeTool = ToolMode.NONE
@@ -335,11 +368,318 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.btnToolUndo)?.setOnClickListener {
-            drawingView?.undo()
+            undoMarkup()
         }
 
         findViewById<View>(R.id.btnToolRedo)?.setOnClickListener {
-            drawingView?.redo()
+            redoMarkup()
+        }
+    }
+
+    private fun copyStroke(
+        stroke: DrawingView.VectorStroke
+    ): DrawingView.VectorStroke {
+        return DrawingView.VectorStroke(
+            points = stroke.points.map {
+                DrawingView.StrokePoint(
+                    x = it.x,
+                    y = it.y
+                )
+            },
+            color = stroke.color,
+            width = stroke.width,
+            alpha = stroke.alpha
+        )
+    }
+
+    private fun currentContentForHistory(): String {
+        if (!isEditMode) {
+            return currentRawContent
+        }
+
+        val editor =
+            findViewById<EditText>(
+                R.id.etInlineEditor
+            )
+
+        val value =
+            editor?.text
+                ?: return currentRawContent
+
+        return if (value is Spanned) {
+            HtmlCompat.toHtml(
+                value,
+                HtmlCompat.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE
+            )
+        } else {
+            value.toString()
+                .replace("\n", "<br/>")
+        }
+    }
+
+    private fun captureMarkupState(): MarkupState {
+        val drawingView =
+            findViewById<DrawingView>(
+                R.id.drawingView
+            )
+
+        val editor =
+            findViewById<EditText>(
+                R.id.etInlineEditor
+            )
+
+        return MarkupState(
+            strokes =
+                drawingView
+                    ?.getVectorStrokes()
+                    .orEmpty()
+                    .map(::copyStroke),
+            highlights =
+                highlightRanges.map {
+                    it.copy()
+                },
+            content =
+                currentContentForHistory(),
+            wasEditMode =
+                isEditMode,
+            selectionStart =
+                if (isEditMode) {
+                    editor?.selectionStart
+                        ?.coerceAtLeast(0)
+                        ?: 0
+                } else {
+                    0
+                },
+            selectionEnd =
+                if (isEditMode) {
+                    editor?.selectionEnd
+                        ?.coerceAtLeast(0)
+                        ?: 0
+                } else {
+                    0
+                }
+        )
+    }
+
+    private fun pushMarkupUndoState() {
+        if (restoringMarkupState) return
+
+        markupUndoStack.add(
+            captureMarkupState()
+        )
+
+        // Keep memory usage bounded even during long study sessions.
+        if (markupUndoStack.size > 60) {
+            markupUndoStack.removeAt(0)
+        }
+
+        markupRedoStack.clear()
+    }
+
+    private fun restoreMarkupState(
+        state: MarkupState
+    ) {
+        restoringMarkupState = true
+        suppressTextHistory = true
+
+        try {
+            findViewById<DrawingView>(
+                R.id.drawingView
+            )?.setVectorStrokes(
+                state.strokes.map(::copyStroke)
+            )
+
+            highlightRanges.clear()
+            highlightRanges.addAll(
+                state.highlights.map {
+                    it.copy()
+                }
+            )
+
+            currentRawContent =
+                state.content
+
+            val textView =
+                findViewById<TextView>(
+                    R.id.tvPdfContent
+                )
+
+            val editor =
+                findViewById<EditText>(
+                    R.id.etInlineEditor
+                )
+
+            isEditMode =
+                state.wasEditMode
+
+            if (state.wasEditMode) {
+                val editorContent =
+                    createEditorContent(
+                        currentRawContent
+                    )
+
+                editor?.setText(
+                    editorContent
+                )
+
+                textView?.visibility =
+                    View.GONE
+
+                editor?.visibility =
+                    View.VISIBLE
+
+                val length =
+                    editor?.text?.length ?: 0
+
+                val start =
+                    state.selectionStart
+                        .coerceIn(
+                            0,
+                            length
+                        )
+
+                val end =
+                    state.selectionEnd
+                        .coerceIn(
+                            0,
+                            length
+                        )
+
+                editor?.setSelection(
+                    minOf(start, end),
+                    maxOf(start, end)
+                )
+
+                attachEditorAutoFormatting(
+                    editor ?: return
+                )
+            } else {
+                editor?.visibility =
+                    View.GONE
+
+                textView?.visibility =
+                    View.VISIBLE
+
+                renderContent(
+                    currentRawContent
+                )
+            }
+
+            saveMarkupData()
+        } finally {
+            suppressTextHistory = false
+            restoringMarkupState = false
+        }
+    }
+
+    private fun undoMarkup() {
+        if (markupUndoStack.isEmpty()) {
+            showToolToast("Nothing to undo")
+            return
+        }
+
+        markupRedoStack.add(
+            captureMarkupState()
+        )
+
+        val previous =
+            markupUndoStack.removeAt(
+                markupUndoStack.lastIndex
+            )
+
+        restoreMarkupState(previous)
+    }
+
+    private fun redoMarkup() {
+        if (markupRedoStack.isEmpty()) {
+            showToolToast("Nothing to redo")
+            return
+        }
+
+        markupUndoStack.add(
+            captureMarkupState()
+        )
+
+        val next =
+            markupRedoStack.removeAt(
+                markupRedoStack.lastIndex
+            )
+
+        restoreMarkupState(next)
+    }
+
+    private fun eraseHighlightAt(
+        x: Float,
+        y: Float
+    ) {
+        if (highlightRanges.isEmpty()) return
+
+        val textView =
+            findViewById<TextView>(
+                R.id.tvPdfContent
+            ) ?: return
+
+        val layout =
+            textView.layout
+                ?: return
+
+        if (
+            textView.height <= 0 ||
+            layout.lineCount <= 0
+        ) {
+            return
+        }
+
+        // DrawingView and TextView share the same content area.
+        val safeY =
+            y.toInt().coerceIn(
+                0,
+                (textView.height - 1)
+                    .coerceAtLeast(0)
+            )
+
+        val line =
+            layout.getLineForVertical(
+                safeY
+            )
+
+        val radius =
+            dp(18).toFloat()
+
+        val leftOffset =
+            layout.getOffsetForHorizontal(
+                line,
+                (x - radius)
+                    .coerceAtLeast(0f)
+            )
+
+        val rightOffset =
+            layout.getOffsetForHorizontal(
+                line,
+                x + radius
+            )
+
+        val minOffset =
+            minOf(
+                leftOffset,
+                rightOffset
+            )
+
+        val maxOffset =
+            maxOf(
+                leftOffset,
+                rightOffset
+            )
+
+        val removed =
+            highlightRanges.removeAll { range ->
+                range.start <= maxOffset &&
+                        range.end >= minOffset
+            }
+
+        if (removed) {
+            applySavedHighlightsToDisplayedText()
+            saveMarkupData()
         }
     }
 
@@ -466,6 +806,10 @@ class PdfViewerActivity : AppCompatActivity() {
         val editor = findViewById<EditText>(R.id.etInlineEditor) ?: return
         val editable = editor.text ?: return
 
+        // Treat the whole block insertion as one Undo step.
+        pushMarkupUndoState()
+        suppressTextHistory = true
+
         val cursor = editor.selectionStart.coerceAtLeast(0)
 
         val prefix =
@@ -563,6 +907,8 @@ class PdfViewerActivity : AppCompatActivity() {
 
         attachEditorAutoFormatting(editor)
 
+        suppressTextHistory = false
+
         editor.requestFocus()
 
         val imm =
@@ -601,6 +947,14 @@ class PdfViewerActivity : AppCompatActivity() {
                     count: Int,
                     after: Int
                 ) {
+                    if (
+                        !formattingEditorText &&
+                        !restoringMarkupState &&
+                        !suppressTextHistory
+                    ) {
+                        pushMarkupUndoState()
+                    }
+
                     insertedNewlineAt = start
                     beforeCount = count
                     addedCount = after
@@ -2270,10 +2624,9 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 val pageWidth = 595
                 val pageHeight = 842
-                val outerMargin = 20f
-                val columnGap = 14f
-                val contentWidth = pageWidth - (outerMargin * 2)
-                val columnWidth = (contentWidth - columnGap) / 2f
+                val outerMargin = 28f
+                val contentWidth =
+                    pageWidth - (outerMargin * 2)
 
                 val titleTypeface =
                     ResourcesCompat.getFont(
@@ -2287,22 +2640,29 @@ class PdfViewerActivity : AppCompatActivity() {
                         R.font.poppins_regular
                     )
 
-                val titlePaint = TextPaint().apply {
-                    textSize = 10.5f
-                    color = Color.BLACK
-                    typeface = titleTypeface
-                    isAntiAlias = true
-                }
+                val titlePaint =
+                    TextPaint().apply {
+                        textSize = 14f
+                        color = Color.BLACK
+                        typeface = titleTypeface
+                        isAntiAlias = true
+                    }
 
-                // The logical body layout uses the same width as the phone note.
-                // We then SCALE that exact layout into two PDF columns.
-                // This preserves the exact pen/highlighter-to-text relationship.
-                val logicalBodyPaint = TextPaint().apply {
-                    textSize = 11.5f * resources.displayMetrics.scaledDensity
-                    color = Color.BLACK
-                    typeface = bodyTypeface
-                    isAntiAlias = true
-                }
+                // Keep the same logical width as the editor, then scale the
+                // COMPLETE note uniformly into one PDF column. This keeps
+                // freehand marks aligned with the text and removes the old
+                // left-column/right-column split.
+                val logicalBodyPaint =
+                    TextPaint().apply {
+                        textSize =
+                            11.5f *
+                                    resources
+                                        .displayMetrics
+                                        .scaledDensity
+                        color = Color.BLACK
+                        typeface = bodyTypeface
+                        isAntiAlias = true
+                    }
 
                 val logicalLayout =
                     StaticLayout.Builder.obtain(
@@ -2312,9 +2672,14 @@ class PdfViewerActivity : AppCompatActivity() {
                         logicalBodyPaint,
                         snapshot.logicalWidth
                     )
-                        .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                        .setAlignment(
+                            Layout.Alignment.ALIGN_NORMAL
+                        )
                         .setLineSpacing(
-                            2f * resources.displayMetrics.density,
+                            2f *
+                                    resources
+                                        .displayMetrics
+                                        .density,
                             1f
                         )
                         .setIncludePad(false)
@@ -2327,14 +2692,19 @@ class PdfViewerActivity : AppCompatActivity() {
                     ).toFloat()
 
                 val scale =
-                    columnWidth /
-                            snapshot.logicalWidth.coerceAtLeast(1).toFloat()
+                    contentWidth /
+                            snapshot.logicalWidth
+                                .coerceAtLeast(1)
+                                .toFloat()
 
                 var sourceY = 0f
                 var pageNumber = 1
                 var firstPage = true
 
-                while (sourceY < logicalHeight || firstPage) {
+                while (
+                    sourceY < logicalHeight ||
+                    firstPage
+                ) {
                     val pageInfo =
                         PdfDocument.PageInfo.Builder(
                             pageWidth,
@@ -2343,10 +2713,15 @@ class PdfViewerActivity : AppCompatActivity() {
                         ).create()
 
                     val page =
-                        pdfDocument.startPage(pageInfo)
+                        pdfDocument.startPage(
+                            pageInfo
+                        )
 
-                    val canvas = page.canvas
-                    var bodyTop = outerMargin
+                    val canvas =
+                        page.canvas
+
+                    var bodyTop =
+                        outerMargin
 
                     if (firstPage) {
                         val titleLayout =
@@ -2360,133 +2735,160 @@ class PdfViewerActivity : AppCompatActivity() {
                             outerMargin,
                             bodyTop
                         ) {
-                            titleLayout.draw(canvas)
+                            titleLayout.draw(
+                                canvas
+                            )
                         }
 
-                        bodyTop += titleLayout.height + 10f
+                        bodyTop +=
+                            titleLayout.height +
+                                    14f
                     }
 
                     val availablePdfHeight =
-                        pageHeight - outerMargin - bodyTop
+                        pageHeight -
+                                outerMargin -
+                                bodyTop
 
                     val logicalBandHeight =
-                        availablePdfHeight / scale
+                        availablePdfHeight /
+                                scale
 
-                    for (column in 0 until 2) {
-                        if (sourceY >= logicalHeight) break
-
-                        val targetBottom =
+                    val targetBottom =
+                        minOf(
                             sourceY +
-                                    logicalBandHeight
+                                    logicalBandHeight,
+                            logicalHeight
+                        )
 
-                        val lastCandidateLine =
-                            logicalLayout.getLineForVertical(
+                    val bandEnd =
+                        if (
+                            sourceY <
+                            logicalLayout.height &&
+                            logicalLayout.lineCount > 0
+                        ) {
+                            val vertical =
                                 targetBottom
                                     .toInt()
-                                    .coerceAtMost(
+                                    .coerceIn(
+                                        0,
                                         logicalLayout.height
                                             .coerceAtLeast(1) - 1
                                     )
-                            )
 
-                        val bandEnd =
-                            if (
-                                lastCandidateLine >= 0 &&
-                                lastCandidateLine <
-                                logicalLayout.lineCount
-                            ) {
+                            val line =
                                 logicalLayout
-                                    .getLineBottom(
-                                        lastCandidateLine
+                                    .getLineForVertical(
+                                        vertical
                                     )
-                                    .toFloat()
-                                    .coerceAtMost(
-                                        logicalHeight
-                                    )
-                            } else {
-                                minOf(
-                                    targetBottom,
+
+                            logicalLayout
+                                .getLineBottom(
+                                    line
+                                )
+                                .toFloat()
+                                .coerceAtMost(
                                     logicalHeight
                                 )
-                            }
+                        } else {
+                            targetBottom
+                        }
 
-                        val safeBandEnd =
-                            if (bandEnd <= sourceY) {
-                                minOf(
-                                    sourceY +
-                                            logicalBandHeight,
-                                    logicalHeight
-                                )
-                            } else {
-                                bandEnd
-                            }
+                    val safeBandEnd =
+                        if (
+                            bandEnd <= sourceY
+                        ) {
+                            targetBottom
+                        } else {
+                            bandEnd
+                        }
 
-                        val x =
-                            outerMargin +
-                                    column *
-                                    (columnWidth + columnGap)
+                    val renderedHeight =
+                        (safeBandEnd -
+                                sourceY) *
+                                scale
 
-                        val renderedHeight =
-                            (safeBandEnd -
-                                    sourceY) * scale
+                    canvas.save()
 
-                        canvas.save()
+                    canvas.clipRect(
+                        outerMargin,
+                        bodyTop,
+                        outerMargin +
+                                contentWidth,
+                        bodyTop +
+                                renderedHeight
+                    )
 
-                        canvas.clipRect(
-                            x,
-                            bodyTop,
-                            x + columnWidth,
-                            bodyTop +
-                                    renderedHeight
-                        )
+                    canvas.translate(
+                        outerMargin,
+                        bodyTop
+                    )
 
-                        canvas.translate(
-                            x,
-                            bodyTop
-                        )
+                    canvas.scale(
+                        scale,
+                        scale
+                    )
 
-                        canvas.scale(
-                            scale,
-                            scale
-                        )
+                    canvas.translate(
+                        0f,
+                        -sourceY
+                    )
 
-                        canvas.translate(
-                            0f,
-                            -sourceY
-                        )
+                    logicalLayout.draw(
+                        canvas
+                    )
 
-                        logicalLayout.draw(
-                            canvas
-                        )
+                    drawSnapshotStrokes(
+                        canvas = canvas,
+                        snapshot = snapshot
+                    )
 
-                        drawSnapshotStrokes(
-                            canvas = canvas,
-                            snapshot = snapshot
-                        )
+                    canvas.restore()
 
-                        canvas.restore()
+                    pdfDocument.finishPage(
+                        page
+                    )
 
-                        sourceY =
-                            safeBandEnd
-                    }
-
-                    pdfDocument.finishPage(page)
+                    sourceY =
+                        safeBandEnd
 
                     firstPage = false
                     pageNumber++
 
-                    if (sourceY >= logicalHeight) break
+                    // Safety guard for an unexpected zero-height layout.
+                    if (
+                        sourceY >= logicalHeight
+                    ) {
+                        break
+                    }
                 }
 
-                contentResolver
-                    .openOutputStream(uri)
-                    ?.use { outputStream ->
-                        pdfDocument.writeTo(outputStream)
+                val descriptor =
+                    contentResolver
+                        .openFileDescriptor(
+                            uri,
+                            "w"
+                        )
+                        ?: throw IllegalStateException(
+                            "Unable to open the selected PDF file."
+                        )
+
+                descriptor.use { parcelFileDescriptor ->
+                    FileOutputStream(
+                        parcelFileDescriptor.fileDescriptor
+                    ).use { outputStream ->
+                        pdfDocument.writeTo(
+                            outputStream
+                        )
+                        outputStream.flush()
                     }
+                }
 
                 pdfDocument.close()
 
-                withContext(Dispatchers.Main) {
+                withContext(
+                    Dispatchers.Main
+                ) {
                     pendingPdfSnapshot = null
 
                     Toast.makeText(
@@ -2499,7 +2901,9 @@ class PdfViewerActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
 
-                withContext(Dispatchers.Main) {
+                withContext(
+                    Dispatchers.Main
+                ) {
                     Toast.makeText(
                         this@PdfViewerActivity,
                         "Failed to save PDF.",
