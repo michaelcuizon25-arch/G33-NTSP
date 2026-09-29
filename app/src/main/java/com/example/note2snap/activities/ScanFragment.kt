@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -41,6 +42,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.example.note2snap.R
+import com.example.note2snap.ccl.ConnectedComponentLabeler
+import com.example.note2snap.ccl.RegionType
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.ScanHistory
 import com.google.mlkit.vision.common.InputImage
@@ -403,15 +406,41 @@ class ScanFragment : Fragment() {
                             visionText
                         )
 
-                    showActualAnalysisState(
-                        AnalysisStage.STRUCTURING_NOTES
-                    )
+                    lifecycleScope.launch(
+                        Dispatchers.IO
+                    ) {
+                        val diagramHtml =
+                            detectDiagramHtml(
+                                sourceFilePath
+                            )
 
-                    finishAnalyzingAndNavigate(
-                        content = finalText,
-                        imagePath = sourceFilePath,
-                        ocrIssues = ocrIssues
-                    )
+                        withContext(
+                            Dispatchers.Main
+                        ) {
+                            if (!isAdded) {
+                                return@withContext
+                            }
+
+                            showActualAnalysisState(
+                                AnalysisStage.STRUCTURING_NOTES
+                            )
+
+                            val finalContent =
+                                if (diagramHtml.isBlank()) {
+                                    finalText
+                                } else {
+                                    finalText +
+                                            "<br/><br/><b>Detected Diagram</b><br/>" +
+                                            diagramHtml
+                                }
+
+                            finishAnalyzingAndNavigate(
+                                content = finalContent,
+                                imagePath = sourceFilePath,
+                                ocrIssues = ocrIssues
+                            )
+                        }
+                    }
                 }
                 .addOnFailureListener { e ->
                     if (!isAdded) return@addOnFailureListener
@@ -423,6 +452,214 @@ class ScanFragment : Fragment() {
             if (isAdded) setLoading(false)
             Log.e("ScanFragment", "Error processing image", e)
             Toast.makeText(safeContext, "Error loading image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private suspend fun detectDiagramHtml(
+        imagePath: String
+    ): String {
+
+        val source =
+            decodeBitmapForDiagramDetection(
+                imagePath
+            ) ?: return ""
+
+        val binary =
+            createBinaryForDiagramDetection(
+                source
+            )
+
+        return try {
+            val regions =
+                ConnectedComponentLabeler()
+                    .label(
+                        binary,
+                        source
+                    )
+                    .filter {
+                        it.type ==
+                                RegionType.NON_TEXT
+                    }
+                    .filter { region ->
+                        val box = region.boundingBox
+                        val boxArea = box.width().toFloat() * box.height().toFloat()
+                        val imageArea = source.width.toFloat() * source.height.toFloat()
+                        val areaRatio = if (imageArea > 0f) boxArea / imageArea else 0f
+
+                        box.width() >= 35 &&
+                                box.height() >= 30 &&
+                                areaRatio in 0.004f..0.60f
+                    }
+                    .sortedByDescending {
+                        it.boundingBox.width() * it.boundingBox.height()
+                    }
+                    .take(3)
+
+            if (regions.isEmpty()) {
+                ""
+            } else {
+                val directory =
+                    File(
+                        requireContext().filesDir,
+                        "recognized_diagrams"
+                    ).apply {
+                        mkdirs()
+                    }
+
+                regions.mapIndexedNotNull { index, region ->
+                    runCatching {
+                        val file =
+                            File(
+                                directory,
+                                "diagram_${System.currentTimeMillis()}_$index.png"
+                            )
+
+                        FileOutputStream(file).use { stream ->
+                            region.croppedBitmap.compress(
+                                Bitmap.CompressFormat.PNG,
+                                100,
+                                stream
+                            )
+                        }
+
+                        "<p><img src='file://${file.absolutePath}' alt='Detected whiteboard diagram'/></p>"
+                    }.getOrNull()
+                }.joinToString("<br/>")
+            }
+
+        } catch (error: OutOfMemoryError) {
+            Log.e(
+                "ScanFragment",
+                "Diagram detection ran out of memory; continuing with text only.",
+                error
+            )
+            ""
+
+        } catch (error: Exception) {
+            Log.w(
+                "ScanFragment",
+                "Diagram detection failed; continuing with text only.",
+                error
+            )
+            ""
+
+        } finally {
+            if (!binary.isRecycled) {
+                binary.recycle()
+            }
+
+            if (!source.isRecycled) {
+                source.recycle()
+            }
+        }
+    }
+
+    private fun decodeBitmapForDiagramDetection(
+        imagePath: String
+    ): Bitmap? {
+
+        val bounds =
+            BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+
+        BitmapFactory.decodeFile(
+            imagePath,
+            bounds
+        )
+
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            return null
+        }
+
+        val maxDimension = 1200
+        var sampleSize = 1
+
+        while (
+            bounds.outWidth / sampleSize > maxDimension ||
+            bounds.outHeight / sampleSize > maxDimension
+        ) {
+            sampleSize *= 2
+        }
+
+        return BitmapFactory.decodeFile(
+            imagePath,
+            BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+        )
+    }
+
+    private fun createBinaryForDiagramDetection(
+        source: Bitmap
+    ): Bitmap {
+
+        val width = source.width
+        val height = source.height
+        val pixels = IntArray(width * height)
+
+        source.getPixels(
+            pixels,
+            0,
+            width,
+            0,
+            0,
+            width,
+            height
+        )
+
+        val grayValues = IntArray(pixels.size)
+        var graySum = 0L
+
+        pixels.indices.forEach { index ->
+            val pixel = pixels[index]
+            val gray =
+                (
+                        Color.red(pixel) * 0.299f +
+                                Color.green(pixel) * 0.587f +
+                                Color.blue(pixel) * 0.114f
+                        ).toInt().coerceIn(0, 255)
+
+            grayValues[index] = gray
+            graySum += gray.toLong()
+        }
+
+        val averageGray =
+            if (grayValues.isNotEmpty()) {
+                (graySum / grayValues.size).toInt()
+            } else {
+                160
+            }
+
+        val threshold =
+            (averageGray - 28).coerceIn(80, 210)
+
+        val binaryPixels = IntArray(pixels.size)
+
+        grayValues.indices.forEach { index ->
+            binaryPixels[index] =
+                if (grayValues[index] < threshold) {
+                    Color.WHITE
+                } else {
+                    Color.BLACK
+                }
+        }
+
+        return Bitmap.createBitmap(
+            width,
+            height,
+            Bitmap.Config.ARGB_8888
+        ).apply {
+            setPixels(
+                binaryPixels,
+                0,
+                width,
+                0,
+                0,
+                width,
+                height
+            )
         }
     }
 
@@ -489,22 +726,6 @@ class ScanFragment : Fragment() {
                     compact.length >= 4 &&
                             suspiciousRatio >= 0.35f
 
-                val words =
-                    text.split(
-                        Regex("\\s+")
-                    ).filter {
-                        it.isNotBlank()
-                    }
-
-                val looksTruncated =
-                    words.size >= 2 &&
-                            text.firstOrNull()?.isLowerCase() == true &&
-                            !text.endsWith(".") &&
-                            !text.endsWith("!") &&
-                            !text.endsWith("?") &&
-                            !text.endsWith(":") &&
-                            !text.endsWith(";")
-
                 val validSingleLabel =
                     compact.length == 1 &&
                             compact[0].isLetterOrDigit()
@@ -514,8 +735,7 @@ class ScanFragment : Fragment() {
                     (
                             noReadableCharacters ||
                                     repeatedNoise ||
-                                    likelyGarbled ||
-                                    looksTruncated
+                                    likelyGarbled
                             )
                 ) {
                     issues.add(

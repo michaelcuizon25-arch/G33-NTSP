@@ -43,4 +43,13 @@
     <string name="tool_undo">↶</string>
     <string name="tool_redo">↷</string>
     <string name="cd_scanned_photo">Scanned Photo</string>
+    <string name="batch_progress_initial">Processing 0/%1$d images…</string>
+    <string name="batch_progress_current">Processing image %1$d/%2$d…</string>
+    <string name="batch_no_images_selected">No images selected</string>
+    <string name="batch_success">Successfully processed %1$d pages!</string>
+    <string name="batch_page_header">--- Page %1$d ---</string>
+    <string name="batch_page_header_html">&lt;b&gt;--- Page %1$d ---&lt;/b&gt;</string>
+    <string name="batch_no_text_raw">(No readable text detected on this page)</string>
+    <string name="batch_no_text_html">&lt;i&gt;(No readable text detected on this page)&lt;/i&gt;</string>
+    <string name="batch_note_title">Batch Scan (%1$d Pages)</string>
 </resources>

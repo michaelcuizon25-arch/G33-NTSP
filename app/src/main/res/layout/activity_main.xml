@@ -15,6 +15,32 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/bottomNavContainer" />
 
+    <!-- BATCH PROCESSING PROGRESS INDICATORS -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:elevation="10dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/tvProgressText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/tvProgressText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:elevation="10dp"
+        android:fontFamily="@font/poppins_regular"
+        android:text="Processing 0/0 images..."
+        android:textColor="@color/nav_active"
+        android:textSize="13sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/scanFab"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomNavContainer"
         android:layout_width="0dp"

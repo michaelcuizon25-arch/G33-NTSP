@@ -77,6 +77,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private var currentImagePath: String? = null
 
     private var isEditMode = false
+    private var preservedDiagramHtml: String = ""
     private var activeTool: ToolMode = ToolMode.NONE
     private var currentPage = 1
     private var totalPages = 1
@@ -2152,11 +2153,38 @@ class PdfViewerActivity : AppCompatActivity() {
         drawingView?.setTool(ToolMode.NONE)
 
         if (!isEditMode) {
-            val editorContent = createEditorContent(currentRawContent)
+            preservedDiagramHtml =
+                getDiagramHtml(
+                    currentRawContent
+                )
+
+            val editableContent =
+                removeDiagramHtml(
+                    currentRawContent
+                )
+
+            val editorContent =
+                createEditorContent(
+                    editableContent
+                )
+
+            findViewById<WebView>(
+                R.id.webViewContent
+            )?.visibility = View.GONE
+
+            findViewById<View>(
+                R.id.scrollViewContent
+            )?.visibility = View.VISIBLE
 
             etInlineEditor?.setText(editorContent)
             tvPdfContent?.visibility = View.GONE
             etInlineEditor?.visibility = View.VISIBLE
+            etInlineEditor?.isEnabled = true
+            etInlineEditor?.isFocusableInTouchMode = true
+            etInlineEditor?.isFocusable = true
+            etInlineEditor?.isClickable = true
+            etInlineEditor?.bringToFront()
+
             findViewById<TextView>(R.id.btnExpandText)?.visibility = View.GONE
 
             etInlineEditor?.let {
@@ -2189,7 +2217,7 @@ class PdfViewerActivity : AppCompatActivity() {
         } else {
             val updatedText = etInlineEditor?.text
 
-            currentRawContent =
+            val updatedTextHtml =
                 if (updatedText is Spanned) {
                     HtmlCompat.toHtml(
                         updatedText,
@@ -2197,6 +2225,15 @@ class PdfViewerActivity : AppCompatActivity() {
                     )
                 } else {
                     updatedText?.toString()?.replace("\n", "<br/>") ?: ""
+                }
+
+            currentRawContent =
+                if (preservedDiagramHtml.isBlank()) {
+                    updatedTextHtml
+                } else {
+                    updatedTextHtml +
+                            "<br/><br/>" +
+                            preservedDiagramHtml
                 }
 
             etInlineEditor?.visibility = View.GONE
@@ -2217,6 +2254,45 @@ class PdfViewerActivity : AppCompatActivity() {
             renderContent(currentRawContent)
             saveNoteToDatabase()
         }
+    }
+
+    private fun getDiagramHtml(
+        content: String
+    ): String {
+        val start =
+            content.indexOf(
+                "<b>Detected Diagram</b>",
+                ignoreCase = true
+            )
+
+        if (start < 0) {
+            return ""
+        }
+
+        return content
+            .substring(start)
+            .trim()
+    }
+
+    private fun removeDiagramHtml(
+        content: String
+    ): String {
+        val start =
+            content.indexOf(
+                "<b>Detected Diagram</b>",
+                ignoreCase = true
+            )
+
+        if (start < 0) {
+            return content
+        }
+
+        return content
+            .substring(
+                0,
+                start
+            )
+            .trim()
     }
 
     private fun createEditorContent(rawContent: String): SpannableStringBuilder {
