@@ -10,6 +10,8 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -25,6 +27,18 @@ class NotesAdapter(
     private val onDeleteClick: (Note) -> Unit,
     private val onToggleStarClick: (Note) -> Unit
 ) : RecyclerView.Adapter<NotesAdapter.NoteViewHolder>() {
+
+    enum class DisplayMode {
+        LIST,
+        GRID,
+        COMPACT
+    }
+
+    private var displayMode: DisplayMode =
+        DisplayMode.LIST
+
+    private val VIEW_TYPE_LIST = 0
+    private val VIEW_TYPE_GRID = 1
 
     class NoteViewHolder(view: View) :
         RecyclerView.ViewHolder(view) {
@@ -43,6 +57,19 @@ class NotesAdapter(
 
         val btnMore: ImageButton =
             view.findViewById(R.id.btnNoteMore)
+
+        val rowRoot: View? =
+            (view as? ViewGroup)?.getChildAt(0)
+    }
+
+    override fun getItemViewType(
+        position: Int
+    ): Int {
+        return if (displayMode == DisplayMode.GRID) {
+            VIEW_TYPE_GRID
+        } else {
+            VIEW_TYPE_LIST
+        }
     }
 
     override fun onCreateViewHolder(
@@ -50,10 +77,17 @@ class NotesAdapter(
         viewType: Int
     ): NoteViewHolder {
 
+        val layoutRes =
+            if (viewType == VIEW_TYPE_GRID) {
+                R.layout.item_note_grid
+            } else {
+                R.layout.item_note
+            }
+
         val view =
             LayoutInflater.from(parent.context)
                 .inflate(
-                    R.layout.item_note,
+                    layoutRes,
                     parent,
                     false
                 )
@@ -74,6 +108,18 @@ class NotesAdapter(
         holder.tvDate.text =
             note.dateEdited
 
+        holder.tvTitle.typeface =
+            ResourcesCompat.getFont(
+                holder.itemView.context,
+                R.font.poppins_medium
+            )
+
+        holder.tvDate.typeface =
+            ResourcesCompat.getFont(
+                holder.itemView.context,
+                R.font.poppins_regular
+            )
+
         bindThumbnail(
             holder.ivThumbnail,
             note
@@ -89,6 +135,8 @@ class NotesAdapter(
                 R.drawable.ic_star_outline_custom
             }
         )
+
+        applyDisplayMode(holder)
 
         holder.ivStar.setOnClickListener {
             onToggleStarClick(note)
@@ -158,6 +206,93 @@ class NotesAdapter(
         )
     }
 
+    fun setDisplayMode(
+        mode: DisplayMode
+    ) {
+        if (displayMode == mode) return
+
+        displayMode = mode
+        notifyDataSetChanged()
+    }
+
+    private fun applyDisplayMode(
+        holder: NoteViewHolder
+    ) {
+        val density =
+            holder.itemView.resources.displayMetrics.density
+
+        fun dp(value: Int): Int =
+            (value * density).toInt()
+
+        if (displayMode != DisplayMode.GRID) {
+            val rowHeight =
+                when (displayMode) {
+                    DisplayMode.LIST -> dp(68)
+                    DisplayMode.GRID -> dp(112)
+                    DisplayMode.COMPACT -> dp(54)
+                }
+
+            holder.rowRoot?.layoutParams =
+                holder.rowRoot?.layoutParams?.apply {
+                    height = rowHeight
+                }
+        }
+
+        val thumb =
+            when (displayMode) {
+                DisplayMode.LIST -> 40
+                DisplayMode.GRID -> 72
+                DisplayMode.COMPACT -> 32
+            }
+
+        holder.ivThumbnail.layoutParams =
+            holder.ivThumbnail.layoutParams.apply {
+                width = dp(thumb)
+                height = dp(thumb)
+            }
+
+        holder.tvTitle.textSize =
+            when (displayMode) {
+                DisplayMode.LIST -> 11.5f
+                DisplayMode.GRID -> 11f
+                DisplayMode.COMPACT -> 10.5f
+            }
+
+        holder.tvDate.textSize =
+            when (displayMode) {
+                DisplayMode.LIST -> 9f
+                DisplayMode.GRID -> 8.5f
+                DisplayMode.COMPACT -> 8f
+            }
+
+        holder.tvDate.visibility =
+            if (displayMode == DisplayMode.COMPACT) {
+                View.GONE
+            } else {
+                View.VISIBLE
+            }
+
+        holder.ivStar.layoutParams =
+            holder.ivStar.layoutParams.apply {
+                width = dp(
+                    if (displayMode == DisplayMode.COMPACT) 28 else 32
+                )
+                height = dp(
+                    if (displayMode == DisplayMode.COMPACT) 28 else 32
+                )
+            }
+
+        holder.btnMore.layoutParams =
+            holder.btnMore.layoutParams.apply {
+                width = dp(
+                    if (displayMode == DisplayMode.COMPACT) 28 else 30
+                )
+                height = dp(
+                    if (displayMode == DisplayMode.COMPACT) 28 else 30
+                )
+            }
+    }
+
     private fun bindThumbnail(
         imageView: ImageView,
         note: Note
@@ -194,7 +329,10 @@ class NotesAdapter(
 
                 background =
                     roundedBackground(
-                        "#FFF9FF",
+                        ContextCompat.getColor(
+                            context,
+                            R.color.nts_background
+                        ),
                         28f,
                         anchor
                     )
@@ -204,8 +342,11 @@ class NotesAdapter(
             View(context).apply {
                 background =
                     roundedBackground(
-                        "#D7D4DC",
-                        3f,
+                        ContextCompat.getColor(
+                            context,
+                            R.color.nts_blue_line
+                        ),
+                        99f,
                         anchor
                     )
             },
@@ -216,7 +357,7 @@ class NotesAdapter(
                 gravity =
                     Gravity.CENTER_HORIZONTAL
                 bottomMargin =
-                    dp(anchor, 18)
+                    dp(anchor, 16)
             }
         )
 
@@ -224,8 +365,16 @@ class NotesAdapter(
             TextView(context).apply {
                 text = "Note options"
                 textSize = 20f
+                typeface =
+                    ResourcesCompat.getFont(
+                        context,
+                        R.font.apple_garamond_bold
+                    )
                 setTextColor(
-                    "#171717".toColorInt()
+                    ContextCompat.getColor(
+                        context,
+                        R.color.nts_text
+                    )
                 )
             }
         )
@@ -233,9 +382,12 @@ class NotesAdapter(
         sheet.addView(
             TextView(context).apply {
                 text = note.title
-                textSize = 11f
+                textSize = 10.5f
                 setTextColor(
-                    "#777780".toColorInt()
+                    ContextCompat.getColor(
+                        context,
+                        R.color.nts_text_secondary
+                    )
                 )
 
                 setPadding(
@@ -254,10 +406,16 @@ class NotesAdapter(
 
                 background =
                     roundedBackground(
-                        "#FFFFFF",
+                        ContextCompat.getColor(
+                            context,
+                            R.color.nts_surface
+                        ),
                         20f,
                         anchor,
-                        "#111111"
+                        ContextCompat.getColor(
+                            context,
+                            R.color.nts_blue_line
+                        )
                     )
 
                 setPadding(
@@ -379,12 +537,20 @@ class NotesAdapter(
                 TextView(context).apply {
                     text = title
                     textSize = 12.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            context,
+                            R.font.poppins_medium
+                        )
 
                     setTextColor(
                         if (destructive) {
                             "#D94B62".toColorInt()
                         } else {
-                            "#171717".toColorInt()
+                            ContextCompat.getColor(
+                                context,
+                                R.color.nts_text
+                            )
                         }
                     )
                 }
@@ -393,9 +559,17 @@ class NotesAdapter(
             labels.addView(
                 TextView(context).apply {
                     text = subtitle
-                    textSize = 10f
+                    textSize = 9.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            context,
+                            R.font.poppins_regular
+                        )
                     setTextColor(
-                        "#777780".toColorInt()
+                        ContextCompat.getColor(
+                            context,
+                            R.color.nts_text_secondary
+                        )
                     )
                 }
             )
@@ -428,10 +602,10 @@ class NotesAdapter(
     }
 
     private fun roundedBackground(
-        fillColor: String,
+        fillColor: Int,
         radiusDp: Float,
         anchor: View,
-        strokeColor: String? = null
+        strokeColor: Int? = null
     ): GradientDrawable {
 
         return GradientDrawable().apply {
@@ -444,18 +618,12 @@ class NotesAdapter(
                             .displayMetrics
                             .density
 
-            setColor(
-                Color.parseColor(
-                    fillColor
-                )
-            )
+            setColor(fillColor)
 
             if (strokeColor != null) {
                 setStroke(
                     dp(anchor, 1),
-                    Color.parseColor(
-                        strokeColor
-                    )
+                    strokeColor
                 )
             }
         }

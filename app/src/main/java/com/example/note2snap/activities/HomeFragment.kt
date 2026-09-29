@@ -1,14 +1,21 @@
 package com.example.note2snap.activities
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.LinearLayout
+import android.widget.ImageView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -18,6 +25,7 @@ import com.example.note2snap.adapters.RecentScanAdapter
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.Note
 import com.example.note2snap.model.ScanHistory
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -327,73 +335,432 @@ class HomeFragment : Fragment() {
             withContext(
                 Dispatchers.Main
             ) {
-                val options =
-                    if (existingNote == null) {
-                        arrayOf(
-                            "Open scan",
-                            "Save to Notes",
-                            "Delete from History"
-                        )
-                    } else {
-                        arrayOf(
-                            "Open note",
-                            if (existingNote.isStarred)
-                                "Unfavorite"
-                            else
-                                "Favorite",
-                            "Delete from History"
+                val dialog =
+                    BottomSheetDialog(
+                        requireContext()
+                    )
+
+                val sheet =
+                    createRecentSheet(
+                        scan.title
+                    )
+
+                val card =
+                    LinearLayout(
+                        requireContext()
+                    ).apply {
+                        orientation =
+                            LinearLayout.VERTICAL
+
+                        background =
+                            roundedBackground(
+                                colorHex(
+                                    R.color.nts_surface
+                                ),
+                                20f,
+                                colorHex(
+                                    R.color.nts_blue_line
+                                )
+                            )
+
+                        setPadding(
+                            dp(6),
+                            dp(6),
+                            dp(6),
+                            dp(6)
                         )
                     }
 
-                AlertDialog
-                    .Builder(requireContext())
-                    .setTitle(scan.title)
-                    .setItems(options) { dialog, which ->
+                card.addView(
+                    createRecentOptionRow(
+                        title =
+                            if (existingNote == null) {
+                                "Open scan"
+                            } else {
+                                "Open note"
+                            },
+                        subtitle =
+                            "View this captured note",
+                        icon = "↗"
+                    ) {
+                        dialog.dismiss()
+                        openRecentScan(scan)
+                    }
+                )
 
-                        when (which) {
-                            0 ->
-                                openRecentScan(scan)
-
-                            1 -> {
-                                if (existingNote == null) {
-                                    openRecentScan(scan)
-                                } else {
-                                    lifecycleScope.launch(
-                                        Dispatchers.IO
-                                    ) {
-                                        dao.updateNote(
-                                            existingNote.copy(
-                                                isStarred =
-                                                    !existingNote.isStarred
-                                            )
-                                        )
-                                    }
-                                }
+                card.addView(
+                    createRecentOptionRow(
+                        title =
+                            if (existingNote == null) {
+                                "Save to Notes"
+                            } else if (
+                                existingNote.isStarred
+                            ) {
+                                "Unfavorite"
+                            } else {
+                                "Favorite"
+                            },
+                        subtitle =
+                            if (existingNote == null) {
+                                "Keep this scan in Notes"
+                            } else if (
+                                existingNote.isStarred
+                            ) {
+                                "Remove from favorites"
+                            } else {
+                                "Keep this note easy to find"
+                            },
+                        icon =
+                            if (existingNote == null) {
+                                "+"
+                            } else {
+                                "★"
                             }
+                    ) {
+                        dialog.dismiss()
 
-                            2 -> {
-                                lifecycleScope.launch(
-                                    Dispatchers.IO
-                                ) {
-                                    if (
-                                        !scan.imagePath
-                                            .isNullOrBlank()
-                                    ) {
-                                        dao.deleteScanHistoryByPath(
-                                            scan.imagePath
-                                        )
-                                    } else {
-                                        dao.deleteScanHistory(
-                                            scan
-                                        )
-                                    }
-                                }
+                        if (existingNote == null) {
+                            openRecentScan(scan)
+                        } else {
+                            lifecycleScope.launch(
+                                Dispatchers.IO
+                            ) {
+                                dao.updateNote(
+                                    existingNote.copy(
+                                        isStarred =
+                                            !existingNote.isStarred
+                                    )
+                                )
                             }
                         }
-
-                        dialog.dismiss()
                     }
-                    .show()
+                )
+
+                card.addView(
+                    createRecentOptionRow(
+                        title =
+                            "Delete from History",
+                        subtitle =
+                            "Remove this item from recent scans",
+                        icon = "×",
+                        destructive = true
+                    ) {
+                        dialog.dismiss()
+
+                        lifecycleScope.launch(
+                            Dispatchers.IO
+                        ) {
+                            if (
+                                !scan.imagePath
+                                    .isNullOrBlank()
+                            ) {
+                                dao.deleteScanHistoryByPath(
+                                    scan.imagePath
+                                )
+                            } else {
+                                dao.deleteScanHistory(
+                                    scan
+                                )
+                            }
+                        }
+                    }
+                )
+
+                sheet.addView(card)
+
+                dialog.setContentView(
+                    sheet
+                )
+
+                dialog.show()
+            }
+        }
+    }
+
+    private fun createRecentSheet(
+        subtitle: String
+    ): LinearLayout {
+        return LinearLayout(
+            requireContext()
+        ).apply {
+            orientation =
+                LinearLayout.VERTICAL
+
+            setPadding(
+                dp(18),
+                dp(12),
+                dp(18),
+                dp(24)
+            )
+
+            background =
+                roundedBackground(
+                    colorHex(
+                        R.color.nts_background
+                    ),
+                    28f
+                )
+
+            addView(
+                View(
+                    requireContext()
+                ).apply {
+                    background =
+                        roundedBackground(
+                            colorHex(
+                                R.color.nts_blue_line
+                            ),
+                            99f
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    dp(42),
+                    dp(4)
+                ).apply {
+                    gravity =
+                        Gravity.CENTER_HORIZONTAL
+                    bottomMargin =
+                        dp(16)
+                }
+            )
+
+            addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text =
+                        "Recent scan"
+                    textSize = 20f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.apple_garamond_bold
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text
+                        )
+                    )
+                }
+            )
+
+            addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = subtitle
+                    textSize = 10.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_regular
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text_secondary
+                        )
+                    )
+                    setPadding(
+                        0,
+                        dp(3),
+                        0,
+                        dp(14)
+                    )
+                }
+            )
+        }
+    }
+
+    private fun createRecentOptionRow(
+        title: String,
+        subtitle: String,
+        icon: String,
+        destructive: Boolean = false,
+        action: () -> Unit
+    ): View {
+        return LinearLayout(
+            requireContext()
+        ).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+
+            gravity =
+                Gravity.CENTER_VERTICAL
+
+            setPadding(
+                dp(10),
+                dp(10),
+                dp(10),
+                dp(10)
+            )
+
+            isClickable = true
+            isFocusable = true
+
+            addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = icon
+                    textSize = 18f
+                    gravity =
+                        Gravity.CENTER
+
+                    setTextColor(
+                        if (destructive) {
+                            "#D94B62".toColorInt()
+                        } else {
+                            ContextCompat.getColor(
+                                requireContext(),
+                                R.color.nts_blue
+                            )
+                        }
+                    )
+
+                    background =
+                        roundedBackground(
+                            colorHex(
+                                R.color.nts_surface_blue_soft
+                            ),
+                            14f
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    dp(42),
+                    dp(42)
+                )
+            )
+
+            val labels =
+                LinearLayout(
+                    requireContext()
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+
+                    setPadding(
+                        dp(12),
+                        0,
+                        0,
+                        0
+                    )
+                }
+
+            labels.addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = title
+                    textSize = 12.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_medium
+                        )
+                    setTextColor(
+                        if (destructive) {
+                            "#D94B62".toColorInt()
+                        } else {
+                            ContextCompat.getColor(
+                                requireContext(),
+                                R.color.nts_text
+                            )
+                        }
+                    )
+                }
+            )
+
+            labels.addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = subtitle
+                    textSize = 9.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_regular
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text_secondary
+                        )
+                    )
+                }
+            )
+
+            addView(
+                labels,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
+            setOnClickListener {
+                action()
+            }
+        }
+    }
+
+    private fun dp(
+        value: Int
+    ): Int {
+        return (
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
+    }
+
+    private fun colorHex(
+        colorRes: Int
+    ): String {
+        val color =
+            ContextCompat.getColor(
+                requireContext(),
+                colorRes
+            )
+
+        return String.format(
+            "#%06X",
+            0xFFFFFF and color
+        )
+    }
+
+    private fun roundedBackground(
+        fillColor: String,
+        radiusDp: Float,
+        strokeColor: String? = null
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            shape =
+                GradientDrawable.RECTANGLE
+
+            cornerRadius =
+                radiusDp *
+                        resources
+                            .displayMetrics
+                            .density
+
+            setColor(
+                Color.parseColor(
+                    fillColor
+                )
+            )
+
+            if (strokeColor != null) {
+                setStroke(
+                    dp(1),
+                    Color.parseColor(
+                        strokeColor
+                    )
+                )
             }
         }
     }

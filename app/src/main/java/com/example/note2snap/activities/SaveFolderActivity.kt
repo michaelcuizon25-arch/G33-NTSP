@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -163,7 +164,7 @@ class SaveFolderActivity : AppCompatActivity() {
                         )
                         background =
                             roundedBackground(
-                                "#FFF9FF",
+                                colorHex(R.color.nts_background),
                                 28f
                             )
                     }
@@ -172,8 +173,8 @@ class SaveFolderActivity : AppCompatActivity() {
                     View(this@SaveFolderActivity).apply {
                         background =
                             roundedBackground(
-                                "#D7D4DC",
-                                3f
+                                colorHex(R.color.nts_blue_line),
+                                99f
                             )
                     },
                     LinearLayout.LayoutParams(
@@ -193,7 +194,7 @@ class SaveFolderActivity : AppCompatActivity() {
                         typeface =
                             android.graphics.Typeface.DEFAULT_BOLD
                         setTextColor(
-                            "#171717".toColorInt()
+                            ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_text)
                         )
                     }
                 )
@@ -203,7 +204,7 @@ class SaveFolderActivity : AppCompatActivity() {
                         text = note.title
                         textSize = 11f
                         setTextColor(
-                            "#777780".toColorInt()
+                            ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_text_secondary)
                         )
                         setPadding(
                             0,
@@ -222,9 +223,9 @@ class SaveFolderActivity : AppCompatActivity() {
                             LinearLayout.VERTICAL
                         background =
                             roundedBackground(
-                                "#FFFFFF",
+                                colorHex(R.color.nts_surface),
                                 20f,
-                                "#ECECF2"
+                                colorHex(R.color.nts_blue_line)
                             )
                         setPadding(
                             dp(6),
@@ -314,9 +315,9 @@ class SaveFolderActivity : AppCompatActivity() {
             background =
                 roundedBackground(
                     if (isCurrent) {
-                        "#EEF2FF"
+                        colorHex(R.color.nts_blue_soft)
                     } else {
-                        "#FFFFFF"
+                        colorHex(R.color.nts_surface)
                     },
                     16f
                 )
@@ -329,17 +330,17 @@ class SaveFolderActivity : AppCompatActivity() {
                     gravity = Gravity.CENTER
                     setTextColor(
                         if (isCurrent) {
-                            "#5A7FDB".toColorInt()
+                            ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_blue)
                         } else {
-                            "#171717".toColorInt()
+                            ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_text)
                         }
                     )
                     background =
                         roundedBackground(
                             if (isCurrent) {
-                                "#DCE6FF"
+                                colorHex(R.color.nts_blue_line)
                             } else {
-                                "#F4F4F7"
+                                colorHex(R.color.nts_surface_blue_soft)
                             },
                             14f
                         )
@@ -360,7 +361,7 @@ class SaveFolderActivity : AppCompatActivity() {
                         }
                     textSize = 13f
                     setTextColor(
-                        "#171717".toColorInt()
+                        ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_text)
                     )
                     setPadding(
                         dp(12),
@@ -392,6 +393,19 @@ class SaveFolderActivity : AppCompatActivity() {
                 value *
                         resources.displayMetrics.density
                 ).toInt()
+    }
+
+    private fun colorHex(colorRes: Int): String {
+        val color =
+            ContextCompat.getColor(
+                this,
+                colorRes
+            )
+
+        return String.format(
+            "#%06X",
+            0xFFFFFF and color
+        )
     }
 
     private fun roundedBackground(

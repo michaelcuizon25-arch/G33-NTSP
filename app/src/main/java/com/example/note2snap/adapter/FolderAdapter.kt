@@ -11,6 +11,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.graphics.toColorInt
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.widget.ImageViewCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -75,13 +77,9 @@ class FolderAdapter(
 
         val folderColor =
             try {
-                Color.parseColor(
-                    folder.colorHex
-                )
+                folder.colorHex.toColorInt()
             } catch (_: Exception) {
-                Color.parseColor(
-                    "#AFC4F6"
-                )
+                "#AFC4F6".toColorInt()
             }
 
         holder.ivFolderIcon
@@ -191,7 +189,7 @@ class FolderAdapter(
 
                 background =
                     roundedBackground(
-                        "#FFF9FF",
+                        colorHex(context, R.color.nts_background),
                         28f,
                         anchor
                     )
@@ -202,8 +200,8 @@ class FolderAdapter(
 
                 background =
                     roundedBackground(
-                        "#D7D4DC",
-                        3f,
+                        colorHex(context, R.color.nts_blue_line),
+                        99f,
                         anchor
                     )
             },
@@ -229,9 +227,17 @@ class FolderAdapter(
                 textSize =
                     20f
 
+                typeface =
+                    ResourcesCompat.getFont(
+                        context,
+                        R.font.apple_garamond_bold
+                    )
+
                 setTextColor(
-                    "#171717"
-                        .toColorInt()
+                    ContextCompat.getColor(
+                        context,
+                        R.color.nts_text
+                    )
                 )
             }
         )
@@ -245,9 +251,17 @@ class FolderAdapter(
                 textSize =
                     11f
 
+                typeface =
+                    ResourcesCompat.getFont(
+                        context,
+                        R.font.poppins_regular
+                    )
+
                 setTextColor(
-                    "#777780"
-                        .toColorInt()
+                    ContextCompat.getColor(
+                        context,
+                        R.color.nts_text_secondary
+                    )
                 )
 
                 setPadding(
@@ -267,10 +281,10 @@ class FolderAdapter(
 
                 background =
                     roundedBackground(
-                        "#FFFFFF",
+                        colorHex(context, R.color.nts_surface),
                         20f,
                         anchor,
-                        "#111111"
+                        colorHex(context, R.color.nts_blue_line)
                     )
             }
 
@@ -326,8 +340,14 @@ class FolderAdapter(
         val context =
             anchor.context
 
-        return LinearLayout(context).apply {
+        val subtitle =
+            if (destructive) {
+                "Permanently remove this folder"
+            } else {
+                "Change the folder name"
+            }
 
+        return LinearLayout(context).apply {
             orientation =
                 LinearLayout.HORIZONTAL
 
@@ -336,48 +356,56 @@ class FolderAdapter(
 
             setPadding(
                 dp(anchor, 10),
-                dp(anchor, 12),
                 dp(anchor, 10),
-                dp(anchor, 12)
+                dp(anchor, 10),
+                dp(anchor, 10)
             )
+
+            isClickable = true
+            isFocusable = true
+
+            val iconBox =
+                LinearLayout(context).apply {
+                    gravity = Gravity.CENTER
+                    background =
+                        roundedBackground(
+                            colorHex(
+                                context,
+                                R.color.nts_surface_blue_soft
+                            ),
+                            14f,
+                            anchor
+                        )
+                }
 
             val icon =
                 ImageView(context).apply {
-
                     setImageResource(
                         iconRes
                     )
-
-                    imageTintList =
-                        null
+                    imageTintList = null
                 }
 
-            addView(
+            iconBox.addView(
                 icon,
                 LinearLayout.LayoutParams(
-                    dp(anchor, 28),
-                    dp(anchor, 28)
+                    dp(anchor, 24),
+                    dp(anchor, 24)
                 )
             )
 
             addView(
-                TextView(context).apply {
+                iconBox,
+                LinearLayout.LayoutParams(
+                    dp(anchor, 42),
+                    dp(anchor, 42)
+                )
+            )
 
-                    text =
-                        title
-
-                    textSize =
-                        12.5f
-
-                    setTextColor(
-                        if (destructive) {
-                            "#D94B62"
-                                .toColorInt()
-                        } else {
-                            "#171717"
-                                .toColorInt()
-                        }
-                    )
+            val labels =
+                LinearLayout(context).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
 
                     setPadding(
                         dp(anchor, 12),
@@ -385,7 +413,52 @@ class FolderAdapter(
                         0,
                         0
                     )
-                },
+                }
+
+            labels.addView(
+                TextView(context).apply {
+                    text = title
+                    textSize = 12.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            context,
+                            R.font.poppins_medium
+                        )
+
+                    setTextColor(
+                        if (destructive) {
+                            "#D94B62".toColorInt()
+                        } else {
+                            ContextCompat.getColor(
+                                context,
+                                R.color.nts_text
+                            )
+                        }
+                    )
+                }
+            )
+
+            labels.addView(
+                TextView(context).apply {
+                    text = subtitle
+                    textSize = 9.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            context,
+                            R.font.poppins_regular
+                        )
+
+                    setTextColor(
+                        ContextCompat.getColor(
+                            context,
+                            R.color.nts_text_secondary
+                        )
+                    )
+                }
+            )
+
+            addView(
+                labels,
                 LinearLayout.LayoutParams(
                     0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -397,6 +470,22 @@ class FolderAdapter(
                 action()
             }
         }
+    }
+
+    private fun colorHex(
+        context: android.content.Context,
+        colorRes: Int
+    ): String {
+        val color =
+            ContextCompat.getColor(
+                context,
+                colorRes
+            )
+
+        return String.format(
+            "#%06X",
+            0xFFFFFF and color
+        )
     }
 
     private fun dp(
@@ -431,18 +520,14 @@ class FolderAdapter(
                             .density
 
             setColor(
-                Color.parseColor(
-                    fillColor
-                )
+                fillColor.toColorInt()
             )
 
             if (strokeColor != null) {
 
                 setStroke(
                     dp(anchor, 1),
-                    Color.parseColor(
-                        strokeColor
-                    )
+                    strokeColor.toColorInt()
                 )
             }
         }

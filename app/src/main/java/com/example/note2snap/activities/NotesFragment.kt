@@ -16,11 +16,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
+import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
@@ -57,6 +57,10 @@ class NotesFragment : Fragment() {
     private var tvResultCount: TextView? = null
     private var tvNotFound: TextView? = null
     private var btnSort: ImageView? = null
+    private var btnViewMode: ImageView? = null
+
+    private var currentViewMode =
+        NotesAdapter.DisplayMode.LIST
 
     private var chipAll: TextView? = null
     private var chipNotes: TextView? = null
@@ -87,6 +91,7 @@ class NotesFragment : Fragment() {
         tvResultCount = view.findViewById(R.id.tvResultCount)
         tvNotFound = view.findViewById(R.id.tvNotFound)
         btnSort = view.findViewById(R.id.btnSort)
+        btnViewMode = view.findViewById(R.id.btnViewMode)
 
         tvNotFound?.setText(R.string.no_file_found)
 
@@ -131,7 +136,9 @@ class NotesFragment : Fragment() {
         })
 
         btnSort?.setOnClickListener { showSortBottomSheet() }
+        btnViewMode?.setOnClickListener { showViewModeBottomSheet() }
 
+        applyViewMode()
         observeDatabaseData()
 
         return view
@@ -146,49 +153,32 @@ class NotesFragment : Fragment() {
     }
 
     private fun showMoveNoteDialog(note: Note) {
-        val dialog = BottomSheetDialog(requireContext())
+        val dialog =
+            BottomSheetDialog(requireContext())
 
-        val sheet = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(12), dp(18), dp(24))
-            background = roundedBackground("#FFF9FF", 28f)
-        }
+        val sheet =
+            createSheetContainer(
+                title = "Move note",
+                subtitle = note.title
+            )
 
-        sheet.addView(
-            View(requireContext()).apply {
-                background = roundedBackground("#D7D4DC", 3f)
-            },
-            LinearLayout.LayoutParams(dp(42), dp(4)).apply {
-                gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = dp(18)
+        val listCard =
+            LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                background =
+                    roundedBackground(
+                        colorHex(R.color.nts_surface),
+                        20f,
+                        colorHex(R.color.nts_blue_line)
+                    )
+                setPadding(
+                    dp(6),
+                    dp(6),
+                    dp(6),
+                    dp(6)
+                )
             }
-        )
 
-        sheet.addView(
-            TextView(requireContext()).apply {
-                text = "Move note"
-                textSize = 21f
-                setTextColor("#171717".toColorInt())
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-            }
-        )
-
-        sheet.addView(
-            TextView(requireContext()).apply {
-                text = note.title
-                textSize = 11f
-                setTextColor("#777780".toColorInt())
-                setPadding(0, dp(4), 0, dp(14))
-            }
-        )
-
-        val listCard = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            background = roundedBackground("#FFFFFF", 20f, "#ECECF2")
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-        }
-
-        // Main screen / no folder option
         listCard.addView(
             createMoveFolderRow(
                 title = "Main Screen",
@@ -196,9 +186,13 @@ class NotesFragment : Fragment() {
                 isCurrent = note.folderId == null
             ) {
                 lifecycleScope.launch(Dispatchers.IO) {
-                    AppDatabase.getDatabase(requireContext())
+                    AppDatabase
+                        .getDatabase(requireContext())
                         .appDao()
-                        .updateNoteFolder(note.id, null)
+                        .updateNoteFolder(
+                            note.id,
+                            null
+                        )
 
                     launch(Dispatchers.Main) {
                         Toast.makeText(
@@ -212,46 +206,42 @@ class NotesFragment : Fragment() {
             }
         )
 
-        if (masterFolderList.isNotEmpty()) {
-            masterFolderList.forEach { folder ->
-                listCard.addView(
-                    createMoveFolderRow(
-                        title = folder.name,
-                        subtitle = "Move note into this folder",
-                        isCurrent = note.folderId == folder.id
-                    ) {
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            AppDatabase.getDatabase(requireContext())
-                                .appDao()
-                                .updateNoteFolder(note.id, folder.id)
+        masterFolderList.forEach { folder ->
+            listCard.addView(
+                createMoveFolderRow(
+                    title = folder.name,
+                    subtitle = "Move note into this folder",
+                    isCurrent =
+                        note.folderId ==
+                                folder.id
+                ) {
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        AppDatabase
+                            .getDatabase(requireContext())
+                            .appDao()
+                            .updateNoteFolder(
+                                note.id,
+                                folder.id
+                            )
 
-                            launch(Dispatchers.Main) {
-                                Toast.makeText(
-                                    context,
-                                    getString(
-                                        R.string.moved_to_folder,
-                                        folder.name
-                                    ),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                dialog.dismiss()
-                            }
+                        launch(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                getString(
+                                    R.string.moved_to_folder,
+                                    folder.name
+                                ),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            dialog.dismiss()
                         }
                     }
-                )
-            }
-        } else {
-            listCard.addView(
-                TextView(requireContext()).apply {
-                    text = "No folders yet. Create one using the + button in Notes."
-                    textSize = 11f
-                    setTextColor("#777780".toColorInt())
-                    setPadding(dp(12), dp(14), dp(12), dp(14))
                 }
             )
         }
 
         sheet.addView(listCard)
+
         dialog.setContentView(sheet)
         dialog.show()
     }
@@ -265,62 +255,112 @@ class NotesFragment : Fragment() {
         return LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(11), dp(10), dp(11))
-            background = roundedBackground(
-                if (isCurrent) "#EEF2FF" else "#FFFFFF",
-                16f
+            setPadding(
+                dp(10),
+                dp(10),
+                dp(10),
+                dp(10)
             )
-            isClickable = true
-            isFocusable = true
 
-            val icon = TextView(requireContext()).apply {
-                text = if (isCurrent) "✓" else "▣"
-                textSize = 18f
-                gravity = Gravity.CENTER
-                setTextColor(
+            background =
+                roundedBackground(
                     if (isCurrent) {
-                        "#5A7FDB".toColorInt()
+                        colorHex(R.color.nts_blue_soft)
                     } else {
-                        "#171717".toColorInt()
-                    }
+                        colorHex(R.color.nts_surface)
+                    },
+                    16f
                 )
-                background = roundedBackground(
-                    if (isCurrent) "#DCE6FF" else "#F4F4F7",
-                    14f
-                )
-            }
+
+            val icon =
+                TextView(requireContext()).apply {
+                    text =
+                        if (isCurrent) "✓" else "▣"
+                    textSize = 17f
+                    gravity = Gravity.CENTER
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            if (isCurrent) {
+                                R.color.nts_blue
+                            } else {
+                                R.color.nts_text
+                            }
+                        )
+                    )
+                    background =
+                        roundedBackground(
+                            if (isCurrent) {
+                                colorHex(R.color.nts_blue_line)
+                            } else {
+                                colorHex(R.color.nts_surface_blue_soft)
+                            },
+                            14f
+                        )
+                }
 
             addView(
                 icon,
-                LinearLayout.LayoutParams(dp(44), dp(44))
+                LinearLayout.LayoutParams(
+                    dp(42),
+                    dp(42)
+                )
             )
 
-            val labels = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(12), 0, 0, 0)
-            }
+            val labels =
+                LinearLayout(requireContext()).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    setPadding(
+                        dp(12),
+                        0,
+                        0,
+                        0
+                    )
+                }
 
             labels.addView(
                 TextView(requireContext()).apply {
                     text = title
-                    textSize = 13f
-                    typeface = android.graphics.Typeface.DEFAULT_BOLD
-                    setTextColor("#171717".toColorInt())
+                    textSize = 12.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_medium
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text
+                        )
+                    )
                 }
             )
 
             labels.addView(
                 TextView(requireContext()).apply {
-                    text = if (isCurrent) "Current location" else subtitle
-                    textSize = 10f
-                    setTextColor(
+                    text =
                         if (isCurrent) {
-                            "#5A7FDB".toColorInt()
+                            "Current location"
                         } else {
-                            "#777780".toColorInt()
+                            subtitle
                         }
+                    textSize = 9.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_regular
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            if (isCurrent) {
+                                R.color.nts_blue
+                            } else {
+                                R.color.nts_text_secondary
+                            }
+                        )
                     )
-                    setPadding(0, dp(2), 0, 0)
                 }
             )
 
@@ -333,17 +373,8 @@ class NotesFragment : Fragment() {
                 )
             )
 
-            if (!isCurrent) {
-                addView(
-                    TextView(requireContext()).apply {
-                        text = "›"
-                        textSize = 22f
-                        gravity = Gravity.CENTER
-                        setTextColor("#9A9AA3".toColorInt())
-                    },
-                    LinearLayout.LayoutParams(dp(28), dp(44))
-                )
-            }
+            isClickable = !isCurrent
+            isFocusable = !isCurrent
 
             setOnClickListener {
                 if (!isCurrent) onClick()
@@ -437,7 +468,7 @@ class NotesFragment : Fragment() {
         }
 
         // Starred notes always stay at the top.
-        // The selected sort is still applied inside the starred and unstarred groups.
+        // The selected sort is still applied inside the starred and non-starred groups.
         filteredNotes = when (currentSort) {
             SortType.NAME ->
                 filteredNotes.sortedWith(
@@ -495,88 +526,709 @@ class NotesFragment : Fragment() {
     }
 
     private fun showSortBottomSheet() {
-        val dialog = BottomSheetDialog(requireContext())
-        dialog.setContentView(R.layout.dialog_sort_by)
+        val dialog =
+            BottomSheetDialog(requireContext())
 
-        dialog.findViewById<TextView>(R.id.tvSortName)?.setOnClickListener {
-            currentSort = SortType.NAME
-            applySearchAndSort()
-            dialog.dismiss()
+        val sheet =
+            createSheetContainer(
+                title = "Sort notes",
+                subtitle = "Choose how notes and folders are arranged"
+            )
+
+        val card =
+            LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                background =
+                    roundedBackground(
+                        colorHex(R.color.nts_surface),
+                        20f,
+                        colorHex(R.color.nts_blue_line)
+                    )
+                setPadding(
+                    dp(6),
+                    dp(6),
+                    dp(6),
+                    dp(6)
+                )
+            }
+
+        fun addSortRow(
+            label: String,
+            subtitle: String,
+            type: SortType
+        ) {
+            card.addView(
+                createChoiceRow(
+                    title = label,
+                    subtitle = subtitle,
+                    selected =
+                        currentSort == type
+                ) {
+                    currentSort = type
+                    applySearchAndSort()
+                    dialog.dismiss()
+                }
+            )
         }
 
-        dialog.findViewById<TextView>(R.id.tvSortTime)?.setOnClickListener {
-            currentSort = SortType.TIME
-            applySearchAndSort()
-            dialog.dismiss()
-        }
+        addSortRow(
+            "Name",
+            "Alphabetical A–Z",
+            SortType.NAME
+        )
+        addSortRow(
+            "Time",
+            "Newest notes first",
+            SortType.TIME
+        )
+        addSortRow(
+            "Size",
+            "Largest files first",
+            SortType.SIZE
+        )
+        addSortRow(
+            "Type",
+            "Group by file type",
+            SortType.TYPE
+        )
 
-        dialog.findViewById<TextView>(R.id.tvSortSize)?.setOnClickListener {
-            currentSort = SortType.SIZE
-            applySearchAndSort()
-            dialog.dismiss()
-        }
-
-        dialog.findViewById<TextView>(R.id.tvSortType)?.setOnClickListener {
-            currentSort = SortType.TYPE
-            applySearchAndSort()
-            dialog.dismiss()
-        }
-
+        sheet.addView(card)
+        dialog.setContentView(sheet)
         dialog.show()
     }
 
-    private fun showEditFolderDialog(folder: Folder) {
-        val input = EditText(requireContext()).apply {
-            setText(folder.name)
-            setTextColor(Color.BLACK)
-            setBackgroundColor(Color.WHITE)
-            setSelection(folder.name.length)
-            setPadding(40, 32, 40, 32)
+    private fun showViewModeBottomSheet() {
+        val dialog =
+            BottomSheetDialog(requireContext())
+
+        val sheet =
+            createSheetContainer(
+                title = "View notes",
+                subtitle = "Change how your notes are displayed"
+            )
+
+        val card =
+            LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                background =
+                    roundedBackground(
+                        colorHex(R.color.nts_surface),
+                        20f,
+                        colorHex(R.color.nts_blue_line)
+                    )
+                setPadding(
+                    dp(6),
+                    dp(6),
+                    dp(6),
+                    dp(6)
+                )
+            }
+
+        fun addModeRow(
+            title: String,
+            subtitle: String,
+            mode: NotesAdapter.DisplayMode
+        ) {
+            card.addView(
+                createChoiceRow(
+                    title = title,
+                    subtitle = subtitle,
+                    selected =
+                        currentViewMode == mode
+                ) {
+                    currentViewMode = mode
+                    applyViewMode()
+                    dialog.dismiss()
+                }
+            )
         }
 
-        val dialog = AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert)
-            .setTitle(R.string.edit_folder_name)
-            .setView(input)
-            .setPositiveButton(R.string.save) { d, _ ->
-                val newName = input.text.toString().trim()
-                if (newName.isNotEmpty()) {
-                    val updatedFolder = folder.copy(name = newName)
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        AppDatabase.getDatabase(requireContext()).appDao().insertFolder(updatedFolder)
-                        launch(Dispatchers.Main) {
-                            Toast.makeText(context, R.string.folder_updated, Toast.LENGTH_SHORT).show()
+        addModeRow(
+            "List",
+            "Full-width note cards",
+            NotesAdapter.DisplayMode.LIST
+        )
+        addModeRow(
+            "Grid",
+            "Two-column overview",
+            NotesAdapter.DisplayMode.GRID
+        )
+        addModeRow(
+            "Compact",
+            "Smaller rows for faster browsing",
+            NotesAdapter.DisplayMode.COMPACT
+        )
+
+        sheet.addView(card)
+        dialog.setContentView(sheet)
+        dialog.show()
+    }
+
+    private fun applyViewMode() {
+        notesAdapter.setDisplayMode(
+            currentViewMode
+        )
+
+        rvNotes.layoutManager =
+            when (currentViewMode) {
+                NotesAdapter.DisplayMode.GRID ->
+                    GridLayoutManager(
+                        requireContext(),
+                        2
+                    )
+
+                NotesAdapter.DisplayMode.LIST,
+                NotesAdapter.DisplayMode.COMPACT ->
+                    LinearLayoutManager(
+                        requireContext()
+                    )
+            }
+
+        btnViewMode?.contentDescription =
+            when (currentViewMode) {
+                NotesAdapter.DisplayMode.LIST ->
+                    "List view"
+                NotesAdapter.DisplayMode.GRID ->
+                    "Grid view"
+                NotesAdapter.DisplayMode.COMPACT ->
+                    "Compact view"
+            }
+    }
+
+    private fun createChoiceRow(
+        title: String,
+        subtitle: String,
+        selected: Boolean,
+        action: () -> Unit
+    ): View {
+        return LinearLayout(requireContext()).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+            gravity =
+                Gravity.CENTER_VERTICAL
+            setPadding(
+                dp(10),
+                dp(10),
+                dp(10),
+                dp(10)
+            )
+            background =
+                roundedBackground(
+                    if (selected) {
+                        colorHex(R.color.nts_blue_soft)
+                    } else {
+                        colorHex(R.color.nts_surface)
+                    },
+                    15f
+                )
+
+            addView(
+                TextView(requireContext()).apply {
+                    text =
+                        if (selected) "✓" else "○"
+                    gravity = Gravity.CENTER
+                    textSize = 16f
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            if (selected) {
+                                R.color.nts_blue
+                            } else {
+                                R.color.nts_text_secondary
+                            }
+                        )
+                    )
+                },
+                LinearLayout.LayoutParams(
+                    dp(34),
+                    dp(34)
+                )
+            )
+
+            val labels =
+                LinearLayout(requireContext()).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    setPadding(
+                        dp(10),
+                        0,
+                        0,
+                        0
+                    )
+                }
+
+            labels.addView(
+                TextView(requireContext()).apply {
+                    text = title
+                    textSize = 12.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_medium
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text
+                        )
+                    )
+                }
+            )
+
+            labels.addView(
+                TextView(requireContext()).apply {
+                    text = subtitle
+                    textSize = 9.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_regular
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text_secondary
+                        )
+                    )
+                }
+            )
+
+            addView(
+                labels,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                action()
+            }
+        }
+    }
+
+    private fun createSheetContainer(
+        title: String,
+        subtitle: String
+    ): LinearLayout {
+        return LinearLayout(requireContext()).apply {
+            orientation =
+                LinearLayout.VERTICAL
+            setPadding(
+                dp(18),
+                dp(12),
+                dp(18),
+                dp(24)
+            )
+            background =
+                roundedBackground(
+                    colorHex(R.color.nts_background),
+                    28f
+                )
+
+            addView(
+                View(requireContext()).apply {
+                    background =
+                        roundedBackground(
+                            colorHex(R.color.nts_blue_line),
+                            99f
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    dp(42),
+                    dp(4)
+                ).apply {
+                    gravity =
+                        Gravity.CENTER_HORIZONTAL
+                    bottomMargin =
+                        dp(16)
+                }
+            )
+
+            addView(
+                TextView(requireContext()).apply {
+                    text = title
+                    textSize = 20f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.apple_garamond_bold
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text
+                        )
+                    )
+                }
+            )
+
+            addView(
+                TextView(requireContext()).apply {
+                    text = subtitle
+                    textSize = 10.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_regular
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text_secondary
+                        )
+                    )
+                    setPadding(
+                        0,
+                        dp(3),
+                        0,
+                        dp(14)
+                    )
+                }
+            )
+        }
+    }
+
+    private fun showEditFolderDialog(
+        folder: Folder
+    ) {
+        val dialog =
+            BottomSheetDialog(
+                requireContext()
+            )
+
+        val sheet =
+            createSheetContainer(
+                title = "Rename folder",
+                subtitle = "Choose a new name for ${folder.name}"
+            )
+
+        val input =
+            EditText(
+                requireContext()
+            ).apply {
+                setText(folder.name)
+                setSelection(
+                    folder.name.length
+                )
+                textSize = 12f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text
+                    )
+                )
+
+                setHintTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                isSingleLine = true
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_surface
+                        ),
+                        16f,
+                        colorHex(
+                            R.color.nts_blue_line
+                        )
+                    )
+
+                setPadding(
+                    dp(14),
+                    dp(12),
+                    dp(14),
+                    dp(12)
+                )
+            }
+
+        sheet.addView(
+            input,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        val actions =
+            LinearLayout(
+                requireContext()
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.END
+                setPadding(
+                    0,
+                    dp(14),
+                    0,
+                    0
+                )
+            }
+
+        val cancel =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Cancel"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+                gravity =
+                    Gravity.CENTER
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(16),
+                    dp(10),
+                    dp(16),
+                    dp(10)
+                )
+
+                setOnClickListener {
+                    dialog.dismiss()
+                }
+            }
+
+        val save =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Save"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+                gravity =
+                    Gravity.CENTER
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text
+                    )
+                )
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_yellow
+                        ),
+                        16f,
+                        colorHex(
+                            R.color.nts_outline
+                        )
+                    )
+
+                setPadding(
+                    dp(18),
+                    dp(10),
+                    dp(18),
+                    dp(10)
+                )
+
+                setOnClickListener {
+                    val newName =
+                        input.text
+                            .toString()
+                            .trim()
+
+                    if (newName.isEmpty()) {
+                        Toast.makeText(
+                            context,
+                            "Folder name cannot be empty",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        return@setOnClickListener
+                    }
+
+                    val updatedFolder =
+                        folder.copy(
+                            name = newName
+                        )
+
+                    lifecycleScope.launch(
+                        Dispatchers.IO
+                    ) {
+                        AppDatabase
+                            .getDatabase(
+                                requireContext()
+                            )
+                            .appDao()
+                            .insertFolder(
+                                updatedFolder
+                            )
+
+                        launch(
+                            Dispatchers.Main
+                        ) {
+                            Toast.makeText(
+                                context,
+                                R.string.folder_updated,
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                            dialog.dismiss()
                         }
                     }
                 }
-                d.dismiss()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .create()
 
+        actions.addView(cancel)
+        actions.addView(save)
+        sheet.addView(actions)
+
+        dialog.setContentView(sheet)
         dialog.show()
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Color.BLACK)
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.BLACK)
     }
 
-    private fun showDeleteFolderDialog(folder: Folder) {
-        val dialog = AlertDialog.Builder(requireContext(), androidx.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert)
-            .setTitle(R.string.delete_folder)
-            .setMessage(getString(R.string.delete_folder_confirm, folder.name))
-            .setPositiveButton(R.string.delete) { d, _ ->
-                lifecycleScope.launch(Dispatchers.IO) {
-                    AppDatabase.getDatabase(requireContext()).appDao().deleteFolder(folder)
-                    launch(Dispatchers.Main) {
-                        Toast.makeText(context, R.string.folder_deleted, Toast.LENGTH_SHORT).show()
+    private fun showDeleteFolderDialog(
+        folder: Folder
+    ) {
+        val dialog =
+            BottomSheetDialog(
+                requireContext()
+            )
+
+        val sheet =
+            createSheetContainer(
+                title = "Delete folder?",
+                subtitle =
+                    "Delete \"${folder.name}\"? Notes inside it will remain available."
+            )
+
+        val actions =
+            LinearLayout(
+                requireContext()
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.END
+            }
+
+        val cancel =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Cancel"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+                gravity =
+                    Gravity.CENTER
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(16),
+                    dp(10),
+                    dp(16),
+                    dp(10)
+                )
+
+                setOnClickListener {
+                    dialog.dismiss()
+                }
+            }
+
+        val delete =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Delete"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+                gravity =
+                    Gravity.CENTER
+
+                setTextColor(
+                    Color.WHITE
+                )
+
+                background =
+                    roundedBackground(
+                        "#D94B62",
+                        16f
+                    )
+
+                setPadding(
+                    dp(18),
+                    dp(10),
+                    dp(18),
+                    dp(10)
+                )
+
+                setOnClickListener {
+                    lifecycleScope.launch(
+                        Dispatchers.IO
+                    ) {
+                        AppDatabase
+                            .getDatabase(
+                                requireContext()
+                            )
+                            .appDao()
+                            .deleteFolder(folder)
+
+                        launch(
+                            Dispatchers.Main
+                        ) {
+                            Toast.makeText(
+                                context,
+                                R.string.folder_deleted,
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                            dialog.dismiss()
+                        }
                     }
                 }
-                d.dismiss()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .create()
 
+        actions.addView(cancel)
+        actions.addView(delete)
+        sheet.addView(actions)
+
+        dialog.setContentView(sheet)
         dialog.show()
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Color.BLACK)
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.BLACK)
     }
 
     private fun deleteNote(note: Note) {
@@ -614,6 +1266,19 @@ class NotesFragment : Fragment() {
 
     private fun dp(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
+    }
+
+    private fun colorHex(colorRes: Int): String {
+        val color =
+            ContextCompat.getColor(
+                requireContext(),
+                colorRes
+            )
+
+        return String.format(
+            "#%06X",
+            0xFFFFFF and color
+        )
     }
 
     private fun roundedBackground(

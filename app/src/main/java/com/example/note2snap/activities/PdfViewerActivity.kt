@@ -63,7 +63,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.io.FileOutputStream
+import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -107,10 +107,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private var markupLoaded = false
 
     private data class PdfMarkupSnapshot(
-        val text: CharSequence,
-        val logicalWidth: Int,
-        val logicalHeight: Int,
-        val strokes: List<DrawingView.VectorStroke>
+        val bitmap: Bitmap
     )
 
     private var pendingPdfSnapshot: PdfMarkupSnapshot? = null
@@ -2586,28 +2583,69 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
     private fun buildPdfMarkupSnapshot(): PdfMarkupSnapshot? {
-        val textView = findViewById<TextView>(R.id.tvPdfContent) ?: return null
-        val drawingView = findViewById<DrawingView>(R.id.drawingView) ?: return null
+        val textView =
+            findViewById<TextView>(
+                R.id.tvPdfContent
+            ) ?: return null
 
-        val width = textView.width.coerceAtLeast(1)
-        val height = maxOf(
-            textView.height,
-            drawingView.height,
-            1
-        )
+        // tvPdfContent + DrawingView are inside the same FrameLayout.
+        // Render that exact editor surface so the PDF matches what the user
+        // actually sees instead of rebuilding text and drawing coordinates
+        // separately.
+        val editorSurface =
+            textView.parent as? View
+                ?: return null
+
+        if (
+            editorSurface.width <= 0 ||
+            editorSurface.height <= 0
+        ) {
+            return null
+        }
+
+        val bitmap =
+            Bitmap.createBitmap(
+                editorSurface.width,
+                editorSurface.height,
+                Bitmap.Config.ARGB_8888
+            )
+
+        val canvas =
+            Canvas(bitmap)
+
+        // PDF export always uses a white page. In dark mode the on-screen
+        // TextView uses a very light text color, which becomes almost invisible
+        // when drawn onto white. Temporarily switch only the default body text
+        // to black while rendering, then immediately restore the UI color.
+        val originalTextColor =
+            textView.currentTextColor
+
+        try {
+            textView.setTextColor(
+                Color.BLACK
+            )
+
+            canvas.drawColor(
+                Color.WHITE
+            )
+
+            editorSurface.draw(
+                canvas
+            )
+        } finally {
+            textView.setTextColor(
+                originalTextColor
+            )
+        }
 
         return PdfMarkupSnapshot(
-            text = buildReviewerStyledText(
-                textView.text.toString()
-            ),
-            logicalWidth = width,
-            logicalHeight = height,
-            strokes = drawingView.getVectorStrokes()
+            bitmap = bitmap
         )
     }
 
     private fun writePdfToUri(uri: Uri) {
-        val snapshot = pendingPdfSnapshot
+        val snapshot =
+            pendingPdfSnapshot
 
         if (snapshot == null) {
             Toast.makeText(
@@ -2618,26 +2656,21 @@ class PdfViewerActivity : AppCompatActivity() {
             return
         }
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(
+            Dispatchers.IO
+        ) {
             try {
-                val pdfDocument = PdfDocument()
+                val pdfDocument =
+                    PdfDocument()
 
                 val pageWidth = 595
                 val pageHeight = 842
                 val outerMargin = 28f
-                val contentWidth =
-                    pageWidth - (outerMargin * 2)
 
                 val titleTypeface =
                     ResourcesCompat.getFont(
                         this@PdfViewerActivity,
                         R.font.poppins_semibold
-                    )
-
-                val bodyTypeface =
-                    ResourcesCompat.getFont(
-                        this@PdfViewerActivity,
-                        R.font.poppins_regular
                     )
 
                 val titlePaint =
@@ -2648,62 +2681,27 @@ class PdfViewerActivity : AppCompatActivity() {
                         isAntiAlias = true
                     }
 
-                // Keep the same logical width as the editor, then scale the
-                // COMPLETE note uniformly into one PDF column. This keeps
-                // freehand marks aligned with the text and removes the old
-                // left-column/right-column split.
-                val logicalBodyPaint =
-                    TextPaint().apply {
-                        textSize =
-                            11.5f *
-                                    resources
-                                        .displayMetrics
-                                        .scaledDensity
-                        color = Color.BLACK
-                        typeface = bodyTypeface
-                        isAntiAlias = true
-                    }
+                val contentWidth =
+                    pageWidth -
+                            (outerMargin * 2f)
 
-                val logicalLayout =
-                    StaticLayout.Builder.obtain(
-                        snapshot.text,
-                        0,
-                        snapshot.text.length,
-                        logicalBodyPaint,
-                        snapshot.logicalWidth
-                    )
-                        .setAlignment(
-                            Layout.Alignment.ALIGN_NORMAL
-                        )
-                        .setLineSpacing(
-                            2f *
-                                    resources
-                                        .displayMetrics
-                                        .density,
-                            1f
-                        )
-                        .setIncludePad(false)
-                        .build()
-
-                val logicalHeight =
-                    maxOf(
-                        logicalLayout.height,
-                        snapshot.logicalHeight
-                    ).toFloat()
+                val bitmap =
+                    snapshot.bitmap
 
                 val scale =
                     contentWidth /
-                            snapshot.logicalWidth
+                            bitmap.width
                                 .coerceAtLeast(1)
                                 .toFloat()
 
-                var sourceY = 0f
+                var sourceTop = 0f
                 var pageNumber = 1
                 var firstPage = true
 
                 while (
-                    sourceY < logicalHeight ||
-                    firstPage
+                    sourceTop <
+                    bitmap.height
+                        .toFloat()
                 ) {
                     val pageInfo =
                         PdfDocument.PageInfo.Builder(
@@ -2719,6 +2717,11 @@ class PdfViewerActivity : AppCompatActivity() {
 
                     val canvas =
                         page.canvas
+
+                    // Keep PDF background clean and predictable.
+                    canvas.drawColor(
+                        Color.WHITE
+                    )
 
                     var bodyTop =
                         outerMargin
@@ -2745,127 +2748,105 @@ class PdfViewerActivity : AppCompatActivity() {
                                     14f
                     }
 
-                    val availablePdfHeight =
+                    val availableHeight =
                         pageHeight -
                                 outerMargin -
                                 bodyTop
 
-                    val logicalBandHeight =
-                        availablePdfHeight /
-                                scale
+                    val sourceHeight =
+                        (availableHeight / scale)
+                            .coerceAtLeast(1f)
 
-                    val targetBottom =
+                    val sourceBottom =
                         minOf(
-                            sourceY +
-                                    logicalBandHeight,
-                            logicalHeight
+                            sourceTop +
+                                    sourceHeight,
+                            bitmap.height
+                                .toFloat()
                         )
 
-                    val bandEnd =
-                        if (
-                            sourceY <
-                            logicalLayout.height &&
-                            logicalLayout.lineCount > 0
-                        ) {
-                            val vertical =
-                                targetBottom
-                                    .toInt()
-                                    .coerceIn(
-                                        0,
-                                        logicalLayout.height
-                                            .coerceAtLeast(1) - 1
-                                    )
-
-                            val line =
-                                logicalLayout
-                                    .getLineForVertical(
-                                        vertical
-                                    )
-
-                            logicalLayout
-                                .getLineBottom(
-                                    line
-                                )
-                                .toFloat()
+                    val srcRect =
+                        android.graphics.Rect(
+                            0,
+                            sourceTop
+                                .toInt()
+                                .coerceAtLeast(0),
+                            bitmap.width,
+                            kotlin.math.ceil(
+                                sourceBottom
+                            )
+                                .toInt()
                                 .coerceAtMost(
-                                    logicalHeight
+                                    bitmap.height
                                 )
-                        } else {
-                            targetBottom
-                        }
-
-                    val safeBandEnd =
-                        if (
-                            bandEnd <= sourceY
-                        ) {
-                            targetBottom
-                        } else {
-                            bandEnd
-                        }
+                        )
 
                     val renderedHeight =
-                        (safeBandEnd -
-                                sourceY) *
+                        srcRect.height() *
                                 scale
 
-                    canvas.save()
+                    val dstRect =
+                        android.graphics.RectF(
+                            outerMargin,
+                            bodyTop,
+                            outerMargin +
+                                    contentWidth,
+                            bodyTop +
+                                    renderedHeight
+                        )
 
-                    canvas.clipRect(
-                        outerMargin,
-                        bodyTop,
-                        outerMargin +
-                                contentWidth,
-                        bodyTop +
-                                renderedHeight
+                    canvas.drawBitmap(
+                        bitmap,
+                        srcRect,
+                        dstRect,
+                        Paint(
+                            Paint.ANTI_ALIAS_FLAG or
+                                    Paint.FILTER_BITMAP_FLAG
+                        )
                     )
-
-                    canvas.translate(
-                        outerMargin,
-                        bodyTop
-                    )
-
-                    canvas.scale(
-                        scale,
-                        scale
-                    )
-
-                    canvas.translate(
-                        0f,
-                        -sourceY
-                    )
-
-                    logicalLayout.draw(
-                        canvas
-                    )
-
-                    drawSnapshotStrokes(
-                        canvas = canvas,
-                        snapshot = snapshot
-                    )
-
-                    canvas.restore()
 
                     pdfDocument.finishPage(
                         page
                     )
 
-                    sourceY =
-                        safeBandEnd
+                    sourceTop =
+                        sourceBottom
 
                     firstPage = false
                     pageNumber++
-
-                    // Safety guard for an unexpected zero-height layout.
-                    if (
-                        sourceY >= logicalHeight
-                    ) {
-                        break
-                    }
                 }
 
-                val descriptor =
+                val pdfBytes =
+                    ByteArrayOutputStream().use {
+                            memoryStream ->
+                        pdfDocument.writeTo(
+                            memoryStream
+                        )
+                        memoryStream
+                            .toByteArray()
+                    }
+
+                pdfDocument.close()
+
+                if (
+                    pdfBytes.size < 5 ||
+                    pdfBytes[0].toInt()
+                        .toChar() != '%' ||
+                    pdfBytes[1].toInt()
+                        .toChar() != 'P' ||
+                    pdfBytes[2].toInt()
+                        .toChar() != 'D' ||
+                    pdfBytes[3].toInt()
+                        .toChar() != 'F'
+                ) {
+                    throw IllegalStateException(
+                        "Generated file is not a valid PDF."
+                    )
+                }
+
+                val outputStream =
                     contentResolver
-                        .openFileDescriptor(
+                        .openOutputStream(
                             uri,
                             "w"
                         )
@@ -2873,18 +2854,12 @@ class PdfViewerActivity : AppCompatActivity() {
                             "Unable to open the selected PDF file."
                         )
 
-                descriptor.use { parcelFileDescriptor ->
-                    FileOutputStream(
-                        parcelFileDescriptor.fileDescriptor
-                    ).use { outputStream ->
-                        pdfDocument.writeTo(
-                            outputStream
-                        )
-                        outputStream.flush()
-                    }
+                outputStream.use {
+                    it.write(
+                        pdfBytes
+                    )
+                    it.flush()
                 }
-
-                pdfDocument.close()
 
                 withContext(
                     Dispatchers.Main
@@ -2911,48 +2886,6 @@ class PdfViewerActivity : AppCompatActivity() {
                     ).show()
                 }
             }
-        }
-    }
-
-    private fun drawSnapshotStrokes(
-        canvas: Canvas,
-        snapshot: PdfMarkupSnapshot
-    ) {
-        val logicalWidth =
-            snapshot.logicalWidth.coerceAtLeast(1).toFloat()
-
-        val logicalHeight =
-            snapshot.logicalHeight.coerceAtLeast(1).toFloat()
-
-        for (stroke in snapshot.strokes) {
-            if (stroke.points.size < 2) continue
-
-            val paint = Paint().apply {
-                isAntiAlias = true
-                style = Paint.Style.STROKE
-                strokeJoin = Paint.Join.ROUND
-                strokeCap = Paint.Cap.ROUND
-                color = stroke.color
-                alpha = stroke.alpha
-                strokeWidth = stroke.width
-            }
-
-            val path = android.graphics.Path()
-            val first = stroke.points.first()
-
-            path.moveTo(
-                first.x * logicalWidth,
-                first.y * logicalHeight
-            )
-
-            for (point in stroke.points.drop(1)) {
-                path.lineTo(
-                    point.x * logicalWidth,
-                    point.y * logicalHeight
-                )
-            }
-
-            canvas.drawPath(path, paint)
         }
     }
 

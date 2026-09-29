@@ -1,15 +1,21 @@
 package com.example.note2snap.activities
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -17,6 +23,7 @@ import com.example.note2snap.R
 import com.example.note2snap.adapter.HistoryAdapter
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.ScanHistory
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -167,94 +174,247 @@ class HistoryFragment : Fragment() {
     private fun showOptionsDialog(
         item: ScanHistory
     ) {
-
-        val options =
-            arrayOf(
-                "Edit Title",
-                "Delete Note"
-            )
-
-        AlertDialog
-            .Builder(
+        val dialog =
+            BottomSheetDialog(
                 requireContext()
             )
-            .setTitle(
-                item.title
+
+        val sheet =
+            createHistorySheet(
+                title = "History options",
+                subtitle = item.title
             )
-            .setItems(
-                options
-            ) { dialog, which ->
 
-                when (which) {
-                    0 ->
-                        showEditTitleDialog(
-                            item
+        val card =
+            LinearLayout(
+                requireContext()
+            ).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_surface
+                        ),
+                        20f,
+                        colorHex(
+                            R.color.nts_blue_line
                         )
+                    )
 
-                    1 ->
-                        confirmDeleteNote(
-                            item
-                        )
-                }
-
-                dialog.dismiss()
+                setPadding(
+                    dp(6),
+                    dp(6),
+                    dp(6),
+                    dp(6)
+                )
             }
-            .create()
-            .show()
+
+        card.addView(
+            createHistoryOptionRow(
+                title = "Edit title",
+                subtitle =
+                    "Rename this scan and linked note",
+                icon = "✎"
+            ) {
+                dialog.dismiss()
+                showEditTitleDialog(
+                    item
+                )
+            }
+        )
+
+        card.addView(
+            createHistoryOptionRow(
+                title = "Delete note",
+                subtitle =
+                    "Remove this scan from history",
+                icon = "×",
+                destructive = true
+            ) {
+                dialog.dismiss()
+                confirmDeleteNote(
+                    item
+                )
+            }
+        )
+
+        sheet.addView(card)
+        dialog.setContentView(sheet)
+        dialog.show()
     }
 
     private fun showEditTitleDialog(
         item: ScanHistory
     ) {
+        val dialog =
+            BottomSheetDialog(
+                requireContext()
+            )
+
+        val sheet =
+            createHistorySheet(
+                title = "Rename scan",
+                subtitle =
+                    "Update the title shown in History and Notes"
+            )
 
         val input =
             EditText(
                 requireContext()
             ).apply {
-
                 setText(
                     item.title
                 )
-
                 setSelection(
                     item.title.length
                 )
-
+                textSize = 12f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_regular
+                    )
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text
+                    )
+                )
+                setHintTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_surface
+                        ),
+                        16f,
+                        colorHex(
+                            R.color.nts_blue_line
+                        )
+                    )
                 setPadding(
-                    40,
-                    32,
-                    40,
-                    32
+                    dp(14),
+                    dp(12),
+                    dp(14),
+                    dp(12)
                 )
             }
 
-        AlertDialog
-            .Builder(
+        sheet.addView(
+            input,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        val actions =
+            LinearLayout(
                 requireContext()
-            )
-            .setTitle(
-                "Rename Scan"
-            )
-            .setView(
-                input
-            )
-            .setPositiveButton(
-                "Save"
-            ) { dialog, _ ->
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.END
+                setPadding(
+                    0,
+                    dp(14),
+                    0,
+                    0
+                )
+            }
 
-                val newTitle =
-                    input.text
-                        .toString()
-                        .trim()
+        val cancel =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Cancel"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+                gravity = Gravity.CENTER
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+                setPadding(
+                    dp(16),
+                    dp(10),
+                    dp(16),
+                    dp(10)
+                )
+                setOnClickListener {
+                    dialog.dismiss()
+                }
+            }
 
-                if (
-                    newTitle.isNotEmpty()
-                ) {
+        val save =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Save"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+                gravity = Gravity.CENTER
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text
+                    )
+                )
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_yellow
+                        ),
+                        16f,
+                        colorHex(
+                            R.color.nts_outline
+                        )
+                    )
+                setPadding(
+                    dp(18),
+                    dp(10),
+                    dp(18),
+                    dp(10)
+                )
+
+                setOnClickListener {
+                    val newTitle =
+                        input.text
+                            .toString()
+                            .trim()
+
+                    if (
+                        newTitle.isEmpty()
+                    ) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Title cannot be empty",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        return@setOnClickListener
+                    }
 
                     lifecycleScope.launch(
                         Dispatchers.IO
                     ) {
-
                         val dao =
                             AppDatabase
                                 .getDatabase(
@@ -262,14 +422,11 @@ class HistoryFragment : Fragment() {
                                 )
                                 .appDao()
 
-                        val updated =
+                        dao.updateScanHistory(
                             item.copy(
                                 title =
                                     newTitle
                             )
-
-                        dao.updateScanHistory(
-                            updated
                         )
 
                         if (
@@ -290,90 +447,434 @@ class HistoryFragment : Fragment() {
                                 "Title updated",
                                 Toast.LENGTH_SHORT
                             ).show()
+
+                            dialog.dismiss()
                         }
                     }
-
-                } else {
-
-                    Toast.makeText(
-                        requireContext(),
-                        "Title cannot be empty",
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
+            }
 
-                dialog.dismiss()
-            }
-            .setNegativeButton(
-                "Cancel"
-            ) { dialog, _ ->
-                dialog.dismiss()
-            }
-            .create()
-            .show()
+        actions.addView(cancel)
+        actions.addView(save)
+        sheet.addView(actions)
+
+        dialog.setContentView(sheet)
+        dialog.show()
     }
 
     private fun confirmDeleteNote(
         item: ScanHistory
     ) {
-
-        AlertDialog
-            .Builder(
+        val dialog =
+            BottomSheetDialog(
                 requireContext()
             )
-            .setTitle(
-                "Delete Scan?"
+
+        val sheet =
+            createHistorySheet(
+                title = "Delete scan?",
+                subtitle =
+                    "This will remove \"${item.title}\" from History."
             )
-            .setMessage(
-                "Are you sure you want to delete \"${item.title}\"?"
-            )
-            .setPositiveButton(
-                "Delete"
-            ) { dialog, _ ->
 
-                lifecycleScope.launch(
-                    Dispatchers.IO
-                ) {
+        val actions =
+            LinearLayout(
+                requireContext()
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.END
+            }
 
-                    val dao =
-                        AppDatabase
-                            .getDatabase(
-                                requireContext()
-                            )
-                            .appDao()
-
-                    dao.deleteScanHistory(
-                        item
+        val cancel =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Cancel"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
                     )
+                gravity = Gravity.CENTER
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+                setPadding(
+                    dp(16),
+                    dp(10),
+                    dp(16),
+                    dp(10)
+                )
+                setOnClickListener {
+                    dialog.dismiss()
+                }
+            }
 
-                    if (
-                        !item.imagePath
-                            .isNullOrEmpty()
+        val delete =
+            TextView(
+                requireContext()
+            ).apply {
+                text = "Delete"
+                textSize = 11.5f
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+                gravity = Gravity.CENTER
+                setTextColor(
+                    Color.WHITE
+                )
+                background =
+                    roundedBackground(
+                        "#D94B62",
+                        16f
+                    )
+                setPadding(
+                    dp(18),
+                    dp(10),
+                    dp(18),
+                    dp(10)
+                )
+
+                setOnClickListener {
+                    lifecycleScope.launch(
+                        Dispatchers.IO
                     ) {
-                        dao.deleteNoteByPath(
-                            item.imagePath
+                        val dao =
+                            AppDatabase
+                                .getDatabase(
+                                    requireContext()
+                                )
+                                .appDao()
+
+                        dao.deleteScanHistory(
+                            item
                         )
-                    }
 
-                    withContext(
-                        Dispatchers.Main
-                    ) {
-                        Toast.makeText(
-                            requireContext(),
-                            "History deleted",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (
+                            !item.imagePath
+                                .isNullOrEmpty()
+                        ) {
+                            dao.deleteNoteByPath(
+                                item.imagePath
+                            )
+                        }
+
+                        withContext(
+                            Dispatchers.Main
+                        ) {
+                            Toast.makeText(
+                                requireContext(),
+                                "History deleted",
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                            dialog.dismiss()
+                        }
                     }
                 }
+            }
 
-                dialog.dismiss()
-            }
-            .setNegativeButton(
-                "Cancel"
-            ) { dialog, _ ->
-                dialog.dismiss()
-            }
-            .create()
-            .show()
+        actions.addView(cancel)
+        actions.addView(delete)
+        sheet.addView(actions)
+
+        dialog.setContentView(sheet)
+        dialog.show()
     }
+
+    private fun createHistorySheet(
+        title: String,
+        subtitle: String
+    ): LinearLayout {
+        return LinearLayout(
+            requireContext()
+        ).apply {
+            orientation =
+                LinearLayout.VERTICAL
+
+            setPadding(
+                dp(18),
+                dp(12),
+                dp(18),
+                dp(24)
+            )
+
+            background =
+                roundedBackground(
+                    colorHex(
+                        R.color.nts_background
+                    ),
+                    28f
+                )
+
+            addView(
+                View(
+                    requireContext()
+                ).apply {
+                    background =
+                        roundedBackground(
+                            colorHex(
+                                R.color.nts_blue_line
+                            ),
+                            99f
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    dp(42),
+                    dp(4)
+                ).apply {
+                    gravity =
+                        Gravity.CENTER_HORIZONTAL
+                    bottomMargin =
+                        dp(16)
+                }
+            )
+
+            addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = title
+                    textSize = 20f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.apple_garamond_bold
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text
+                        )
+                    )
+                }
+            )
+
+            addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = subtitle
+                    textSize = 10.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_regular
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text_secondary
+                        )
+                    )
+                    setPadding(
+                        0,
+                        dp(3),
+                        0,
+                        dp(14)
+                    )
+                }
+            )
+        }
+    }
+
+    private fun createHistoryOptionRow(
+        title: String,
+        subtitle: String,
+        icon: String,
+        destructive: Boolean = false,
+        action: () -> Unit
+    ): View {
+        return LinearLayout(
+            requireContext()
+        ).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+
+            gravity =
+                Gravity.CENTER_VERTICAL
+
+            setPadding(
+                dp(10),
+                dp(10),
+                dp(10),
+                dp(10)
+            )
+
+            isClickable = true
+            isFocusable = true
+
+            addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = icon
+                    textSize = 17f
+                    gravity =
+                        Gravity.CENTER
+
+                    setTextColor(
+                        if (destructive) {
+                            "#D94B62".toColorInt()
+                        } else {
+                            ContextCompat.getColor(
+                                requireContext(),
+                                R.color.nts_blue
+                            )
+                        }
+                    )
+
+                    background =
+                        roundedBackground(
+                            colorHex(
+                                R.color.nts_surface_blue_soft
+                            ),
+                            14f
+                        )
+                },
+                LinearLayout.LayoutParams(
+                    dp(42),
+                    dp(42)
+                )
+            )
+
+            val labels =
+                LinearLayout(
+                    requireContext()
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+                    setPadding(
+                        dp(12),
+                        0,
+                        0,
+                        0
+                    )
+                }
+
+            labels.addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = title
+                    textSize = 12.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_medium
+                        )
+                    setTextColor(
+                        if (destructive) {
+                            "#D94B62".toColorInt()
+                        } else {
+                            ContextCompat.getColor(
+                                requireContext(),
+                                R.color.nts_text
+                            )
+                        }
+                    )
+                }
+            )
+
+            labels.addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text = subtitle
+                    textSize = 9.5f
+                    typeface =
+                        ResourcesCompat.getFont(
+                            requireContext(),
+                            R.font.poppins_regular
+                        )
+                    setTextColor(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.nts_text_secondary
+                        )
+                    )
+                }
+            )
+
+            addView(
+                labels,
+                LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            )
+
+            setOnClickListener {
+                action()
+            }
+        }
+    }
+
+    private fun dp(
+        value: Int
+    ): Int {
+        return (
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
+    }
+
+    private fun colorHex(
+        colorRes: Int
+    ): String {
+        val color =
+            ContextCompat.getColor(
+                requireContext(),
+                colorRes
+            )
+
+        return String.format(
+            "#%06X",
+            0xFFFFFF and color
+        )
+    }
+
+    private fun roundedBackground(
+        fillColor: String,
+        radiusDp: Float,
+        strokeColor: String? = null
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            shape =
+                GradientDrawable.RECTANGLE
+
+            cornerRadius =
+                radiusDp *
+                        resources
+                            .displayMetrics
+                            .density
+
+            setColor(
+                Color.parseColor(
+                    fillColor
+                )
+            )
+
+            if (strokeColor != null) {
+                setStroke(
+                    dp(1),
+                    Color.parseColor(
+                        strokeColor
+                    )
+                )
+            }
+        }
+    }
+
 }
