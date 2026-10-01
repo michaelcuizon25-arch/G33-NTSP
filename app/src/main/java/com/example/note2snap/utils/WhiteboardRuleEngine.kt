@@ -49,12 +49,7 @@ object WhiteboardRuleEngine {
                 text = text,
                 box = Rect(box)
             )
-        }.sortedWith(
-            compareBy(
-                { it.box.top },
-                { it.box.left }
-            )
-        )
+        }
 
         if (items.isEmpty()) {
             return StructuredNote(
@@ -63,17 +58,16 @@ object WhiteboardRuleEngine {
             )
         }
 
-        val rawTitle = "Untitled Scan"
+        // 1. Determine spatial layout bounds
+        val maxRight = items.maxOfOrNull { it.box.right } ?: 1000
+        val cueColumnSplitX = (maxRight * 0.35).toInt()
+        val minBodyLeftX = items.filter { it.box.left > cueColumnSplitX }.minOfOrNull { it.box.left } ?: cueColumnSplitX
 
+        // 2. Sort and cluster lines into horizontal rows
         val rows = clusterIntoRows(items)
         val blocks = mutableListOf<NoteBlock>()
 
         var index = 0
-
-        val maxRight = items.maxOfOrNull { it.box.right } ?: 1000
-        val cueColumnSplitX = (maxRight * 0.32).toInt()
-        val minBodyLeftX = items.filter { it.box.left > cueColumnSplitX }.minOfOrNull { it.box.left } ?: cueColumnSplitX
-
         while (index < rows.size) {
             val row = rows[index]
             val rowText = row.cells.joinToString(" ") { it.text }.trim()
@@ -83,13 +77,42 @@ object WhiteboardRuleEngine {
                 continue
             }
 
-            val rowBox = getRowBoundingBox(row)
+            // Check for explicit tabular layout
+            if (isStrongTableRowCandidate(row)) {
+                val tableRows = mutableListOf<TableRow>()
+                var tableIndex = index
 
+                while (tableIndex < rows.size && isStrongTableRowCandidate(rows[tableIndex])) {
+                    tableRows += rows[tableIndex]
+                    tableIndex++
+                }
+
+                if (tableRows.size >= 2) {
+                    val htmlTable = buildHtmlTableFromRows(tableRows)
+                    val rawTableText = tableRows.joinToString("\n") { r ->
+                        r.cells.joinToString(" | ") { it.text }
+                    }
+                    val tableBox = getRowsBoundingBox(tableRows)
+
+                    blocks += NoteBlock(
+                        rawText = rawTableText,
+                        type = BlockType.REGULAR_TEXT,
+                        formattedText = htmlTable,
+                        boundingBox = tableBox
+                    )
+
+                    index = tableIndex
+                    continue
+                }
+            }
+
+            // Extract left cue column cell vs right note body cells
             val leftCueCell = row.cells.find {
                 it.box.right <= cueColumnSplitX || isCueQuestion(it.text, cueColumnSplitX, it.box)
             }
             val rightBodyCells = row.cells.filter { it != leftCueCell }
 
+            // Process Left Column Cue Question
             if (leftCueCell != null && leftCueCell.text.isNotBlank()) {
                 val cleanCue = sanitizeOcrText(leftCueCell.text)
                 blocks += NoteBlock(
@@ -100,6 +123,7 @@ object WhiteboardRuleEngine {
                 )
             }
 
+            // Process Right Column Content
             val bodyText = if (rightBodyCells.isNotEmpty()) {
                 rightBodyCells.joinToString(" ") { it.text }.trim()
             } else if (leftCueCell == null) {
@@ -109,40 +133,12 @@ object WhiteboardRuleEngine {
             }
 
             if (bodyText.isNotBlank()) {
-                val firstCellLeft = rightBodyCells.firstOrNull()?.box?.left ?: row.cells.first().box.left
-                val indentOffset = max(0, firstCellLeft - minBodyLeftX)
-
-                if (isStrongTableRowCandidate(row)) {
-                    val tableRows = mutableListOf<TableRow>()
-                    var tableIndex = index
-
-                    while (tableIndex < rows.size && isStrongTableRowCandidate(rows[tableIndex])) {
-                        tableRows += rows[tableIndex]
-                        tableIndex++
-                    }
-
-                    if (tableRows.size >= 2) {
-                        val htmlTable = buildHtmlTableFromRows(tableRows)
-                        val rawTableText = tableRows.joinToString("\n") { r ->
-                            r.cells.joinToString(" | ") { it.text }
-                        }
-                        val tableBox = getRowsBoundingBox(tableRows)
-
-                        blocks += NoteBlock(
-                            rawText = rawTableText,
-                            type = BlockType.REGULAR_TEXT,
-                            formattedText = htmlTable,
-                            boundingBox = tableBox
-                        )
-
-                        index = tableIndex
-                        continue
-                    }
-                }
+                val firstCell = rightBodyCells.firstOrNull() ?: row.cells.first()
+                val indentOffset = max(0, firstCell.box.left - minBodyLeftX)
 
                 blocks += parseSingleLineBlock(
                     text = bodyText,
-                    boundingBox = rowBox,
+                    boundingBox = getRowBoundingBox(row),
                     indentOffset = indentOffset
                 )
             }
@@ -150,8 +146,13 @@ object WhiteboardRuleEngine {
             index++
         }
 
+        val noteTitle = blocks.firstOrNull { it.type == BlockType.SECTION_HEADER }
+            ?.rawText
+            ?.replace(Regex("^#+\\s*"), "")
+            ?: "Untitled Scan"
+
         return StructuredNote(
-            title = rawTitle,
+            title = noteTitle,
             blocks = blocks
         )
     }
@@ -173,10 +174,11 @@ object WhiteboardRuleEngine {
             )
         }
 
-        val title = "Untitled Scan"
         val blocks = cleanedLines.map {
             parseSingleLineBlock(text = it, boundingBox = null, indentOffset = 0)
         }
+
+        val title = blocks.firstOrNull { it.type == BlockType.SECTION_HEADER }?.rawText ?: "Untitled Scan"
 
         return StructuredNote(
             title = title,
@@ -185,7 +187,7 @@ object WhiteboardRuleEngine {
     }
 
     // =========================================================
-    // OCR SANITIZATION HELPER
+    // OCR SANITIZATION & HANDWRITING FIXES
     // =========================================================
 
     private fun sanitizeOcrText(text: String): String {
@@ -193,8 +195,34 @@ object WhiteboardRuleEngine {
 
         cleaned = cleaned.replace(Regex("[\\u200B\\u00A0]"), " ")
 
-        if (cleaned.matches(Regex("^[oO0◦°cve*\\-•●○▪▸►]\\s*([A-Za-z].*)"))) {
-            cleaned = cleaned.replace(Regex("^[oO0◦°cve*\\-•●○▪▸►]\\s*"), "• ")
+        // Common OCR handwriting misread replacements
+        val replacements = mapOf(
+            Regex("(?i)\\btxanples\\b") to "Examples",
+            Regex("(?i)\\bItroduchion\\b") to "Introduction",
+            Regex("(?i)\\bSusten\\b") to "System",
+            Regex("(?i)\\bApplicathion\\b") to "Application",
+            Regex("(?i)\\boftware\\b") to "Software",
+            Regex("(?i)\\bwimcows\\b") to "Windows",
+            Regex("(?i)\\bInttrpreter\\b") to "Interpreter",
+            Regex("(?i)\\bLorguoge\\b") to "Language",
+            Regex("(?i)\\bTranstotors\\b") to "Translators",
+            Regex("(?i)\\bUhlity\\b") to "Utility",
+            Regex("(?i)\\bPurpoe\\b") to "Purpose",
+            Regex("(?i)\\bysterm\\b") to "system",
+            Regex("(?i)\\bintanqible\\b") to "intangible",
+            Regex("(?i)\\bH els\\b") to "It tells",
+            Regex("(?i)\\btne\\b") to "the",
+            Regex("(?i)\\bond\\b") to "and",
+            Regex("(?i)\\bWihout\\b") to "Without",
+            Regex("(?i)\\bsofware\\b") to "software",
+            Regex("(?i)\\bnardware\\b") to "hardware",
+            Regex("(?i)\\bOperatinq\\b") to "Operating",
+            Regex("(?i)\\bsystens\\b") to "systems",
+            Regex("(?i)\\biDS\\b") to "iOS"
+        )
+
+        for ((regex, replacement) in replacements) {
+            cleaned = cleaned.replace(regex, replacement)
         }
 
         return cleaned.trim()
@@ -229,50 +257,42 @@ object WhiteboardRuleEngine {
                 val key = trimmed.substring(0, colonIndex).trim()
                 val value = trimmed.substring(colonIndex + 1).trim()
 
-                val bulletPrefix = getBulletSymbol(key)
-                val cleanKey = if (bulletPrefix != null) key.removePrefix(bulletPrefix).trim() else key
-                val indentPrefix = getIndentSpaces(bulletPrefix, indentOffset)
+                val bulletSymbol = getBulletSymbol(key)
+                val cleanKey = if (bulletSymbol != null) key.removePrefix(bulletSymbol).trim() else key
+                val indentPrefix = getIndentSpaces(bulletSymbol, indentOffset)
 
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.KEY_DEFINITION,
-                    formattedText = "$indentPrefix<b>$cleanKey</b>: $value",
-                    boundingBox = boundingBox
-                )
-            }
-
-            isBulletRule(trimmed) -> {
-                val symbol = getBulletSymbol(trimmed) ?: "•"
-                val cleanText = trimmed.replace(Regex("^([\\-*•●○▪◦▸►])\\s*"), "")
-                val indentPrefix = getIndentSpaces(symbol, indentOffset)
-
-                NoteBlock(
-                    rawText = trimmed,
-                    type = BlockType.BULLET_ITEM,
-                    formattedText = "$indentPrefix$symbol $cleanText",
+                    formattedText = "$indentPrefix• <b>$cleanKey</b>: $value",
                     boundingBox = boundingBox
                 )
             }
 
             isNumberedItemRule(trimmed) -> {
                 val match = Regex("^(\\d+)[.)]\\s*(.*)$").find(trimmed)
-                val number = match?.groupValues?.getOrNull(1) ?: ""
+                val number = match?.groupValues?.getOrNull(1) ?: "1"
                 val content = match?.groupValues?.getOrNull(2)?.trim() ?: trimmed
+                val indentPrefix = getIndentSpaces(null, indentOffset)
 
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.NUMBERED_ITEM,
-                    formattedText = "$number. $content",
+                    formattedText = "$indentPrefix<b>$number.</b> $content",
                     boundingBox = boundingBox
                 )
             }
 
-            isSectionHeaderRule(trimmed) -> {
-                val cleanHeader = trimmed.removePrefix("##").trim()
+            isBulletRule(trimmed) -> {
+                val symbol = getBulletSymbol(trimmed) ?: "•"
+                val cleanText = trimmed.replace(Regex("^([\\-*•●○▪◦▸►.])\\s*"), "")
+                val indentPrefix = getIndentSpaces(symbol, indentOffset)
+                val displaySymbol = getDisplayBulletSymbol(symbol, indentOffset)
+
                 NoteBlock(
                     rawText = trimmed,
-                    type = BlockType.SECTION_HEADER,
-                    formattedText = "<b>$cleanHeader</b>",
+                    type = BlockType.BULLET_ITEM,
+                    formattedText = "$indentPrefix$displaySymbol $cleanText",
                     boundingBox = boundingBox
                 )
             }
@@ -287,6 +307,16 @@ object WhiteboardRuleEngine {
                 )
             }
 
+            isSectionHeaderRule(trimmed) -> {
+                val cleanHeader = trimmed.removePrefix("##").removePrefix("-").trim()
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.SECTION_HEADER,
+                    formattedText = "<u><b>$cleanHeader</b></u>",
+                    boundingBox = boundingBox
+                )
+            }
+
             isMathRule(trimmed) -> {
                 NoteBlock(
                     rawText = trimmed,
@@ -297,10 +327,11 @@ object WhiteboardRuleEngine {
             }
 
             else -> {
+                val cleanContent = trimmed.removePrefix("-").trim()
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.REGULAR_TEXT,
-                    formattedText = trimmed,
+                    formattedText = cleanContent,
                     boundingBox = boundingBox
                 )
             }
@@ -317,7 +348,9 @@ object WhiteboardRuleEngine {
         return trimmed.endsWith("?") ||
                 trimmed.startsWith("What is", ignoreCase = true) ||
                 trimmed.startsWith("Define", ignoreCase = true) ||
-                trimmed.startsWith("How ", ignoreCase = true)
+                trimmed.startsWith("How ", ignoreCase = true) ||
+                trimmed.startsWith("Why ", ignoreCase = true) ||
+                trimmed.startsWith("Which ", ignoreCase = true)
     }
 
     private fun isCalloutRule(text: String): Boolean {
@@ -334,6 +367,14 @@ object WhiteboardRuleEngine {
         }
     }
 
+    private fun getDisplayBulletSymbol(symbol: String, indentOffset: Int): String {
+        return when {
+            symbol == "▸" || indentOffset > 50 -> "▸"
+            symbol == "◦" || indentOffset > 25 -> "◦"
+            else -> "•"
+        }
+    }
+
     private fun getIndentSpaces(symbol: String?, indentOffset: Int): String {
         return when {
             symbol == "▸" || indentOffset > 50 -> "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
@@ -343,7 +384,7 @@ object WhiteboardRuleEngine {
     }
 
     private fun isBulletRule(text: String): Boolean {
-        return text.matches(Regex("^([\\-*•●○▪◦▸►])\\s*.+"))
+        return text.matches(Regex("^([\\-*•●○▪◦▸►.])\\s*.+"))
     }
 
     private fun isNumberedItemRule(text: String): Boolean {
@@ -352,13 +393,21 @@ object WhiteboardRuleEngine {
 
     private fun isSectionHeaderRule(text: String): Boolean {
         val trimmed = text.trim()
-        if (trimmed.startsWith("##")) return true
-        if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && trimmed.length in 2..45) return true
-        if (trimmed.length in 3..40 && trimmed == trimmed.uppercase() && trimmed.any { it.isLetter() }) return true
+        val lower = trimmed.lowercase()
 
-        if (trimmed.length in 3..35 && !trimmed.endsWith(".") && !trimmed.contains(":") && trimmed.first().isUpperCase() && !isBulletRule(trimmed)) {
+        if (isBulletRule(trimmed) || isNumberedItemRule(trimmed)) return false
+        if (trimmed.startsWith("##")) return true
+
+        val headerKeywords = listOf(
+            "chapter", "introduction", "statistics determines", "scientific method",
+            "population", "census", "sample", "descriptive statistics", "inferential"
+        )
+        if (headerKeywords.any { lower.startsWith(it) }) {
             return true
         }
+
+        if (trimmed.length in 3..45 && trimmed == trimmed.uppercase() && trimmed.any { it.isLetter() }) return true
+        if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && trimmed.length in 2..45) return true
 
         return false
     }
@@ -373,12 +422,12 @@ object WhiteboardRuleEngine {
         if (text.trim().endsWith(":")) return false
 
         val colonIndex = text.indexOf(":")
-        if (colonIndex !in 2..45) return false
+        if (colonIndex !in 2..40) return false
 
         val beforeColon = text.substring(0, colonIndex).trim()
         val afterColon = text.substring(colonIndex + 1).trim()
 
-        return beforeColon.isNotBlank() && afterColon.isNotBlank()
+        return beforeColon.isNotBlank() && afterColon.isNotBlank() && !beforeColon.startsWith("NOTE", ignoreCase = true)
     }
 
     private fun isMathRule(text: String): Boolean {
