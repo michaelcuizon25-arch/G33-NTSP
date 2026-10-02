@@ -14,6 +14,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -25,25 +26,24 @@ import com.example.note2snap.activities.MainActivity
 class OnboardingActivity : AppCompatActivity() {
 
     companion object {
-        private const val PREFS_NAME = "Note2SnapTutorial"
-        private const val KEY_COMPLETED = "ONBOARDING_COMPLETED"
-        const val KEY_START_SPOTLIGHT = "START_SPOTLIGHT_AFTER_ONBOARDING"
+        private const val PREFS = "Note2SnapOnboardingInteractiveV5"
+        private const val KEY_DONE = "ONBOARDING_INTERACTIVE_V5_DONE"
     }
 
     private lateinit var robot: LottieAnimationView
-    private lateinit var tvSpeech: TextView
-    private lateinit var tvTitle: TextView
-    private lateinit var tvSubtitle: TextView
-    private lateinit var featureContainer: LinearLayout
-    private lateinit var btnBack: TextView
-    private lateinit var btnNext: TextView
-    private lateinit var btnSkip: TextView
+    private lateinit var speech: TextView
+    private lateinit var title: TextView
+    private lateinit var subtitle: TextView
+    private lateinit var features: LinearLayout
+    private lateinit var back: TextView
+    private lateinit var next: TextView
+    private lateinit var skip: TextView
     private lateinit var dots: List<View>
 
-    private var pageIndex = 0
     private val handler = Handler(Looper.getMainLooper())
-    private var typingRunnable: Runnable? = null
+    private var typingTask: Runnable? = null
     private var robotBob: ObjectAnimator? = null
+    private var page = 0
 
     private data class Page(
         val speech: String,
@@ -53,48 +53,33 @@ class OnboardingActivity : AppCompatActivity() {
 
     private val pages = listOf(
         Page(
-            speech = "Hi! I'm Snap, your Note2Snap guide. I'll help you turn whiteboard photos into organized notes!",
-            title = "Welcome to\nNote2Snap",
-            subtitle = "Capture or import whiteboard images in just a few taps."
+            "Hi! I'm Snap, your Note2Snap guide. I'll show you how to turn whiteboard photos into organized notes.",
+            "Welcome to\nNote2Snap",
+            "Capture or import whiteboard images in just a few taps."
         ),
         Page(
-            speech = "Start by taking a photo of your whiteboard or choose one or several images from your gallery.",
-            title = "Capture Your Notes",
-            subtitle = "Take a photo or import existing whiteboard images from your gallery."
+            "Start by taking a photo of your whiteboard, or choose one or several images from your gallery.",
+            "Capture Your Notes",
+            "Use the camera or import multiple whiteboard photos from your gallery."
         ),
         Page(
-            speech = "I'll recognize the writing, preserve important visual elements, and organize everything into a cleaner note.",
-            title = "Turn Photos Into Notes",
-            subtitle = "Note2Snap converts whiteboard content into editable, structured digital notes."
+            "I'll recognize the writing, keep important visuals, and organize everything into a cleaner structured note.",
+            "Turn Photos Into Notes",
+            "From a whiteboard photo to a cleaner, editable digital note."
         ),
         Page(
-            speech = "Review the result, fix anything you want, organize your notes, and export them whenever you need them.",
-            title = "Your Notes,\nReady to Use",
-            subtitle = "Edit, organize, save, and export your finished notes."
+            "Review the result, fix anything you want, organize your notes, then export or share them whenever you need.",
+            "Your Notes,\nReady to Use",
+            "Edit, organize, save, export, and share your finished notes."
         )
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val prefs =
-            getSharedPreferences(
-                PREFS_NAME,
-                Context.MODE_PRIVATE
-            )
-
-        val forceShow =
-            intent.getBooleanExtra(
-                "FORCE_SHOW_ONBOARDING",
-                false
-            )
-
         if (
-            !forceShow &&
-            prefs.getBoolean(
-                KEY_COMPLETED,
-                false
-            )
+            getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_DONE, false)
         ) {
             openMain()
             return
@@ -103,13 +88,13 @@ class OnboardingActivity : AppCompatActivity() {
         setContentView(R.layout.activity_onboarding)
 
         robot = findViewById(R.id.lottieOnboardingRobot)
-        tvSpeech = findViewById(R.id.tvOnboardingSpeech)
-        tvTitle = findViewById(R.id.tvOnboardingTitle)
-        tvSubtitle = findViewById(R.id.tvOnboardingSubtitle)
-        featureContainer = findViewById(R.id.onboardingFeatureContainer)
-        btnBack = findViewById(R.id.btnOnboardingBack)
-        btnNext = findViewById(R.id.btnOnboardingNext)
-        btnSkip = findViewById(R.id.btnOnboardingSkip)
+        speech = findViewById(R.id.tvOnboardingSpeech)
+        title = findViewById(R.id.tvOnboardingTitle)
+        subtitle = findViewById(R.id.tvOnboardingSubtitle)
+        features = findViewById(R.id.onboardingFeatureContainer)
+        back = findViewById(R.id.btnOnboardingBack)
+        next = findViewById(R.id.btnOnboardingNext)
+        skip = findViewById(R.id.btnOnboardingSkip)
 
         dots = listOf(
             findViewById(R.id.dot1),
@@ -121,645 +106,380 @@ class OnboardingActivity : AppCompatActivity() {
         robot.setAnimation(R.raw.robot_mascot)
         robot.repeatCount = ValueAnimator.INFINITE
         robot.playAnimation()
-
         startRobotBob()
 
         robot.setOnClickListener {
             robotTapReaction()
+            showRobotReactionMessage()
         }
 
-        btnBack.setOnClickListener {
-            if (pageIndex > 0) {
-                pageIndex--
-                renderPage()
+        back.setOnClickListener {
+            if (page > 0) {
+                page--
+                transitionPage(forward = false)
             }
         }
 
-        btnNext.setOnClickListener {
-            if (pageIndex < pages.lastIndex) {
-                animateNext {
-                    pageIndex++
-                    renderPage()
-                }
+        next.setOnClickListener {
+            if (page < pages.lastIndex) {
+                page++
+                transitionPage(forward = true)
             } else {
-                completeOnboarding()
+                finishOnboarding()
             }
         }
 
-        btnSkip.setOnClickListener {
-            completeOnboarding()
+        skip.setOnClickListener {
+            finishOnboarding()
         }
 
         renderPage()
     }
 
     private fun renderPage() {
-        val page = pages[pageIndex]
+        val item = pages[page]
 
-        btnBack.visibility =
-            if (pageIndex == 0) View.INVISIBLE else View.VISIBLE
+        back.visibility =
+            if (page == 0) View.INVISIBLE else View.VISIBLE
 
-        btnSkip.visibility =
-            if (pageIndex == pages.lastIndex) View.INVISIBLE else View.VISIBLE
+        skip.visibility =
+            if (page == pages.lastIndex) View.INVISIBLE else View.VISIBLE
 
-        btnNext.text =
-            if (pageIndex == pages.lastIndex) {
-                "Get Started"
-            } else {
-                "Next  →"
-            }
+        next.text =
+            if (page == pages.lastIndex) "Get Started  →" else "Next  →"
 
-        tvTitle.text = page.title
-        tvSubtitle.text = page.subtitle
-
-        typeSpeech(page.speech)
+        title.text = item.title
+        subtitle.text = item.subtitle
+        typeSpeech(item.speech)
+        renderFeatures()
         updateDots()
-        renderFeatureContent()
-        animatePageEntrance()
+        reactRobotForPage()
     }
 
-    private fun typeSpeech(message: String) {
-        typingRunnable?.let {
-            handler.removeCallbacks(it)
-        }
+    private fun renderFeatures() {
+        features.removeAllViews()
 
-        tvSpeech.text = ""
-        var index = 0
-
-        val runnable =
-            object : Runnable {
-                override fun run() {
-                    if (index <= message.length) {
-                        tvSpeech.text =
-                            message.substring(
-                                0,
-                                index
-                            )
-
-                        index++
-
-                        handler.postDelayed(
-                            this,
-                            18L
-                        )
-                    }
-                }
+        when (page) {
+            0 -> {
+                features.orientation = LinearLayout.HORIZONTAL
+                features.gravity = Gravity.CENTER
+                features.addView(featureChip(R.drawable.ic_onboard_camera, "Capture"), weightParams())
+                features.addView(gap(8))
+                features.addView(featureChip(R.drawable.ic_onboard_gallery, "Import"), weightParams())
+                features.addView(gap(8))
+                features.addView(featureChip(R.drawable.ic_onboard_pdf, "Export"), weightParams())
             }
 
-        typingRunnable = runnable
-        handler.post(runnable)
-    }
-
-    private fun renderFeatureContent() {
-        featureContainer.removeAllViews()
-
-        when (pageIndex) {
-            0 -> renderWelcomeAccent()
-            1 -> renderCaptureChoices()
-            2 -> renderBeforeAfter()
-            3 -> renderFinalFeatures()
-        }
-    }
-
-    private fun renderWelcomeAccent() {
-        featureContainer.gravity = Gravity.CENTER
-
-        featureContainer.addView(
-            TextView(this).apply {
-                text = "N+S"
-                textSize = 34f
-                gravity = Gravity.CENTER
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(
-                    ContextCompat.getColor(
-                        this@OnboardingActivity,
-                        R.color.nts_blue
-                    )
-                )
-                setPadding(
-                    dp(24),
-                    dp(12),
-                    dp(24),
-                    dp(12)
-                )
-                background =
-                    roundedBackground(
-                        R.color.nts_blue_soft,
-                        22
-                    )
+            1 -> {
+                features.orientation = LinearLayout.HORIZONTAL
+                features.gravity = Gravity.CENTER
+                features.addView(actionCard(R.drawable.ic_onboard_camera, "Take a photo", "Use the camera"), largeWeight())
+                features.addView(gap(12))
+                features.addView(actionCard(R.drawable.ic_onboard_gallery, "Import", "Choose multiple photos"), largeWeight())
             }
-        )
-    }
 
-    private fun renderCaptureChoices() {
-        featureContainer.orientation = LinearLayout.HORIZONTAL
-        featureContainer.gravity = Gravity.CENTER
-
-        featureContainer.addView(
-            miniCard(
-                title = "Take a photo",
-                subtitle = "Use the camera",
-                symbol = "◉"
-            ),
-            weightedParams()
-        )
-
-        featureContainer.addView(
-            spacer(12)
-        )
-
-        featureContainer.addView(
-            miniCard(
-                title = "Import",
-                subtitle = "Choose multiple photos",
-                symbol = "▣"
-            ),
-            weightedParams()
-        )
-    }
-
-    private fun renderBeforeAfter() {
-        featureContainer.orientation = LinearLayout.HORIZONTAL
-        featureContainer.gravity = Gravity.CENTER
-
-        featureContainer.addView(
-            previewCard(
-                label = "Whiteboard Photo",
-                body = "Chapter 3\nAlgorithms\n- sorting\n- searching\n□ → □"
-            ),
-            weightedParams()
-        )
-
-        featureContainer.addView(
-            TextView(this).apply {
-                text = "→"
-                textSize = 25f
-                gravity = Gravity.CENTER
-                setTextColor(
-                    ContextCompat.getColor(
-                        this@OnboardingActivity,
-                        R.color.nts_blue
-                    )
+            2 -> {
+                features.orientation = LinearLayout.HORIZONTAL
+                features.gravity = Gravity.CENTER
+                features.addView(noteCard("Whiteboard Photo", "STUDY PLAN\n• Review Chapter 3\n• Make reviewer\n• Practice problems\n\nIdea → Draft → Done"), largeWeight())
+                features.addView(
+                    TextView(this).apply {
+                        text = "→"
+                        textSize = 24f
+                        gravity = Gravity.CENTER
+                        setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_blue))
+                    },
+                    LinearLayout.LayoutParams(dp(34), LinearLayout.LayoutParams.MATCH_PARENT)
                 )
-            },
-            LinearLayout.LayoutParams(
-                dp(38),
-                LinearLayout.LayoutParams.MATCH_PARENT
-            )
-        )
+                features.addView(noteCard("Structured Note", "STUDY PLAN\nKey Tasks\n• Review Chapter 3\n• Make reviewer\n• Practice problems\n\nProgress\nIdea → Draft → Done"), largeWeight())
+            }
 
-        featureContainer.addView(
-            previewCard(
-                label = "Structured Note",
-                body = "ALGORITHMS\n• Sorting\n• Searching\n• Graph traversal\n□ → □"
-            ),
-            weightedParams()
-        )
-    }
+            3 -> {
+                features.orientation = LinearLayout.VERTICAL
+                features.gravity = Gravity.CENTER
+                val r1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                val r2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
 
-    private fun renderFinalFeatures() {
-        featureContainer.orientation = LinearLayout.VERTICAL
-        featureContainer.gravity = Gravity.CENTER
+                r1.addView(featureTile(R.drawable.ic_onboard_edit, "Edit", "Correct recognized text"), tileWeight())
+                r1.addView(gap(10))
+                r1.addView(featureTile(R.drawable.ic_onboard_folder, "Organize", "Save into folders"), tileWeight())
 
-        featureContainer.addView(
-            featureRow(
-                symbol = "✎",
-                title = "Edit",
-                subtitle = "Correct recognized text."
-            )
-        )
+                r2.addView(featureTile(R.drawable.ic_onboard_pdf, "Export PDF", "Create a PDF copy"), tileWeight())
+                r2.addView(gap(10))
+                r2.addView(featureTile(R.drawable.ic_onboard_share, "Share", "Send to other apps"), tileWeight())
 
-        featureContainer.addView(
-            spacer(8)
-        )
-
-        featureContainer.addView(
-            featureRow(
-                symbol = "▣",
-                title = "Organize",
-                subtitle = "Save notes into folders."
-            )
-        )
-
-        featureContainer.addView(
-            spacer(8)
-        )
-
-        featureContainer.addView(
-            featureRow(
-                symbol = "PDF",
-                title = "Export",
-                subtitle = "Turn your notes into a PDF."
-            )
-        )
-    }
-
-    private fun miniCard(
-        title: String,
-        subtitle: String,
-        symbol: String
-    ): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(
-                dp(12),
-                dp(14),
-                dp(12),
-                dp(14)
-            )
-            background =
-                roundedBackground(
-                    R.color.nts_surface,
-                    18,
-                    R.color.nts_blue_line
-                )
-
-            addView(
-                TextView(this@OnboardingActivity).apply {
-                    text = symbol
-                    textSize = 28f
-                    gravity = Gravity.CENTER
-                    setTextColor(
-                        ContextCompat.getColor(
-                            this@OnboardingActivity,
-                            R.color.nts_blue
-                        )
-                    )
-                }
-            )
-
-            addView(
-                TextView(this@OnboardingActivity).apply {
-                    text = title
-                    textSize = 12.5f
-                    gravity = Gravity.CENTER
-                    typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(
-                        ContextCompat.getColor(
-                            this@OnboardingActivity,
-                            R.color.nts_text
-                        )
-                    )
-                }
-            )
-
-            addView(
-                TextView(this@OnboardingActivity).apply {
-                    text = subtitle
-                    textSize = 9.5f
-                    gravity = Gravity.CENTER
-                    setTextColor(
-                        ContextCompat.getColor(
-                            this@OnboardingActivity,
-                            R.color.nts_text_secondary
-                        )
-                    )
-                }
-            )
+                features.addView(r1, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+                features.addView(verticalGap(8))
+                features.addView(r2, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            }
         }
     }
 
-    private fun previewCard(
-        label: String,
-        body: String
-    ): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(
-                dp(12),
-                dp(12),
-                dp(12),
-                dp(12)
-            )
-            background =
-                roundedBackground(
-                    R.color.nts_surface,
-                    18,
-                    R.color.nts_blue_line
-                )
+    private fun transitionPage(forward: Boolean) {
+        val distance = if (forward) dp(28).toFloat() else -dp(28).toFloat()
 
-            addView(
-                TextView(this@OnboardingActivity).apply {
-                    text = body
-                    textSize = 10.5f
-                    setTextColor(
-                        ContextCompat.getColor(
-                            this@OnboardingActivity,
-                            R.color.nts_text
-                        )
-                    )
-                },
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    0,
-                    1f
-                )
-            )
-
-            addView(
-                TextView(this@OnboardingActivity).apply {
-                    text = label
-                    textSize = 8.5f
-                    gravity = Gravity.CENTER
-                    setTextColor(
-                        ContextCompat.getColor(
-                            this@OnboardingActivity,
-                            R.color.nts_text_secondary
-                        )
-                    )
+        listOf(robot, features, title, subtitle).forEach {
+            it.animate()
+                .alpha(0f)
+                .translationX(-distance)
+                .setDuration(120L)
+                .withEndAction {
+                    renderPage()
+                    it.translationX = distance
+                    it.animate()
+                        .alpha(1f)
+                        .translationX(0f)
+                        .setDuration(190L)
+                        .start()
                 }
-            )
+                .start()
         }
     }
 
-    private fun featureRow(
-        symbol: String,
-        title: String,
-        subtitle: String
-    ): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(
-                dp(14),
-                dp(11),
-                dp(14),
-                dp(11)
-            )
-            background =
-                roundedBackground(
-                    R.color.nts_surface,
-                    16,
-                    R.color.nts_blue_line
-                )
-
-            addView(
-                TextView(this@OnboardingActivity).apply {
-                    text = symbol
-                    textSize = 18f
-                    gravity = Gravity.CENTER
-                    setTextColor(
-                        ContextCompat.getColor(
-                            this@OnboardingActivity,
-                            R.color.nts_blue
-                        )
-                    )
-                },
-                LinearLayout.LayoutParams(
-                    dp(44),
-                    dp(44)
-                )
-            )
-
-            addView(
-                LinearLayout(this@OnboardingActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-
-                    addView(
-                        TextView(this@OnboardingActivity).apply {
-                            text = title
-                            textSize = 12.5f
-                            typeface = Typeface.DEFAULT_BOLD
-                            setTextColor(
-                                ContextCompat.getColor(
-                                    this@OnboardingActivity,
-                                    R.color.nts_text
-                                )
-                            )
-                        }
-                    )
-
-                    addView(
-                        TextView(this@OnboardingActivity).apply {
-                            text = subtitle
-                            textSize = 9.5f
-                            setTextColor(
-                                ContextCompat.getColor(
-                                    this@OnboardingActivity,
-                                    R.color.nts_text_secondary
-                                )
-                            )
-                        }
-                    )
-                },
-                LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                )
-            )
+    private fun reactRobotForPage() {
+        when (page) {
+            0 -> robot.rotation = -2f
+            1 -> robot.rotation = 2f
+            2 -> robot.rotation = -1f
+            3 -> robot.rotation = 1f
         }
-    }
 
-    private fun updateDots() {
-        dots.forEachIndexed {
-                index,
-                dot ->
-
-            dot.background =
-                GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(
-                        ContextCompat.getColor(
-                            this@OnboardingActivity,
-                            if (index == pageIndex) {
-                                R.color.nts_blue
-                            } else {
-                                R.color.nts_blue_line
-                            }
-                        )
-                    )
-                }
-        }
-    }
-
-    private fun animatePageEntrance() {
-        tvTitle.alpha = 0f
-        tvSubtitle.alpha = 0f
-        featureContainer.alpha = 0f
-
-        tvTitle.translationY = dp(10).toFloat()
-        tvSubtitle.translationY = dp(10).toFloat()
-        featureContainer.translationY = dp(14).toFloat()
-
-        tvTitle.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(220L)
-            .start()
-
-        tvSubtitle.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setStartDelay(50L)
-            .setDuration(220L)
-            .start()
-
-        featureContainer.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setStartDelay(100L)
-            .setDuration(260L)
-            .start()
-    }
-
-    private fun animateNext(
-        onEnd: () -> Unit
-    ) {
         robot.animate()
-            .translationX(dp(18).toFloat())
-            .scaleX(0.94f)
-            .scaleY(0.94f)
-            .setDuration(130L)
+            .scaleX(1.04f)
+            .scaleY(1.04f)
+            .setDuration(180L)
             .withEndAction {
                 robot.animate()
-                    .translationX(0f)
                     .scaleX(1f)
                     .scaleY(1f)
-                    .setDuration(150L)
-                    .withEndAction {
-                        onEnd()
-                    }
+                    .setDuration(180L)
                     .start()
             }
             .start()
     }
 
-    private fun robotTapReaction() {
-        val scaleX =
-            ObjectAnimator.ofFloat(
-                robot,
-                View.SCALE_X,
-                1f,
-                1.09f,
-                0.96f,
-                1f
-            )
+    private fun showRobotReactionMessage() {
+        val reactions = when (page) {
+            0 -> listOf("Ready? Let's go! ✨", "Tap Next and I'll show you around!", "Hi again! 👋")
+            1 -> listOf("Camera or gallery — your choice!", "You can import multiple photos too!")
+            2 -> listOf("This is where the magic happens ✨", "I'll keep the important visuals too!")
+            else -> listOf("Almost done! 🎉", "Your notes are ready when you are!")
+        }
 
-        val scaleY =
-            ObjectAnimator.ofFloat(
-                robot,
-                View.SCALE_Y,
-                1f,
-                1.09f,
-                0.96f,
-                1f
-            )
+        val original = pages[page].speech
+        val reaction = reactions[(System.currentTimeMillis() % reactions.size).toInt()]
 
-        AnimatorSet().apply {
-            playTogether(
-                scaleX,
-                scaleY
-            )
-            duration = 360L
-            start()
+        typingTask?.let(handler::removeCallbacks)
+        speech.text = reaction
+
+        handler.postDelayed(
+            {
+                typeSpeech(original)
+            },
+            1200L
+        )
+    }
+
+    private fun typeSpeech(message: String) {
+        typingTask?.let(handler::removeCallbacks)
+        speech.text = ""
+        var index = 0
+
+        val task = object : Runnable {
+            override fun run() {
+                if (index <= message.length) {
+                    speech.text = message.substring(0, index)
+                    index++
+                    handler.postDelayed(this, 14L)
+                }
+            }
+        }
+
+        typingTask = task
+        handler.post(task)
+    }
+
+    private fun updateDots() {
+        dots.forEachIndexed { index, dot ->
+            dot.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(
+                    ContextCompat.getColor(
+                        this@OnboardingActivity,
+                        if (index == page) R.color.nts_blue else R.color.nts_blue_line
+                    )
+                )
+            }
         }
     }
 
     private fun startRobotBob() {
         robotBob?.cancel()
-
         robotBob =
             ObjectAnimator.ofFloat(
                 robot,
                 View.TRANSLATION_Y,
                 0f,
-                -dp(7).toFloat(),
+                -dp(8).toFloat(),
                 0f
             ).apply {
-                duration = 1900L
+                duration = 1800L
                 repeatCount = ValueAnimator.INFINITE
-                repeatMode = ValueAnimator.RESTART
-                interpolator =
-                    AccelerateDecelerateInterpolator()
+                interpolator = AccelerateDecelerateInterpolator()
                 start()
             }
     }
 
-    private fun completeOnboarding() {
-        getSharedPreferences(
-            PREFS_NAME,
-            Context.MODE_PRIVATE
-        ).edit()
-            .putBoolean(
-                KEY_COMPLETED,
-                true
-            )
-            .putBoolean(
-                KEY_START_SPOTLIGHT,
-                true
-            )
+    private fun robotTapReaction() {
+        val sx = ObjectAnimator.ofFloat(robot, View.SCALE_X, 1f, 1.10f, 0.97f, 1f)
+        val sy = ObjectAnimator.ofFloat(robot, View.SCALE_Y, 1f, 1.10f, 0.97f, 1f)
+        AnimatorSet().apply {
+            playTogether(sx, sy)
+            duration = 360L
+            start()
+        }
+    }
+
+    private fun featureChip(icon: Int, label: String): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), dp(10), dp(8), dp(10))
+            background = cardBackground()
+
+            addView(ImageView(this@OnboardingActivity).apply {
+                setImageResource(icon)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+            }, LinearLayout.LayoutParams(dp(34), dp(34)))
+
+            addView(TextView(this@OnboardingActivity).apply {
+                text = label
+                textSize = 10.5f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_text))
+            })
+        }
+
+    private fun actionCard(icon: Int, heading: String, body: String): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = cardBackground()
+
+            addView(ImageView(this@OnboardingActivity).apply {
+                setImageResource(icon)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+            }, LinearLayout.LayoutParams(dp(52), dp(52)))
+
+            addView(TextView(this@OnboardingActivity).apply {
+                text = heading
+                textSize = 13f
+                typeface = Typeface.create("serif", Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_text))
+            })
+
+            addView(TextView(this@OnboardingActivity).apply {
+                text = body
+                textSize = 9.5f
+                gravity = Gravity.CENTER
+                setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_text_secondary))
+            })
+        }
+
+    private fun noteCard(label: String, body: String): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = cardBackground()
+
+            addView(TextView(this@OnboardingActivity).apply {
+                text = label
+                textSize = 9f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_blue))
+            })
+
+            addView(TextView(this@OnboardingActivity).apply {
+                text = body
+                textSize = 9.5f
+                setPadding(dp(4), dp(8), dp(4), dp(4))
+                setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_text))
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+
+    private fun featureTile(icon: Int, heading: String, body: String): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = cardBackground()
+
+            addView(ImageView(this@OnboardingActivity).apply {
+                setImageResource(icon)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+            }, LinearLayout.LayoutParams(dp(34), dp(34)))
+
+            addView(LinearLayout(this@OnboardingActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(8), 0, 0, 0)
+
+                addView(TextView(this@OnboardingActivity).apply {
+                    text = heading
+                    textSize = 11f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_text))
+                })
+
+                addView(TextView(this@OnboardingActivity).apply {
+                    text = body
+                    textSize = 8.5f
+                    setTextColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_text_secondary))
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+
+    private fun cardBackground() =
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(18).toFloat()
+            setColor(ContextCompat.getColor(this@OnboardingActivity, R.color.nts_surface))
+            setStroke(dp(1), ContextCompat.getColor(this@OnboardingActivity, R.color.nts_blue_line))
+        }
+
+    private fun weightParams() = LinearLayout.LayoutParams(0, dp(104), 1f)
+    private fun largeWeight() = LinearLayout.LayoutParams(0, dp(146), 1f)
+    private fun tileWeight() = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+    private fun gap(v: Int) = View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(v), 1) }
+    private fun verticalGap(v: Int) = View(this).apply { layoutParams = LinearLayout.LayoutParams(1, dp(v)) }
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun finishOnboarding() {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_DONE, true)
+            .apply()
+
+        // Fresh guide flags: Home and Camera will each show their tutorial once.
+        getSharedPreferences("Note2SnapGuideV5", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("HOME_GUIDE_V5_SHOWN", false)
+            .putBoolean("CAMERA_GUIDE_V5_SHOWN", false)
             .apply()
 
         openMain()
     }
 
     private fun openMain() {
-        startActivity(
-            Intent(
-                this,
-                MainActivity::class.java
-            )
-        )
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 
-    private fun weightedParams() =
-        LinearLayout.LayoutParams(
-            0,
-            dp(142),
-            1f
-        )
-
-    private fun spacer(dp: Int) =
-        View(this).apply {
-            layoutParams =
-                LinearLayout.LayoutParams(
-                    dp(dp),
-                    dp(dp)
-                )
-        }
-
-    private fun roundedBackground(
-        fillColorRes: Int,
-        radiusDp: Int,
-        strokeColorRes: Int? = null
-    ): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius =
-                dp(radiusDp).toFloat()
-
-            setColor(
-                ContextCompat.getColor(
-                    this@OnboardingActivity,
-                    fillColorRes
-                )
-            )
-
-            if (strokeColorRes != null) {
-                setStroke(
-                    dp(1),
-                    ContextCompat.getColor(
-                        this@OnboardingActivity,
-                        strokeColorRes
-                    )
-                )
-            }
-        }
-    }
-
-    private fun dp(value: Int): Int =
-        (
-                value *
-                        resources.displayMetrics.density
-                ).toInt()
-
     override fun onDestroy() {
-        typingRunnable?.let {
-            handler.removeCallbacks(it)
-        }
+        typingTask?.let(handler::removeCallbacks)
         robotBob?.cancel()
         robot.cancelAnimation()
         super.onDestroy()

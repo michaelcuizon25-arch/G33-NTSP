@@ -1,18 +1,1 @@
-<?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <item android:state_pressed="true">
-        <shape android:shape="rectangle">
-            <solid android:color="@color/nts_blue_soft" />
-            <corners android:radius="18dp" />
-        </shape>
-    </item>
-
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="@color/nts_blue" />
-            <corners android:radius="18dp" />
-        </shape>
-    </item>
-
-</selector>
+<selector xmlns:android="http://schemas.android.com/apk/res/android"><item android:state_pressed="true"><shape android:shape="rectangle"><solid android:color="#5A7FDB"/><corners android:radius="20dp"/></shape></item><item><shape android:shape="rectangle"><gradient android:startColor="#7697F1" android:endColor="#5A7FDB" android:angle="0"/><corners android:radius="20dp"/></shape></item></selector>

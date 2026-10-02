@@ -2,6 +2,7 @@ package com.example.note2snap.activities
 
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -23,27 +24,36 @@ class SplashActivity : AppCompatActivity() {
         setContentView(R.layout.activity_splash)
 
         val ivLogo =
-            findViewById<ImageView>(R.id.ivLogo)
-
-        startCameraLoadingAnimation(ivLogo)
-
-        Handler(Looper.getMainLooper())
-            .postDelayed(
-                {
-                    openOnboarding()
-                },
-                2500L
+            findViewById<ImageView>(
+                R.id.ivLogo
             )
+
+        startCameraLoadingAnimation(
+            ivLogo
+        )
+
+        Handler(
+            Looper.getMainLooper()
+        ).postDelayed(
+            {
+                navigateAfterSplash()
+            },
+            2500L
+        )
     }
 
     private fun startCameraLoadingAnimation(
         ivLogo: ImageView
     ) {
         val ivScanRing =
-            findViewById<ImageView>(R.id.ivScanRing)
+            findViewById<ImageView>(
+                R.id.ivScanRing
+            )
 
         val vScanBeam =
-            findViewById<View>(R.id.vScanBeam)
+            findViewById<View>(
+                R.id.vScanBeam
+            )
 
         ObjectAnimator.ofFloat(
             ivScanRing,
@@ -96,19 +106,30 @@ class SplashActivity : AppCompatActivity() {
         }
     }
 
-    private fun openOnboarding() {
+    private fun navigateAfterSplash() {
         if (isFinishing) return
+
+        val completed =
+            getSharedPreferences(
+                "Note2SnapOnboardingInteractiveV5",
+                Context.MODE_PRIVATE
+            ).getBoolean(
+                "ONBOARDING_INTERACTIVE_V5_DONE",
+                false
+            )
+
+        val destination =
+            if (completed) {
+                MainActivity::class.java
+            } else {
+                OnboardingActivity::class.java
+            }
 
         startActivity(
             Intent(
                 this,
-                OnboardingActivity::class.java
-            ).apply {
-                putExtra(
-                    "FORCE_SHOW_ONBOARDING",
-                    true
-                )
-            }
+                destination
+            )
         )
 
         overridePendingTransition(

@@ -14,108 +14,153 @@ class SpotlightTutorialView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : View(
+    context,
+    attrs,
+    defStyleAttr
+) {
 
-    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#B3000000")
-    }
+    private val dimPaint =
+        Paint(
+            Paint.ANTI_ALIAS_FLAG
+        ).apply {
+            color =
+                Color.parseColor(
+                    "#B80E1A32"
+                )
+        }
 
-    private val eraserPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-    }
+    private val clearPaint =
+        Paint(
+            Paint.ANTI_ALIAS_FLAG
+        ).apply {
+            xfermode =
+                PorterDuffXfermode(
+                    PorterDuff.Mode.CLEAR
+                )
+        }
 
-    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = Color.parseColor("#AFC4F6")
-        strokeWidth = dp(2f)
-    }
+    private val borderPaint =
+        Paint(
+            Paint.ANTI_ALIAS_FLAG
+        ).apply {
+            style =
+                Paint.Style.STROKE
 
-    private var targetRect: RectF? = null
-    private val cornerRadius = dp(16f)
+            strokeWidth =
+                2.5f *
+                    resources
+                        .displayMetrics
+                        .density
+
+            color =
+                Color.parseColor(
+                    "#B8CBFF"
+                )
+        }
+
+    private var target:
+        RectF? =
+        null
 
     init {
-        setLayerType(LAYER_TYPE_SOFTWARE, null)
-        isClickable = false
-        isFocusable = false
+        setLayerType(
+            LAYER_TYPE_SOFTWARE,
+            null
+        )
     }
 
     fun setTargetView(
         targetView: View?,
         paddingDp: Float = 12f
     ) {
-        if (targetView == null) {
-            targetRect = null
+        if (
+            targetView == null
+        ) {
+            target =
+                null
             invalidate()
             return
         }
 
         targetView.post {
-            if (!targetView.isShown) {
-                targetRect = null
-                invalidate()
-                return@post
-            }
+            val pos =
+                IntArray(2)
 
-            val targetLocation = IntArray(2)
-            val ownLocation = IntArray(2)
-
-            targetView.getLocationInWindow(targetLocation)
-            getLocationInWindow(ownLocation)
-
-            val paddingPx = dp(paddingDp)
-
-            val left = targetLocation[0] - ownLocation[0] - paddingPx
-            val top = targetLocation[1] - ownLocation[1] - paddingPx
-
-            targetRect = RectF(
-                left,
-                top,
-                left + targetView.width + (paddingPx * 2f),
-                top + targetView.height + (paddingPx * 2f)
+            targetView.getLocationOnScreen(
+                pos
             )
+
+            val own =
+                IntArray(2)
+
+            getLocationOnScreen(
+                own
+            )
+
+            val pad =
+                paddingDp *
+                    resources
+                        .displayMetrics
+                        .density
+
+            target =
+                RectF(
+                    pos[0] -
+                        own[0] -
+                        pad,
+                    pos[1] -
+                        own[1] -
+                        pad,
+                    pos[0] -
+                        own[0] +
+                        targetView.width +
+                        pad,
+                    pos[1] -
+                        own[1] +
+                        targetView.height +
+                        pad
+                )
 
             invalidate()
         }
     }
 
-    fun clearTarget() {
-        targetRect = null
-        invalidate()
-    }
-
-    fun getTargetRect(): RectF? {
-        return targetRect?.let { RectF(it) }
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
+    override fun onDraw(
+        canvas: Canvas
+    ) {
+        super.onDraw(
+            canvas
+        )
 
         canvas.drawRect(
             0f,
             0f,
             width.toFloat(),
             height.toFloat(),
-            backgroundPaint
+            dimPaint
         )
 
-        targetRect?.let { rect ->
+        target?.let {
+            val radius =
+                24f *
+                    resources
+                        .displayMetrics
+                        .density
+
             canvas.drawRoundRect(
-                rect,
-                cornerRadius,
-                cornerRadius,
-                eraserPaint
+                it,
+                radius,
+                radius,
+                clearPaint
             )
 
             canvas.drawRoundRect(
-                rect,
-                cornerRadius,
-                cornerRadius,
-                strokePaint
+                it,
+                radius,
+                radius,
+                borderPaint
             )
         }
-    }
-
-    private fun dp(value: Float): Float {
-        return value * resources.displayMetrics.density
     }
 }

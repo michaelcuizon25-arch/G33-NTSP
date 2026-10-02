@@ -2,13 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Hardware Features -->
     <uses-feature android:name="android.hardware.camera.any" />
     <uses-feature
         android:name="android.hardware.camera.flash"
         android:required="false" />
 
-    <!-- Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
@@ -24,12 +22,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Note2Snap">
 
-        <!-- ML Kit OCR Model Auto-Download -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="ocr" />
 
-        <!-- Splash stays as the launcher -->
         <activity
             android:name=".activities.SplashActivity"
             android:exported="true"
@@ -40,27 +36,16 @@
             </intent-filter>
         </activity>
 
-        <!-- Full-screen first-use onboarding -->
         <activity
             android:name=".tutorial.OnboardingActivity"
             android:exported="false"
             android:theme="@style/Theme.Note2Snap" />
 
-        <activity
-            android:name=".activities.MainActivity"
-            android:exported="false" />
-        <activity
-            android:name=".activities.LoadingActivity"
-            android:exported="false" />
-        <activity
-            android:name=".activities.CreateFolderActivity"
-            android:exported="false" />
-        <activity
-            android:name=".activities.SaveFolderActivity"
-            android:exported="false" />
-        <activity
-            android:name=".activities.PdfViewerActivity"
-            android:exported="false" />
+        <activity android:name=".activities.MainActivity" android:exported="false" />
+        <activity android:name=".activities.LoadingActivity" android:exported="false" />
+        <activity android:name=".activities.CreateFolderActivity" android:exported="false" />
+        <activity android:name=".activities.SaveFolderActivity" android:exported="false" />
+        <activity android:name=".activities.PdfViewerActivity" android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -73,5 +58,4 @@
         </provider>
 
     </application>
-
 </manifest>

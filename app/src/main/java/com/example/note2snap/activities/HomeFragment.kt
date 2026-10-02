@@ -26,6 +26,8 @@ import com.example.note2snap.adapters.RecentScanAdapter
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.Note
 import com.example.note2snap.model.ScanHistory
+import com.example.note2snap.tutorial.TutorialManager
+import com.example.note2snap.tutorial.TutorialStep
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -108,7 +110,74 @@ class HomeFragment : Fragment() {
 
         observeSavedNotes()
         observeRecentScans()
-        return view
+
+        view.post {
+            startHomeGuideIfNeeded(
+                cardScan = cardScan,
+                cardNotes = cardNotes,
+                cardFolders = cardFolders
+            )
+        }
+return view
+    }
+
+    private fun startHomeGuideIfNeeded(
+        cardScan: View?,
+        cardNotes: View?,
+        cardFolders: View?
+    ) {
+        if (!isAdded) return
+
+        val prefs =
+            requireContext().getSharedPreferences(
+                "Note2SnapGuideV5",
+                Context.MODE_PRIVATE
+            )
+
+        if (
+            prefs.getBoolean(
+                "HOME_GUIDE_V5_SHOWN",
+                false
+            )
+        ) {
+            return
+        }
+
+        TutorialManager(
+            requireActivity()
+        )
+            .addStep(
+                TutorialStep(
+                    title = "Start here!",
+                    description =
+                        "Tap Scan Notes or the camera button whenever you want to capture a whiteboard or import photos.",
+                    targetView = cardScan
+                )
+            )
+            .addStep(
+                TutorialStep(
+                    title = "Your saved notes",
+                    description =
+                        "Open Notes to review, edit, favorite, and organize the notes you decided to keep.",
+                    targetView = cardNotes
+                )
+            )
+            .addStep(
+                TutorialStep(
+                    title = "Keep things organized",
+                    description =
+                        "Use folders when you want to group notes by subject, lesson, or project.",
+                    targetView = cardFolders
+                )
+            )
+            .start {
+                prefs.edit()
+                    .putBoolean(
+                        "HOME_GUIDE_V5_SHOWN",
+                        true
+                    )
+                    .apply()
+            }
     }
 
     private fun observeSavedNotes() {
