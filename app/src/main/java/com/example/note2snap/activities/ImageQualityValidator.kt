@@ -30,10 +30,9 @@ object ImageQualityValidator {
 
     /**
      * Conservative quality gate:
-     * only severe image-quality problems block OCR.
+     * severe image-quality problems block OCR.
      *
-     * The goal is not to reject every imperfect photo.
-     * Minor OCR uncertainty is still handled later by Needs Review.
+     * Minor OCR uncertainty is handled downstream by Needs Review.
      */
     fun validate(
         file: File
@@ -66,16 +65,10 @@ object ImageQualityValidator {
         bitmap: Bitmap
     ): ImageQualityResult {
 
-        val width =
-            bitmap.width
+        val width = bitmap.width
+        val height = bitmap.height
 
-        val height =
-            bitmap.height
-
-        if (
-            width < 120 ||
-            height < 120
-        ) {
+        if (width < 120 || height < 120) {
             return invalid(
                 ImageQualityIssue.BOARD_NOT_CLEAR,
                 "Whiteboard is not clear",
@@ -83,199 +76,96 @@ object ImageQualityValidator {
             )
         }
 
-        // Sampling every few pixels keeps validation fast on mobile.
-        val step =
-            max(
-                1,
-                minOf(
-                    width,
-                    height
-                ) / 280
-            )
+        // Sampling keeps validation fast on mobile.
+        val step = max(1, minOf(width, height) / 280)
 
-        var count =
-            0L
+        var count = 0L
+        var sum = 0.0
+        var sumSquares = 0.0
+        var darkCount = 0L
+        var brightCount = 0L
+        var inkCount = 0L
 
-        var sum =
-            0.0
+        var maskedEdgeTotal = 0.0
+        var maskedEdgeSamples = 0L
 
-        var sumSquares =
-            0.0
+        // 4 x 4 grid used to detect localized specular glare.
+        val gridSize = 4
+        val cellGlare = LongArray(gridSize * gridSize)
+        val cellCount = LongArray(gridSize * gridSize)
 
-        var darkCount =
-            0L
+        var y = 0
+        while (y < height) {
+            var x = 0
+            while (x < width) {
+                val pixel = bitmap.getPixel(x, y)
+                val gray = luminance(pixel)
 
-        var brightCount =
-            0L
+                val r = Color.red(pixel)
+                val g = Color.green(pixel)
+                val b = Color.blue(pixel)
 
-        var inkCount =
-            0L
-
-        var edgeTotal =
-            0.0
-
-        var edgeSamples =
-            0L
-
-        // 4 x 4 grid used to detect a concentrated overexposed hotspot.
-        val gridSize =
-            4
-
-        val cellBright =
-            LongArray(
-                gridSize *
-                    gridSize
-            )
-
-        val cellCount =
-            LongArray(
-                gridSize *
-                    gridSize
-            )
-
-        var y =
-            0
-
-        while (
-            y <
-            height
-        ) {
-            var x =
-                0
-
-            while (
-                x <
-                width
-            ) {
-                val pixel =
-                    bitmap.getPixel(
-                        x,
-                        y
-                    )
-
-                val gray =
-                    luminance(
-                        pixel
-                    )
+                val maxC = maxOf(r, g, b)
+                val minC = minOf(r, g, b)
+                val saturation = maxC - minC
 
                 count++
-                sum +=
-                    gray
+                sum += gray
+                sumSquares += gray * gray
 
-                sumSquares +=
-                    gray *
-                        gray
-
-                if (
-                    gray <
-                    45.0
-                ) {
+                if (gray < 40.0) {
                     darkCount++
                 }
 
-                if (
-                    gray >
-                    247.0
-                ) {
+                if (gray > 245.0) {
                     brightCount++
                 }
 
-                // Dark strokes / meaningful content.
-                if (
-                    gray <
-                    185.0
-                ) {
+                // Ink heuristic: reasonably dark and not heavily saturated background surface
+                if (gray < 165.0 && saturation < 100) {
                     inkCount++
                 }
 
-                val cellX =
-                    (
-                        x *
-                            gridSize /
-                            width
-                        ).coerceIn(
-                        0,
-                        gridSize - 1
-                    )
-
-                val cellY =
-                    (
-                        y *
-                            gridSize /
-                            height
-                        ).coerceIn(
-                        0,
-                        gridSize - 1
-                    )
-
-                val cell =
-                    cellY *
-                        gridSize +
-                        cellX
+                val cellX = (x * gridSize / width).coerceIn(0, gridSize - 1)
+                val cellY = (y * gridSize / height).coerceIn(0, gridSize - 1)
+                val cell = cellY * gridSize + cellX
 
                 cellCount[cell]++
 
-                if (
-                    gray >
-                    247.0
-                ) {
-                    cellBright[cell]++
+                // Specular Glare check: extremely bright with near-zero saturation (pure white highlight blob)
+                if (maxC > 242 && saturation < 28) {
+                    cellGlare[cell]++
                 }
 
-                if (
-                    x + step <
-                    width
-                ) {
-                    val right =
-                        luminance(
-                            bitmap.getPixel(
-                                x + step,
-                                y
-                            )
-                        )
+                // MASKED EDGE STRENGTH:
+                // Exclude clipped white background (gray > 240) and extreme shadows (gray < 25).
+                // This prevents bright, clean whiteboards from artificially deflating edge strength.
+                val isValidForEdge = gray in 25.0..240.0
 
-                    edgeTotal +=
-                        abs(
-                            gray -
-                                right
-                        )
-
-                    edgeSamples++
+                if (x + step < width) {
+                    val rightPixel = bitmap.getPixel(x + step, y)
+                    val rightGray = luminance(rightPixel)
+                    if (isValidForEdge && rightGray in 25.0..240.0) {
+                        maskedEdgeTotal += abs(gray - rightGray)
+                        maskedEdgeSamples++
+                    }
                 }
 
-                if (
-                    y + step <
-                    height
-                ) {
-                    val down =
-                        luminance(
-                            bitmap.getPixel(
-                                x,
-                                y + step
-                            )
-                        )
-
-                    edgeTotal +=
-                        abs(
-                            gray -
-                                down
-                        )
-
-                    edgeSamples++
+                if (y + step < height) {
+                    val downPixel = bitmap.getPixel(x, y + step)
+                    val downGray = luminance(downPixel)
+                    if (isValidForEdge && downGray in 25.0..240.0) {
+                        maskedEdgeTotal += abs(gray - downGray)
+                        maskedEdgeSamples++
+                    }
                 }
 
-                x +=
-                    step
+                x += step
             }
-
-            y +=
-                step
+            y += step
         }
 
-        if (
-            count <=
-            0
-        ) {
+        if (count <= 0) {
             return invalid(
                 ImageQualityIssue.BOARD_NOT_CLEAR,
                 "Whiteboard is not clear",
@@ -283,82 +173,32 @@ object ImageQualityValidator {
             )
         }
 
-        val average =
-            sum /
-                count
+        val average = sum / count
+        val variance = (sumSquares / count) - (average * average)
+        val contrast = sqrt(variance.coerceAtLeast(0.0))
 
-        val variance =
-            (
-                sumSquares /
-                    count
-                ) -
-                (
-                    average *
-                        average
-                    )
-
-        val contrast =
-            sqrt(
-                variance.coerceAtLeast(
-                    0.0
-                )
-            )
-
-        val edgeStrength =
-            if (
-                edgeSamples >
-                0
-            ) {
-                edgeTotal /
-                    edgeSamples
-            } else {
-                0.0
-            }
-
-        val darkRatio =
-            darkCount.toDouble() /
-                count
-
-        val brightRatio =
-            brightCount.toDouble() /
-                count
-
-        val inkRatio =
-            inkCount.toDouble() /
-                count
-
-        var strongestBrightCell =
+        val edgeStrength = if (maskedEdgeSamples > 0) {
+            maskedEdgeTotal / maskedEdgeSamples
+        } else {
             0.0
+        }
 
-        cellCount.indices.forEach {
-                index ->
+        val darkRatio = darkCount.toDouble() / count
+        val brightRatio = brightCount.toDouble() / count
+        val inkRatio = inkCount.toDouble() / count
 
-            if (
-                cellCount[index] >
-                0
-            ) {
-                val ratio =
-                    cellBright[index]
-                        .toDouble() /
-                        cellCount[index]
-
-                if (
-                    ratio >
-                    strongestBrightCell
-                ) {
-                    strongestBrightCell =
-                        ratio
+        var strongestGlareCell = 0.0
+        cellCount.indices.forEach { index ->
+            if (cellCount[index] > 0) {
+                val ratio = cellGlare[index].toDouble() / cellCount[index]
+                if (ratio > strongestGlareCell) {
+                    strongestGlareCell = ratio
                 }
             }
         }
 
-        // Severe darkness.
-        if (
-            average <
-                58.0 ||
-            darkRatio >
-                0.62
-        ) {
+        // 1. Severe low light check
+        if (average < 52.0 || darkRatio > 0.58) {
             return invalid(
                 ImageQualityIssue.TOO_DARK,
                 "Lighting is too low",
@@ -369,13 +209,8 @@ object ImageQualityValidator {
             )
         }
 
-        // Severe overall overexposure.
-        if (
-            average >
-                244.0 &&
-            brightRatio >
-                0.72
-        ) {
+        // 2. Severe overall overexposure check (evaluated before blur!)
+        if (average > 238.0 || brightRatio > 0.48) {
             return invalid(
                 ImageQualityIssue.TOO_BRIGHT,
                 "Image is too bright",
@@ -386,17 +221,8 @@ object ImageQualityValidator {
             )
         }
 
-        // Localized white hotspot: likely reflection/glare.
-        if (
-            strongestBrightCell >
-                0.78 &&
-            brightRatio >
-                0.08 &&
-            brightRatio <
-                0.62 &&
-            contrast >
-                22.0
-        ) {
+        // 3. Localized specular glare check
+        if (strongestGlareCell > 0.35 && brightRatio < 0.45) {
             return invalid(
                 ImageQualityIssue.GLARE,
                 "Strong glare detected",
@@ -407,13 +233,8 @@ object ImageQualityValidator {
             )
         }
 
-        // Very little useful contrast/content.
-        if (
-            contrast <
-                11.5 ||
-            inkRatio <
-                0.004
-        ) {
+        // 4. Missing board or unreadable content check
+        if (contrast < 11.0 || inkRatio < 0.0025) {
             return invalid(
                 ImageQualityIssue.BOARD_NOT_CLEAR,
                 "Whiteboard is not clear",
@@ -424,17 +245,19 @@ object ImageQualityValidator {
             )
         }
 
-        // Blur check is deliberately conservative to avoid rejecting slightly soft photos.
-        if (
-            edgeStrength <
-                4.8 &&
-            contrast <
-                34.0
-        ) {
+        // 5. Masked Blur & Dirty Lens check
+        if (edgeStrength < 4.2) {
+            val isSmudgedLens = contrast in 12.0..28.0
+            val message = if (isSmudgedLens) {
+                "Clean your camera lens, hold your phone steady, and capture the board again."
+            } else {
+                "Hold your phone steady and capture the board again."
+            }
+
             return invalid(
                 ImageQualityIssue.BLURRY,
                 "Image looks blurry",
-                "Clean the camera lens, hold your phone steady, and capture the board again.",
+                message,
                 average,
                 contrast,
                 edgeStrength
@@ -468,17 +291,10 @@ object ImageQualityValidator {
         )
     }
 
-    private fun luminance(
-        pixel: Int
-    ): Double {
-        return (
-            Color.red(pixel) *
-                0.299 +
-            Color.green(pixel) *
-                0.587 +
-            Color.blue(pixel) *
-                0.114
-            )
+    private fun luminance(pixel: Int): Double {
+        return Color.red(pixel) * 0.299 +
+                Color.green(pixel) * 0.587 +
+                Color.blue(pixel) * 0.114
     }
 
     private fun decodeSampled(
@@ -486,49 +302,28 @@ object ImageQualityValidator {
         maxDimension: Int
     ): Bitmap? {
 
-        val bounds =
-            BitmapFactory.Options().apply {
-                inJustDecodeBounds =
-                    true
-            }
+        val bounds = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
 
-        BitmapFactory.decodeFile(
-            file.absolutePath,
-            bounds
-        )
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
 
-        if (
-            bounds.outWidth <=
-                0 ||
-            bounds.outHeight <=
-                0
-        ) {
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
             return null
         }
 
-        var sampleSize =
-            1
-
-        while (
-            bounds.outWidth /
-                sampleSize >
-                maxDimension ||
-            bounds.outHeight /
-                sampleSize >
-                maxDimension
+        var sampleSize = 1
+        while (bounds.outWidth / sampleSize > maxDimension ||
+            bounds.outHeight / sampleSize > maxDimension
         ) {
-            sampleSize *=
-                2
+            sampleSize *= 2
         }
 
         return BitmapFactory.decodeFile(
             file.absolutePath,
             BitmapFactory.Options().apply {
-                inSampleSize =
-                    sampleSize
-
-                inPreferredConfig =
-                    Bitmap.Config.ARGB_8888
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
             }
         )
     }
