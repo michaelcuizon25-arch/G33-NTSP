@@ -90,11 +90,11 @@ class WarningDialog(
         dialog.window
             ?.setLayout(
                 (
-                    context.resources
-                        .displayMetrics
-                        .widthPixels *
-                        0.90f
-                    ).toInt(),
+                        context.resources
+                            .displayMetrics
+                            .widthPixels *
+                                0.90f
+                        ).toInt(),
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
     }

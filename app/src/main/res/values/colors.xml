@@ -35,6 +35,7 @@
     <color name="card_stroke">#111111</color>
     <color name="text_primary">#171717</color>
     <color name="text_secondary">#74747C</color>
+    <color name="textt">#3B62C6</color>
 
     <!-- NEW NOTE2SNAP SOFT COLOR SYSTEM -->
     <color name="nts_background">#EEF3FF</color>

@@ -1,20 +1,20 @@
 package com.example.note2snap.activities
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import android.widget.LinearLayout
-import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
@@ -37,6 +37,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+@SuppressLint("SetTextI18n")
 class HomeFragment : Fragment() {
 
     private val recentScansList = mutableListOf<ScanHistory>()
@@ -118,7 +119,7 @@ class HomeFragment : Fragment() {
                 cardFolders = cardFolders
             )
         }
-return view
+        return view
     }
 
     private fun startHomeGuideIfNeeded(
@@ -171,12 +172,9 @@ return view
                 )
             )
             .start {
-                prefs.edit()
-                    .putBoolean(
-                        "HOME_GUIDE_V5_SHOWN",
-                        true
-                    )
-                    .apply()
+                prefs.edit {
+                    putBoolean("HOME_GUIDE_V5_SHOWN", true)
+                }
             }
     }
 
@@ -232,11 +230,11 @@ return view
         val recent = latestHistory.sortedByDescending { it.timestamp }.take(3)
 
         val savedPaths = latestNotes.mapNotNull {
-            it.imagePath?.takeIf { path -> path.isNotBlank() }
+            it.imagePath.takeIf { path -> path.isNotBlank() }
         }.toSet()
 
         val starredPaths = latestNotes.filter { it.isStarred }.mapNotNull {
-            it.imagePath?.takeIf { path -> path.isNotBlank() }
+            it.imagePath.takeIf { path -> path.isNotBlank() }
         }.toSet()
 
         recentScanAdapter.updateData(
@@ -260,7 +258,7 @@ return view
             val dao = AppDatabase.getDatabase(safeContext).appDao()
             val path = scan.imagePath
 
-            val note = if (!path.isNullOrBlank()) {
+            val note = if (path.isNotBlank()) {
                 dao.getNoteByPath(path)
             } else null
 
@@ -285,7 +283,7 @@ return view
         lifecycleScope.launch(Dispatchers.IO) {
             val dao = AppDatabase.getDatabase(safeContext).appDao()
 
-            val existingNote = if (!scan.imagePath.isNullOrBlank()) {
+            val existingNote = if (scan.imagePath.isNotBlank()) {
                 dao.getNoteByPath(scan.imagePath)
             } else null
 
@@ -345,7 +343,7 @@ return view
                     ) {
                         dialog.dismiss()
                         lifecycleScope.launch(Dispatchers.IO) {
-                            if (!scan.imagePath.isNullOrBlank()) {
+                            if (scan.imagePath.isNotBlank()) {
                                 dao.deleteScanHistoryByPath(scan.imagePath)
                             } else {
                                 dao.deleteScanHistory(scan)
@@ -476,9 +474,9 @@ return view
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radiusDp * ctx.resources.displayMetrics.density
-            setColor(Color.parseColor(fillColor))
+            setColor(fillColor.toColorInt())
             if (strokeColor != null) {
-                setStroke(dp(ctx, 1), Color.parseColor(strokeColor))
+                setStroke(dp(ctx, 1), strokeColor.toColorInt())
             }
         }
     }
@@ -488,7 +486,7 @@ return view
         lifecycleScope.launch(Dispatchers.IO) {
             val dao = AppDatabase.getDatabase(safeContext).appDao()
 
-            val existingNote = if (!scan.imagePath.isNullOrBlank()) {
+            val existingNote = if (scan.imagePath.isNotBlank()) {
                 dao.getNoteByPath(scan.imagePath)
             } else null
 
@@ -524,13 +522,13 @@ return view
 
     private fun getEvolvedNoteBadge(noteCount: Int): Pair<String, String> {
         return when (noteCount) {
-            0 -> "❄️" to "0 Notes"
-            in 1..2 -> "🌱" to "$noteCount Notes"
-            in 3..5 -> "🔥" to "$noteCount Notes"
-            in 6..10 -> "⚡" to "$noteCount Notes"
-            in 11..25 -> "🚀" to "$noteCount Notes"
-            in 26..50 -> "💎" to "$noteCount Notes"
-            else -> "👑" to "$noteCount Notes"
+            0 -> "📄" to "0 Notes"              // Blank Page (Starting fresh)
+            in 1..2 -> "✏️" to "$noteCount Notes"  // Pencil (First jottings)
+            in 3..5 -> "📖" to "$noteCount Notes"  // Open Book (Active reading & review)
+            in 6..10 -> "📚" to "$noteCount Notes" // Books / Stack (Building library)
+            in 11..25 -> "🧠" to "$noteCount Notes"// Brain (Knowledge retention)
+            in 26..50 -> "🎓" to "$noteCount Notes"// Scholar Cap (Study master)
+            else -> "🏛️" to "$noteCount Notes"     // Library Vault (Grand archive)
         }
     }
 }

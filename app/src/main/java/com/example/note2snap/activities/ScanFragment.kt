@@ -14,11 +14,13 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.RenderEffect
 import android.graphics.Shader
-import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.util.Size
+import android.view.Gravity
+import android.widget.FrameLayout
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -35,12 +37,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
+import androidx.core.graphics.createBitmap
+import androidx.exifinterface.media.ExifInterface
 import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -70,6 +76,10 @@ class ScanFragment : Fragment() {
 
     private var camera: Camera? = null
     private var imageCapture: ImageCapture? = null
+    private var imageAnalysis: ImageAnalysis? = null
+    private var liveAnalyzer: LiveCameraQualityAnalyzer? = null
+    private var liveHintView: View? = null
+    private var isScanBusy = false
     private var isFlashOn = false
     private lateinit var cameraExecutor: ExecutorService
 
@@ -108,7 +118,8 @@ class ScanFragment : Fragment() {
                     // Keep the normal single-image flow unchanged.
                     processImageUri(
                         rawUri = uris.first(),
-                        cropToGuide = false
+                        cropToGuide = false,
+                        validateQuality = false
                     )
                 }
 
@@ -309,17 +320,18 @@ class ScanFragment : Fragment() {
                 )
             )
             .start {
-                prefs.edit()
-                    .putBoolean(
+                prefs.edit {
+                    putBoolean(
                         "CAMERA_GUIDE_V5_SHOWN",
                         true
                     )
-                    .apply()
+                }
 
                 showSampleDemoPrompt()
             }
     }
 
+    @SuppressLint("InflateParams")
     private fun showSampleDemoPrompt() {
         if (!isAdded) return
 
@@ -362,9 +374,9 @@ class ScanFragment : Fragment() {
 
         dialog.window?.setLayout(
             (
-                resources.displayMetrics.widthPixels *
-                    0.91f
-                ).toInt(),
+                    resources.displayMetrics.widthPixels *
+                            0.91f
+                    ).toInt(),
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
     }
@@ -432,15 +444,6 @@ class ScanFragment : Fragment() {
                 Toast.LENGTH_SHORT
             ).show()
         }
-    }
-
-    private fun dpGuide(
-        value: Int
-    ): Int {
-        return (
-            value *
-                resources.displayMetrics.density
-            ).toInt()
     }
 
     private fun showImageQualityWarning(
@@ -525,13 +528,47 @@ class ScanFragment : Fragment() {
 
                 cameraProvider.unbindAll()
 
-                // Bind camera instance to class variable
-                val boundCamera = cameraProvider.bindToLifecycle(
-                    viewLifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageCapture
-                )
+                // Live quality check while the user is aiming at the board
+                // (dirty lens, blur, low light, glare...).
+                @Suppress("DEPRECATION")
+                val analysis = ImageAnalysis.Builder()
+                    .setTargetResolution(Size(640, 480))
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                    .also {
+                        val analyzer = LiveCameraQualityAnalyzer { hint ->
+                            activity?.runOnUiThread {
+                                if (isAdded && view != null) {
+                                    showLiveHint(hint)
+                                }
+                            }
+                        }
+                        liveAnalyzer = analyzer
+                        it.setAnalyzer(cameraExecutor, analyzer)
+                    }
+
+                // Bind camera instance to class variable.
+                // Fall back to preview + capture only if the device cannot
+                // run a third use case.
+                val boundCamera = try {
+                    cameraProvider.bindToLifecycle(
+                        viewLifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageCapture,
+                        analysis
+                    ).also { imageAnalysis = analysis }
+                } catch (e: IllegalArgumentException) {
+                    Log.w("ScanFragment", "Live analysis unsupported, binding without it", e)
+                    imageAnalysis = null
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        viewLifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageCapture
+                    )
+                }
 
                 camera = boundCamera
 
@@ -546,6 +583,56 @@ class ScanFragment : Fragment() {
                 Log.e("ScanFragment", "Camera binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(safeContext))
+    }
+
+    /**
+     * Shows (or hides when [hint] is null) the live camera-quality banner.
+     * Hidden automatically while a scan is being processed.
+     */
+    private fun showLiveHint(hint: LiveCameraHint?) {
+        if (!isAdded) return
+
+        if (hint == null || isScanBusy) {
+            liveHintView?.visibility = View.GONE
+            return
+        }
+
+        val parent = activity?.findViewById<ViewGroup>(android.R.id.content) ?: return
+
+        val banner = liveHintView ?: createLiveHintView(parent).also {
+            liveHintView = it
+            parent.addView(it)
+        }
+
+        banner.findViewById<TextView>(R.id.tvLiveHintTitle).text = hint.title
+        banner.findViewById<TextView>(R.id.tvLiveHintMessage).text = hint.message
+        banner.visibility = View.VISIBLE
+    }
+
+    /**
+     * Inflates dialog_live_camera_hint (same design as dialog_custom_warning,
+     * without buttons) as a non-blocking banner centered on the screen.
+     */
+    private fun createLiveHintView(parent: ViewGroup): View {
+        val density = resources.displayMetrics.density
+
+        return layoutInflater.inflate(
+            R.layout.dialog_live_camera_hint,
+            parent,
+            false
+        ).apply {
+            visibility = View.GONE
+            elevation = 24 * density
+
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+            ).apply {
+                marginStart = (14 * density).toInt()
+                marginEnd = (14 * density).toInt()
+            }
+        }
     }
 
     private fun toggleFlash() {
@@ -581,10 +668,10 @@ class ScanFragment : Fragment() {
         val btnFlash = view?.findViewById<ImageView>(R.id.btnFlash)
 
         if (isFlashOn) {
-            tvFlashState?.text = "On"
+            tvFlashState?.text = getString(R.string.flash_on)
             btnFlash?.setColorFilter("#16A34A".toColorInt()) // Active Green
         } else {
-            tvFlashState?.text = "Off"
+            tvFlashState?.text = getString(R.string.flash_off)
             btnFlash?.setColorFilter("#5A7FDB".toColorInt()) // Default Accent Blue
         }
     }
@@ -691,10 +778,10 @@ class ScanFragment : Fragment() {
 
             try {
                 for (
-                    (
-                        index,
-                        uri
-                    ) in uris.withIndex()
+                (
+                    index,
+                    uri
+                ) in uris.withIndex()
                 ) {
 
                     val cachedPath =
@@ -725,34 +812,7 @@ class ScanFragment : Fragment() {
                             cachedPath
                         )
 
-                    val qualityResult =
-                        validateImageBeforeOcr(
-                            cachedPath
-                        )
-
-                    if (
-                        !qualityResult.isValid
-                    ) {
-                        withContext(
-                            Dispatchers.Main
-                        ) {
-                            if (
-                                isAdded
-                            ) {
-                                showImageQualityWarning(
-                                    result =
-                                        qualityResult,
-                                    prefix =
-                                        "Image ${index + 1} of ${uris.size} needs attention."
-                                )
-                            }
-                        }
-
-                        // A batch is treated as one scan.
-                        // If one page is unreliable, stop the batch instead of
-                        // silently accepting an incomplete document.
-                        return@launch
-                    }
+                    // Gallery uploads are not blocked by the image-quality check.
 
                     val image =
                         InputImage.fromFilePath(
@@ -876,7 +936,7 @@ class ScanFragment : Fragment() {
                         content =
                             combinedContent,
                         imagePath =
-                            primaryImagePath!!,
+                            primaryImagePath,
                         ocrIssues =
                             reviewIssues
                                 .distinct()
@@ -958,7 +1018,8 @@ class ScanFragment : Fragment() {
     private fun processImageUri(
         rawUri: Uri,
         rawFilePath: String? = null,
-        cropToGuide: Boolean = false
+        cropToGuide: Boolean = false,
+        validateQuality: Boolean = true
     ) {
         val safeContext = context ?: return
         setLoading(true)
@@ -990,30 +1051,33 @@ class ScanFragment : Fragment() {
             val sourceFile =
                 File(sourceFilePath)
 
-            // QUALITY GATE:
-            // Do not send severely blurry / badly lit / unclear images to OCR.
-            val qualityResult =
-                validateImageBeforeOcr(
-                    sourceFilePath
-                )
+            // QUALITY GATE (camera captures only):
+            // Do not send severely blurry / badly lit / unclear camera photos to OCR.
+            // Gallery uploads skip this check.
+            if (validateQuality) {
+                val qualityResult =
+                    validateImageBeforeOcr(
+                        sourceFilePath
+                    )
 
-            if (
-                !qualityResult.isValid
-            ) {
-                Log.w(
-                    "ScanFragment",
-                    "Image rejected before OCR: " +
-                        "issue=${qualityResult.issue}, " +
-                        "brightness=${qualityResult.brightness}, " +
-                        "contrast=${qualityResult.contrast}, " +
-                        "edge=${qualityResult.edgeStrength}"
-                )
+                if (
+                    !qualityResult.isValid
+                ) {
+                    Log.w(
+                        "ScanFragment",
+                        "Image rejected before OCR: " +
+                                "issue=${qualityResult.issue}, " +
+                                "brightness=${qualityResult.brightness}, " +
+                                "contrast=${qualityResult.contrast}, " +
+                                "edge=${qualityResult.edgeStrength}"
+                    )
 
-                showImageQualityWarning(
-                    qualityResult
-                )
+                    showImageQualityWarning(
+                        qualityResult
+                    )
 
-                return
+                    return
+                }
             }
 
             showActualAnalysisState(
@@ -1062,9 +1126,6 @@ class ScanFragment : Fragment() {
                         return@addOnSuccessListener
                     }
 
-                    val finalText =
-                        extractedText
-
                     val ocrIssues =
                         findOcrIssues(
                             visionText
@@ -1091,9 +1152,9 @@ class ScanFragment : Fragment() {
 
                             val finalContent =
                                 if (diagramHtml.isBlank()) {
-                                    finalText
+                                    extractedText
                                 } else {
-                                    finalText +
+                                    extractedText +
                                             "<br/><br/><b>Detected Diagram</b><br/>" +
                                             diagramHtml
                                 }
@@ -1119,7 +1180,7 @@ class ScanFragment : Fragment() {
         }
     }
 
-    private suspend fun detectDiagramHtml(
+    private fun detectDiagramHtml(
         imagePath: String
     ): String {
 
@@ -1310,10 +1371,9 @@ class ScanFragment : Fragment() {
                 }
         }
 
-        return Bitmap.createBitmap(
+        return createBitmap(
             width,
-            height,
-            Bitmap.Config.ARGB_8888
+            height
         ).apply {
             setPixels(
                 binaryPixels,
@@ -1846,7 +1906,10 @@ class ScanFragment : Fragment() {
     }
 
     private fun setLoading(isLoading: Boolean) {
+        isScanBusy = isLoading
         if (isLoading) {
+            liveAnalyzer?.reset()
+            showLiveHint(null)
             showAnalyzingOverlay()
         } else {
             hideAnalyzingOverlay()
@@ -1912,7 +1975,9 @@ class ScanFragment : Fragment() {
                 AnalysisStage.COMPLETE
             )
 
-            hideAnalyzingOverlay()
+            // Use setLoading(false) (not just hideAnalyzingOverlay) so the busy
+            // flag is cleared and live camera hints can appear again.
+            setLoading(false)
 
             navigateToPdfViewer(
                 content = content,
@@ -1940,22 +2005,22 @@ class ScanFragment : Fragment() {
         root.findViewById<TextView>(
             R.id.tvStepEnhance
         )?.text =
-            "Preparing Image"
+            getString(R.string.analysis_step_preparing)
 
         root.findViewById<TextView>(
             R.id.tvStepText
         )?.text =
-            "Detecting Text"
+            getString(R.string.analysis_step_detecting)
 
         root.findViewById<TextView>(
             R.id.tvStepElements
         )?.text =
-            "Checking Recognition"
+            getString(R.string.analysis_step_checking)
 
         root.findViewById<TextView>(
             R.id.tvStepStructure
         )?.text =
-            "Structuring Notes"
+            getString(R.string.analysis_step_structuring)
 
         resetAnalysisSteps()
 
@@ -2177,6 +2242,17 @@ class ScanFragment : Fragment() {
         flashControlView?.setRenderEffect(renderEffect)
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        // Coming back to the camera (e.g. from the note viewer): start the live
+        // checks fresh, unless a scan is still being processed.
+        if (analyzingOverlay?.visibility != View.VISIBLE) {
+            isScanBusy = false
+            liveAnalyzer?.reset()
+        }
+    }
+
     override fun onDestroyView() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ::viewFinder.isInitialized) {
             viewFinder.setRenderEffect(null)
@@ -2184,6 +2260,12 @@ class ScanFragment : Fragment() {
             backButtonContainerView?.setRenderEffect(null)
             flashControlView?.setRenderEffect(null)
         }
+
+        imageAnalysis?.clearAnalyzer()
+        imageAnalysis = null
+        liveAnalyzer = null
+        (liveHintView?.parent as? ViewGroup)?.removeView(liveHintView)
+        liveHintView = null
 
         analyzingOverlay = null
         controlPanelView = null

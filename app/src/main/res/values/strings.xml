@@ -4,6 +4,15 @@
     <string name="cd_share">Share</string>
     <string name="cd_more_options">More Options</string>
 
+    <string name="flash_on">On</string>
+    <string name="flash_off">Off</string>
+    <string name="analysis_step_preparing">Preparing Image</string>
+    <string name="analysis_step_detecting">Detecting Text</string>
+    <string name="analysis_step_checking">Checking Recognition</string>
+    <string name="analysis_step_structuring">Structuring Notes</string>
+    <string name="live_hint_close">Close</string>
+    <string name="live_hint_try_again">Try again</string>
+
     <!-- Toolbar Icons -->
     <string name="tool_text">T</string>
     <string name="tool_pen">✏️</string>

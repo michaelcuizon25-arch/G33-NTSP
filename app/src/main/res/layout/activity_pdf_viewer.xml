@@ -4,12 +4,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     android:background="@color/nts_background"
+    android:fitsSystemWindows="true"
     android:forceDarkAllowed="false"
-    tools:targetApi="q"
-    tools:ignore="HardcodedText,TextContrastCheck,ImageContrastCheck,TouchTargetSizeCheck"
-    tools:context=".activities.PdfViewerActivity">
+    tools:context=".activities.PdfViewerActivity"
+    tools:ignore="HardcodedText,TextContrastCheck,ImageContrastCheck,TouchTargetSizeCheck,SmallSp,UseCompatTextViewDrawableXml,SpeakableTextPresentCheck"
+    tools:targetApi="q">
 
     <!-- COMPACT TWO-ROW HEADER -->
     <LinearLayout
@@ -17,8 +17,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:orientation="vertical"
         android:background="@color/nts_background"
+        android:orientation="vertical"
         android:paddingStart="14dp"
         android:paddingTop="8dp"
         android:paddingEnd="14dp"
@@ -78,7 +78,7 @@
                     android:fontFamily="@font/poppins_regular"
                     android:maxLines="1"
                     android:textColor="@color/nts_text_secondary"
-                    android:textSize="9sp"
+                    android:textSize="11sp"
                     tools:text="Sep 27, 2026, 4:18 PM" />
             </LinearLayout>
 
@@ -126,8 +126,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="46dp"
-                    android:layout_weight="1"
                     android:layout_marginHorizontal="3dp"
+                    android:layout_weight="1"
                     app:cardBackgroundColor="@color/pdf_tool_text_bg"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="0dp">
@@ -147,8 +147,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="46dp"
-                    android:layout_weight="1"
                     android:layout_marginHorizontal="3dp"
+                    android:layout_weight="1"
                     app:cardBackgroundColor="@color/pdf_tool_pen_bg"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="0dp">
@@ -168,8 +168,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="46dp"
-                    android:layout_weight="1"
                     android:layout_marginHorizontal="3dp"
+                    android:layout_weight="1"
                     app:cardBackgroundColor="@color/pdf_tool_highlighter_bg"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="0dp">
@@ -189,8 +189,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="46dp"
-                    android:layout_weight="1"
                     android:layout_marginHorizontal="3dp"
+                    android:layout_weight="1"
                     app:cardBackgroundColor="@color/pdf_tool_eraser_bg"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="0dp">
@@ -210,8 +210,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="46dp"
-                    android:layout_weight="1"
                     android:layout_marginHorizontal="3dp"
+                    android:layout_weight="1"
                     app:cardBackgroundColor="@color/pdf_tool_neutral_bg"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="0dp">
@@ -231,8 +231,8 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="46dp"
-                    android:layout_weight="1"
                     android:layout_marginHorizontal="3dp"
+                    android:layout_weight="1"
                     app:cardBackgroundColor="@color/pdf_tool_neutral_bg"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="0dp">
@@ -257,8 +257,8 @@
         android:id="@+id/scrollViewContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/llPdfHeader"
         android:layout_above="@id/llPdfBottomActions"
+        android:layout_below="@id/llPdfHeader"
         android:clipToPadding="false"
         android:fillViewport="false"
         android:paddingStart="12dp"
@@ -309,7 +309,7 @@
                             android:fontFamily="@font/poppins_medium"
                             android:text="Source"
                             android:textColor="@color/nts_text_secondary"
-                            android:textSize="9sp" />
+                            android:textSize="11sp" />
                     </LinearLayout>
 
                     <com.google.android.material.card.MaterialCardView
@@ -375,23 +375,23 @@
                                 android:fontFamily="@font/poppins_regular"
                                 android:text="Editable text with preserved visual annotations"
                                 android:textColor="@color/nts_text_secondary"
-                                android:textSize="9sp" />
+                                android:textSize="11sp" />
                         </LinearLayout>
 
                         <TextView
                             android:id="@+id/btnExpandText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:minWidth="48dp"
-                            android:minHeight="40dp"
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:clickable="true"
                             android:focusable="true"
                             android:fontFamily="@font/poppins_medium"
                             android:gravity="center"
+                            android:minWidth="48dp"
+                            android:minHeight="40dp"
                             android:text="Show more"
                             android:textColor="@color/nts_blue"
-                            android:textSize="9sp"
+                            android:textSize="11sp"
                             android:visibility="gone" />
                     </LinearLayout>
 
@@ -424,7 +424,6 @@
                                 android:id="@+id/etInlineEditor"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:minHeight="150dp"
                                 android:autofillHints=""
                                 android:background="@null"
                                 android:fontFamily="@font/poppins_regular"
@@ -432,6 +431,7 @@
                                 android:hint="@string/hint_edit_content"
                                 android:inputType="textMultiLine|textCapSentences"
                                 android:lineSpacingExtra="2dp"
+                                android:minHeight="150dp"
                                 android:padding="0dp"
                                 android:textColor="@color/nts_text"
                                 android:textColorHint="#9A9AA2"
@@ -443,7 +443,8 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
                                 android:clickable="true"
-                                android:focusable="true" />
+                                android:focusable="true"
+                                android:importantForAccessibility="no" />
                         </FrameLayout>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -473,7 +474,7 @@
                             android:fontFamily="@font/poppins_regular"
                             android:text="Preserved drawings and non-text regions from the whiteboard"
                             android:textColor="@color/nts_text_secondary"
-                            android:textSize="9sp" />
+                            android:textSize="11sp" />
 
                         <LinearLayout
                             android:id="@+id/llDetectedVisualItems"
@@ -535,7 +536,7 @@
                     android:fontFamily="@font/poppins_semibold"
                     android:paddingHorizontal="3dp"
                     android:textColor="@color/nts_text"
-                    android:textSize="10sp"
+                    android:textSize="11sp"
                     tools:text="1 / 2" />
 
                 <TextView
@@ -565,8 +566,6 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
-                    android:drawableStart="@drawable/ic_action_save"
-                    android:drawableTint="@color/nts_text"
                     android:drawablePadding="4dp"
                     android:focusable="true"
                     android:fontFamily="@font/poppins_semibold"
@@ -575,7 +574,9 @@
                     android:paddingHorizontal="7dp"
                     android:text="Save"
                     android:textColor="@color/nts_text"
-                    android:textSize="10sp" />
+                    android:textSize="11sp"
+                    app:drawableStartCompat="@drawable/ic_action_save"
+                    app:drawableTint="@color/nts_text" />
 
                 <TextView
                     android:id="@+id/btnActionDownload"
@@ -583,8 +584,6 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
-                    android:drawableStart="@drawable/ic_action_export"
-                    android:drawableTint="@color/pdf_action_blue"
                     android:drawablePadding="4dp"
                     android:focusable="true"
                     android:fontFamily="@font/poppins_semibold"
@@ -593,7 +592,9 @@
                     android:paddingHorizontal="6dp"
                     android:text="Export PDF"
                     android:textColor="@color/pdf_action_blue"
-                    android:textSize="10sp" />
+                    android:textSize="11sp"
+                    app:drawableStartCompat="@drawable/ic_action_export"
+                    app:drawableTint="@color/pdf_action_blue" />
 
                 <TextView
                     android:id="@+id/btnActionShare"
@@ -601,8 +602,6 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:clickable="true"
-                    android:drawableStart="@drawable/ic_tool_share"
-                    android:drawableTint="@color/nts_text"
                     android:drawablePadding="4dp"
                     android:focusable="true"
                     android:fontFamily="@font/poppins_semibold"
@@ -611,7 +610,9 @@
                     android:paddingHorizontal="6dp"
                     android:text="Share"
                     android:textColor="@color/nts_text"
-                    android:textSize="10sp" />
+                    android:textSize="11sp"
+                    app:drawableStartCompat="@drawable/ic_tool_share"
+                    app:drawableTint="@color/nts_text" />
             </LinearLayout>
         </RelativeLayout>
     </com.google.android.material.card.MaterialCardView>
@@ -620,8 +621,8 @@
         android:id="@+id/webViewContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/llPdfHeader"
         android:layout_above="@id/llPdfBottomActions"
+        android:layout_below="@id/llPdfHeader"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
         android:background="@color/pdf_web_bg"

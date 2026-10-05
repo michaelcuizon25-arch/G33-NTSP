@@ -5,7 +5,6 @@ import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -481,7 +480,9 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onDestroy() {
         typingTask?.let(handler::removeCallbacks)
         robotBob?.cancel()
-        robot.cancelAnimation()
+        if (::robot.isInitialized) {
+            robot.cancelAnimation()
+        }
         super.onDestroy()
     }
 }
