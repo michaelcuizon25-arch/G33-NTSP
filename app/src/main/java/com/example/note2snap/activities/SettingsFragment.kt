@@ -1,6 +1,7 @@
 package com.example.note2snap.activities
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
@@ -19,7 +20,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         val isSystemDark =
             (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                    Configuration.UI_MODE_NIGHT_YES
+                Configuration.UI_MODE_NIGHT_YES
 
         val isDarkModeSaved = sharedPref.getBoolean("DARK_MODE", isSystemDark)
 
@@ -34,5 +35,44 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 else AppCompatDelegate.MODE_NIGHT_NO
             )
         }
+
+        view.findViewById<View>(R.id.cardTermsOfUse)
+            .setOnClickListener {
+                startActivity(
+                    Intent(
+                        requireContext(),
+                        LegalDocumentActivity::class.java
+                    ).putExtra(
+                        LegalDocumentActivity.EXTRA_DOCUMENT,
+                        LegalDocumentActivity.DOC_TERMS
+                    )
+                )
+            }
+
+        view.findViewById<View>(R.id.cardPrivacyNotice)
+            .setOnClickListener {
+                startActivity(
+                    Intent(
+                        requireContext(),
+                        LegalDocumentActivity::class.java
+                    ).putExtra(
+                        LegalDocumentActivity.EXTRA_DOCUMENT,
+                        LegalDocumentActivity.DOC_PRIVACY
+                    )
+                )
+            }
+
+        view.findViewById<View>(R.id.cardDataProtection)
+            .setOnClickListener {
+                startActivity(
+                    Intent(
+                        requireContext(),
+                        LegalDocumentActivity::class.java
+                    ).putExtra(
+                        LegalDocumentActivity.EXTRA_DOCUMENT,
+                        LegalDocumentActivity.DOC_PRIVACY
+                    )
+                )
+            }
     }
 }

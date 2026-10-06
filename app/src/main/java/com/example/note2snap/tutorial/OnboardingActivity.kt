@@ -5,6 +5,7 @@ import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -21,6 +22,7 @@ import androidx.core.content.ContextCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.example.note2snap.R
 import com.example.note2snap.activities.MainActivity
+import com.example.note2snap.activities.LegalAgreementActivity
 
 class OnboardingActivity : AppCompatActivity() {
 
@@ -473,16 +475,36 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun openMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        val legalAccepted =
+            getSharedPreferences(
+                LegalAgreementActivity.PREFS,
+                Context.MODE_PRIVATE
+            ).getBoolean(
+                LegalAgreementActivity.KEY_ACCEPTED,
+                false
+            )
+
+        val destination =
+            if (legalAccepted) {
+                MainActivity::class.java
+            } else {
+                LegalAgreementActivity::class.java
+            }
+
+        startActivity(
+            Intent(
+                this,
+                destination
+            )
+        )
+
         finish()
     }
 
     override fun onDestroy() {
         typingTask?.let(handler::removeCallbacks)
         robotBob?.cancel()
-        if (::robot.isInitialized) {
-            robot.cancelAnimation()
-        }
+        robot.cancelAnimation()
         super.onDestroy()
     }
 }

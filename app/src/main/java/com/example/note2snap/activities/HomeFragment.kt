@@ -12,6 +12,12 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.view.animation.AccelerateDecelerateInterpolator
+import com.airbnb.lottie.LottieAnimationView
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -55,6 +61,10 @@ class HomeFragment : Fragment() {
     private var tvStatStreakEmoji: TextView? = null
     private var tvEmptyRecent: TextView? = null
     private var rvRecentNotes: RecyclerView? = null
+    private var snapHomeRobot: LottieAnimationView? = null
+    private var snapHomeTip: TextView? = null
+    private var snapHomeBob: ObjectAnimator? = null
+    private var homeScanCard: View? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -79,6 +89,7 @@ class HomeFragment : Fragment() {
         rvRecentNotes = view.findViewById(R.id.rvRecentNotes)
 
         val cardScan = view.findViewById<CardView>(R.id.cardScan)
+        homeScanCard = cardScan
         val cardNotes = view.findViewById<CardView>(R.id.cardNotes)
         val cardFolders = view.findViewById<CardView>(R.id.cardFolders)
 
@@ -113,6 +124,11 @@ class HomeFragment : Fragment() {
         observeRecentScans()
 
         view.post {
+            // Always render Snap on Home, independent of tutorial/preferences.
+            ensureSnapHomeBanner(
+                anchor = cardScan
+            )
+
             startHomeGuideIfNeeded(
                 cardScan = cardScan,
                 cardNotes = cardNotes,
@@ -120,6 +136,547 @@ class HomeFragment : Fragment() {
             )
         }
         return view
+    }
+
+    private fun ensureSnapHomeBanner(
+        anchor: View?
+    ) {
+        if (!isAdded || anchor == null) return
+
+        val root = view ?: return
+
+        // If already added, just restart animation and keep it visible.
+        val existing =
+            root.findViewWithTag<View>(
+                "note2snap_home_snap_banner"
+            )
+
+        if (existing != null) {
+            existing.visibility =
+                View.VISIBLE
+
+            snapHomeRobot
+                ?.playAnimation()
+
+            startSnapHomeBob()
+            return
+        }
+
+        val insertion =
+            findLinearInsertionPoint(
+                anchor
+            ) ?: return
+
+        val parent =
+            insertion.first
+
+        val child =
+            insertion.second
+
+        val index =
+            parent.indexOfChild(
+                child
+            )
+
+        if (index < 0) return
+
+        val ctx =
+            requireContext()
+
+        val banner =
+            FrameLayout(
+                ctx
+            ).apply {
+                tag =
+                    "note2snap_home_snap_banner"
+
+                background =
+                    GradientDrawable().apply {
+                        shape =
+                            GradientDrawable.RECTANGLE
+
+                        cornerRadius =
+                            dpHome(
+                                24
+                            ).toFloat()
+
+                        setColor(
+                            ContextCompat.getColor(
+                                ctx,
+                                R.color.nts_surface_blue_soft
+                            )
+                        )
+
+                        setStroke(
+                            dpHome(
+                                1
+                            ),
+                            ContextCompat.getColor(
+                                ctx,
+                                R.color.nts_blue_line
+                            )
+                        )
+                    }
+
+                elevation =
+                    dpHome(
+                        2
+                    ).toFloat()
+
+                clipChildren =
+                    false
+
+                clipToPadding =
+                    false
+            }
+
+        val bubble =
+            LinearLayout(
+                ctx
+            ).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+
+                gravity =
+                    Gravity.CENTER_VERTICAL
+
+                setPadding(
+                    dpHome(
+                        16
+                    ),
+                    dpHome(
+                        12
+                    ),
+                    dpHome(
+                        14
+                    ),
+                    dpHome(
+                        12
+                    )
+                )
+
+                background =
+                    GradientDrawable().apply {
+                        shape =
+                            GradientDrawable.RECTANGLE
+
+                        cornerRadius =
+                            dpHome(
+                                18
+                            ).toFloat()
+
+                        setColor(
+                            ContextCompat.getColor(
+                                ctx,
+                                R.color.nts_surface
+                            )
+                        )
+
+                        setStroke(
+                            dpHome(
+                                1
+                            ),
+                            ContextCompat.getColor(
+                                ctx,
+                                R.color.nts_blue_line
+                            )
+                        )
+                    }
+            }
+
+        val label =
+            TextView(
+                ctx
+            ).apply {
+                text =
+                    "SNAP'S TIP"
+
+                textSize =
+                    9f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        ctx,
+                        R.font.poppins_semibold
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        ctx,
+                        R.color.nts_blue
+                    )
+                )
+
+                letterSpacing =
+                    0.06f
+            }
+
+        val tip =
+            TextView(
+                ctx
+            ).apply {
+                text =
+                    "Ready to turn your whiteboard into organized notes?"
+
+                textSize =
+                    12f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        ctx,
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        ctx,
+                        R.color.nts_text
+                    )
+                )
+
+                setLineSpacing(
+                    0f,
+                    1.08f
+                )
+            }
+
+        snapHomeTip =
+            tip
+
+        bubble.addView(
+            label
+        )
+
+        bubble.addView(
+            tip,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin =
+                    dpHome(
+                        3
+                    )
+            }
+        )
+
+        banner.addView(
+            bubble,
+            FrameLayout.LayoutParams(
+                dpHome(
+                    216
+                ),
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity =
+                    Gravity.START or
+                            Gravity.CENTER_VERTICAL
+
+                leftMargin =
+                    dpHome(
+                        14
+                    )
+            }
+        )
+
+        val robot =
+            LottieAnimationView(
+                ctx
+            ).apply {
+                setAnimation(
+                    R.raw.robot_mascot
+                )
+
+                repeatCount =
+                    ValueAnimator.INFINITE
+
+                playAnimation()
+
+                scaleType =
+                    ImageView.ScaleType.CENTER_INSIDE
+
+                contentDescription =
+                    "Snap, the Note2Snap guide"
+
+                isClickable =
+                    true
+
+                setOnClickListener {
+                    reactSnapOnHome()
+                }
+            }
+
+        snapHomeRobot =
+            robot
+
+        banner.addView(
+            robot,
+            FrameLayout.LayoutParams(
+                dpHome(
+                    118
+                ),
+                dpHome(
+                    118
+                )
+            ).apply {
+                gravity =
+                    Gravity.END or
+                            Gravity.BOTTOM
+
+                rightMargin =
+                    dpHome(
+                        3
+                    )
+
+                bottomMargin =
+                    -dpHome(
+                        4
+                    )
+            }
+        )
+
+        val sparkle =
+            TextView(
+                ctx
+            ).apply {
+                text =
+                    "✦"
+
+                textSize =
+                    18f
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        ctx,
+                        R.color.nts_yellow
+                    )
+                )
+
+                gravity =
+                    Gravity.CENTER
+            }
+
+        banner.addView(
+            sparkle,
+            FrameLayout.LayoutParams(
+                dpHome(
+                    30
+                ),
+                dpHome(
+                    30
+                )
+            ).apply {
+                gravity =
+                    Gravity.END or
+                            Gravity.TOP
+
+                rightMargin =
+                    dpHome(
+                        16
+                    )
+
+                topMargin =
+                    dpHome(
+                        7
+                    )
+            }
+        )
+
+        parent.addView(
+            banner,
+            index,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dpHome(
+                    128
+                )
+            ).apply {
+                leftMargin =
+                    dpHome(
+                        16
+                    )
+
+                rightMargin =
+                    dpHome(
+                        16
+                    )
+
+                topMargin =
+                    dpHome(
+                        8
+                    )
+
+                bottomMargin =
+                    dpHome(
+                        14
+                    )
+            }
+        )
+
+        startSnapHomeBob()
+    }
+
+    private fun findLinearInsertionPoint(
+        start: View
+    ): Pair<LinearLayout, View>? {
+        var child =
+            start
+
+        var parent =
+            start.parent
+
+        while (
+            parent is ViewGroup
+        ) {
+            if (
+                parent is LinearLayout &&
+                parent.orientation ==
+                LinearLayout.VERTICAL
+            ) {
+                return Pair(
+                    parent,
+                    child
+                )
+            }
+
+            child =
+                parent as View
+
+            parent =
+                parent.parent
+        }
+
+        return null
+    }
+
+    private fun startSnapHomeBob() {
+        val robot =
+            snapHomeRobot ?: return
+
+        snapHomeBob
+            ?.cancel()
+
+        snapHomeBob =
+            ObjectAnimator.ofFloat(
+                robot,
+                View.TRANSLATION_Y,
+                0f,
+                -dpHome(
+                    6
+                ).toFloat(),
+                0f
+            ).apply {
+                duration =
+                    1800L
+
+                repeatCount =
+                    ValueAnimator.INFINITE
+
+                interpolator =
+                    AccelerateDecelerateInterpolator()
+
+                start()
+            }
+    }
+
+    private fun reactSnapOnHome() {
+        val robot =
+            snapHomeRobot ?: return
+
+        robot.animate()
+            .scaleX(
+                1.08f
+            )
+            .scaleY(
+                1.08f
+            )
+            .rotation(
+                4f
+            )
+            .setDuration(
+                140L
+            )
+            .withEndAction {
+                robot.animate()
+                    .scaleX(
+                        1f
+                    )
+                    .scaleY(
+                        1f
+                    )
+                    .rotation(
+                        0f
+                    )
+                    .setDuration(
+                        180L
+                    )
+                    .start()
+            }
+            .start()
+
+        val messages =
+            listOf(
+                "Ready to turn your whiteboard into organized notes?",
+                "Keep the whole board inside the frame for clearer results!",
+                "You can also import several whiteboard photos from Gallery.",
+                "Use folders to keep your notes organized by subject."
+            )
+
+        val current =
+            snapHomeTip
+                ?.text
+                ?.toString()
+
+        val currentIndex =
+            messages.indexOf(
+                current
+            )
+
+        val next =
+            messages[
+                (
+                        currentIndex +
+                                1
+                        ).mod(
+                        messages.size
+                    )
+            ]
+
+        snapHomeTip
+            ?.animate()
+            ?.alpha(
+                0f
+            )
+            ?.setDuration(
+                90L
+            )
+            ?.withEndAction {
+                snapHomeTip
+                    ?.text =
+                    next
+
+                snapHomeTip
+                    ?.animate()
+                    ?.alpha(
+                        1f
+                    )
+                    ?.setDuration(
+                        140L
+                    )
+                    ?.start()
+            }
+            ?.start()
+    }
+
+    private fun dpHome(
+        value: Int
+    ): Int {
+        return (
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
     }
 
     private fun startHomeGuideIfNeeded(
@@ -174,6 +731,13 @@ class HomeFragment : Fragment() {
             .start {
                 prefs.edit {
                     putBoolean("HOME_GUIDE_V5_SHOWN", true)
+                }
+
+                // Tutorial overlay is gone: make sure Snap is immediately visible.
+                view?.post {
+                    ensureSnapHomeBanner(
+                        anchor = homeScanCard
+                    )
                 }
             }
     }
@@ -531,4 +1095,28 @@ class HomeFragment : Fragment() {
             else -> "🏛️" to "$noteCount Notes"     // Library Vault (Grand archive)
         }
     }
+    override fun onResume() {
+        super.onResume()
+
+        view?.post {
+            ensureSnapHomeBanner(
+                anchor = homeScanCard
+            )
+        }
+    }
+
+    override fun onDestroyView() {
+        snapHomeBob?.cancel()
+        snapHomeBob = null
+
+        snapHomeRobot
+            ?.cancelAnimation()
+
+        snapHomeRobot = null
+        snapHomeTip = null
+        homeScanCard = null
+
+        super.onDestroyView()
+    }
+
 }

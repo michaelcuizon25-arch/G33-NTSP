@@ -46,6 +46,13 @@
         <activity android:name=".activities.CreateFolderActivity" android:exported="false" />
         <activity android:name=".activities.SaveFolderActivity" android:exported="false" />
         <activity android:name=".activities.PdfViewerActivity" android:exported="false" />
+        <activity
+            android:name=".activities.LegalAgreementActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".activities.LegalDocumentActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
