@@ -99,11 +99,36 @@ class NotesFragment : Fragment() {
         notesAdapter = NotesAdapter(
             notes = emptyList(),
             onItemClick = { note ->
-                val intent = Intent(context, PdfViewerActivity::class.java).apply {
-                    putExtra("TITLE", note.title)
-                    putExtra("CONTENT", note.content)
-                    putExtra("IMAGE_PATH", note.imagePath)
-                }
+                val intent =
+                    Intent(
+                        context,
+                        PdfViewerActivity::class.java
+                    ).apply {
+                        /*
+                         * NOTE_ID is required so PdfViewer reloads the full
+                         * saved batch (all source pages + per-page content)
+                         * from Room instead of reopening only page 1.
+                         */
+                        putExtra(
+                            "NOTE_ID",
+                            note.id
+                        )
+
+                        putExtra(
+                            "TITLE",
+                            note.title
+                        )
+
+                        putExtra(
+                            "CONTENT",
+                            note.content
+                        )
+
+                        putExtra(
+                            "IMAGE_PATH",
+                            note.imagePath
+                        )
+                    }
                 startActivity(intent)
             },
             onMoveClick = { note -> showMoveNoteDialog(note) },

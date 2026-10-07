@@ -28,6 +28,7 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -56,6 +57,7 @@ import com.example.note2snap.ccl.ConnectedComponentLabeler
 import com.example.note2snap.ccl.RegionType
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.ScanHistory
+import com.google.android.material.card.MaterialCardView
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -69,6 +71,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -94,6 +97,35 @@ class ScanFragment : Fragment() {
     private var controlPanelView: View? = null
     private var backButtonContainerView: View? = null
     private var flashControlView: View? = null
+
+
+    // Camera batch capture only. Existing scan / quality features remain unchanged.
+    private val capturedCameraBatchPaths =
+        mutableListOf<String>()
+
+    private var cameraBatchTrayView: View? =
+        null
+
+    private var cameraBatchThumbnails: LinearLayout? =
+        null
+
+    private var tvCameraBatchCount: TextView? =
+        null
+
+    private var btnProcessCameraBatch: View? =
+        null
+
+    private var isSavingCameraPage =
+        false
+
+    // Single capture is the default. Batch is opt-in through the switch.
+    private var isCameraBatchMode =
+        false
+
+    companion object {
+        private const val MAX_CAMERA_BATCH =
+            10
+    }
 
 
     // Gallery Picker Contract
@@ -175,10 +207,101 @@ class ScanFragment : Fragment() {
         val btnGallery = view.findViewById<View>(R.id.btnGallery)
         val tvCancel = view.findViewById<View>(R.id.tvCancel)
 
+
+        cameraBatchTrayView =
+            view.findViewById(
+                R.id.cameraBatchTray
+            )
+
+        cameraBatchThumbnails =
+            view.findViewById(
+                R.id.cameraBatchThumbnails
+            )
+
+        tvCameraBatchCount =
+            view.findViewById(
+                R.id.tvCameraBatchCount
+            )
+
+        btnProcessCameraBatch =
+            view.findViewById(
+                R.id.btnProcessCameraBatch
+            )
+
+
+        val btnSingleMode =
+            view.findViewById<View>(
+                R.id.btnSingleMode
+            )
+
+        val btnBatchMode =
+            view.findViewById<View>(
+                R.id.btnBatchMode
+            )
+
+        // Single is the default. These are camera-style text tabs, not a switch.
+        isCameraBatchMode =
+            false
+
+        btnSingleMode
+            ?.setOnClickListener {
+                if (
+                    capturedCameraBatchPaths
+                        .isNotEmpty()
+                ) {
+                    WarningDialog(
+                        requireContext()
+                    ).show(
+                        title =
+                            "Finish current batch?",
+                        message =
+                            "You still have ${capturedCameraBatchPaths.size} captured page" +
+                                if (
+                                    capturedCameraBatchPaths.size == 1
+                                ) {
+                                    "."
+                                } else {
+                                    "s."
+                                } +
+                                " Process them first, or discard the batch before returning to Single mode.",
+                        primaryText =
+                            "Discard batch",
+                        closeText =
+                            "Keep batch",
+                        onPrimaryClicked = {
+                            clearCapturedCameraBatch()
+                            isCameraBatchMode =
+                                false
+                            updateCaptureModeTabs()
+                            updateCaptureModeInstruction()
+                        }
+                    )
+                } else {
+                    isCameraBatchMode =
+                        false
+
+                    updateCaptureModeTabs()
+                    updateCaptureModeInstruction()
+                }
+            }
+
+        btnBatchMode
+            ?.setOnClickListener {
+                isCameraBatchMode =
+                    true
+
+                updateCaptureModeTabs()
+                updateCaptureModeInstruction()
+            }
+
+        updateCaptureModeTabs()
+        updateCaptureModeInstruction()
+
         // Elevate parent containers above Camera PreviewView in the Z-axis
         backButtonContainer?.bringToFront()
         flashControl?.bringToFront()
         controlPanel?.bringToFront()
+        cameraBatchTrayView?.bringToFront()
         analyzingOverlay?.bringToFront()
         progressBar.bringToFront()
 
@@ -186,7 +309,23 @@ class ScanFragment : Fragment() {
 
         checkCameraPermissionAndStart()
 
-        btnCapture?.setOnClickListener { takePhoto() }
+        btnCapture?.setOnClickListener {
+            takePhoto()
+        }
+
+        btnProcessCameraBatch
+            ?.setOnClickListener {
+                if (
+                    capturedCameraBatchPaths
+                        .isNotEmpty()
+                ) {
+                    processCapturedCameraBatch(
+                        capturedCameraBatchPaths
+                            .toList()
+                    )
+                }
+            }
+
         btnGallery?.setOnClickListener {
             selectImageLauncher.launch(
                 PickVisualMediaRequest(
@@ -201,16 +340,24 @@ class ScanFragment : Fragment() {
         btnFlash?.setOnClickListener(flashToggleListener)
 
         // Navigation back listeners pointing directly to Home
-        backButtonContainer?.setOnClickListener { navigateToHome() }
-        btnBack?.setOnClickListener { navigateToHome() }
-        tvCancel?.setOnClickListener { navigateToHome() }
+        backButtonContainer?.setOnClickListener {
+            handleScanExit()
+        }
+
+        btnBack?.setOnClickListener {
+            handleScanExit()
+        }
+
+        tvCancel?.setOnClickListener {
+            handleScanExit()
+        }
 
         // Device System Back Gesture / Back Button Handler
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    navigateToHome()
+                    handleScanExit()
                 }
             }
         )
@@ -485,6 +632,41 @@ class ScanFragment : Fragment() {
         )
     }
 
+    private fun handleScanExit() {
+        if (
+            capturedCameraBatchPaths
+                .isEmpty()
+        ) {
+            navigateToHome()
+            return
+        }
+
+        WarningDialog(
+            requireContext()
+        ).show(
+            title =
+                "Discard captured pages?",
+            message =
+                "You have ${capturedCameraBatchPaths.size} captured page" +
+                    if (
+                        capturedCameraBatchPaths.size == 1
+                    ) {
+                        "."
+                    } else {
+                        "s."
+                    } +
+                    " Leaving the scanner will remove them from this batch.",
+            primaryText =
+                "Discard",
+            closeText =
+                "Keep scanning",
+            onPrimaryClicked = {
+                clearCapturedCameraBatch()
+                navigateToHome()
+            }
+        )
+    }
+
     private fun navigateToHome() {
         (activity as? MainActivity)?.selectTab(R.id.nav_home)
     }
@@ -704,42 +886,901 @@ class ScanFragment : Fragment() {
         }
     }
 
-    private fun takePhoto() {
-        val safeContext = context ?: return
-        val capture = imageCapture ?: run {
-            Toast.makeText(safeContext, "Camera not ready yet", Toast.LENGTH_SHORT).show()
+    private fun updateCaptureModeTabs() {
+        val activeColor =
+            Color.parseColor(
+                "#AFC4F6"
+            )
+
+        val inactiveColor =
+            Color.parseColor(
+                "#8A8A92"
+            )
+
+        view
+            ?.findViewById<TextView>(
+                R.id.tvSingleMode
+            )
+            ?.setTextColor(
+                if (
+                    isCameraBatchMode
+                ) {
+                    inactiveColor
+                } else {
+                    activeColor
+                }
+            )
+
+        view
+            ?.findViewById<TextView>(
+                R.id.tvBatchMode
+            )
+            ?.setTextColor(
+                if (
+                    isCameraBatchMode
+                ) {
+                    activeColor
+                } else {
+                    inactiveColor
+                }
+            )
+
+        view
+            ?.findViewById<View>(
+                R.id.indicatorSingleMode
+            )
+            ?.visibility =
+            if (
+                isCameraBatchMode
+            ) {
+                View.INVISIBLE
+            } else {
+                View.VISIBLE
+            }
+
+        view
+            ?.findViewById<View>(
+                R.id.indicatorBatchMode
+            )
+            ?.visibility =
+            if (
+                isCameraBatchMode
+            ) {
+                View.VISIBLE
+            } else {
+                View.INVISIBLE
+            }
+    }
+
+    private fun updateCaptureModeInstruction() {
+        val instruction =
+            view?.findViewById<TextView>(
+                R.id.tvInstruction
+            )
+
+        if (
+            capturedCameraBatchPaths
+                .isNotEmpty()
+        ) {
+            instruction?.text =
+                "Capture another whiteboard or process your batch"
+
             return
         }
 
-        val cacheDir = safeContext.externalCacheDir ?: safeContext.cacheDir
-        val photoFile = File(
-            cacheDir,
-            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(System.currentTimeMillis()) + ".jpg"
-        )
+        instruction?.text =
+            if (
+                isCameraBatchMode
+            ) {
+                "Batch mode: capture multiple whiteboards before processing"
+            } else {
+                "Keep the whole whiteboard inside the frame"
+            }
+    }
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+    private fun takePhoto() {
+        val safeContext =
+            context ?: return
+
+        if (isScanBusy || isSavingCameraPage) {
+            return
+        }
+
+        if (
+            isCameraBatchMode &&
+            capturedCameraBatchPaths.size >=
+                MAX_CAMERA_BATCH
+        ) {
+            WarningDialog(
+                requireContext()
+            ).show(
+                title =
+                    "Batch is full",
+                message =
+                    "You can capture up to $MAX_CAMERA_BATCH whiteboard pages in one batch. Process the current batch before adding more.",
+                primaryText =
+                    "Got it"
+            )
+
+            return
+        }
+
+        val capture =
+            imageCapture ?: run {
+                Toast.makeText(
+                    safeContext,
+                    "Camera not ready yet",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return
+            }
+
+        val cacheDir =
+            safeContext.externalCacheDir
+                ?: safeContext.cacheDir
+
+        val photoFile =
+            File(
+                cacheDir,
+                "camera_capture_" +
+                    SimpleDateFormat(
+                        "yyyyMMdd_HHmmss_SSS",
+                        Locale.getDefault()
+                    ).format(
+                        System.currentTimeMillis()
+                    ) +
+                    ".jpg"
+            )
+
+        val outputOptions =
+            ImageCapture.OutputFileOptions
+                .Builder(
+                    photoFile
+                )
+                .build()
+
+        isSavingCameraPage =
+            true
+
+        view
+            ?.findViewById<View>(
+                R.id.btnCapture
+            )
+            ?.isEnabled =
+            false
 
         capture.takePicture(
             outputOptions,
-            ContextCompat.getMainExecutor(safeContext),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
-                    if (!isAdded) return
-                    setLoading(false)
-                    Log.e("ScanFragment", "Photo capture failed: ${exc.message}", exc)
-                    Toast.makeText(context, "Failed to capture image", Toast.LENGTH_SHORT).show()
+            ContextCompat.getMainExecutor(
+                safeContext
+            ),
+            object :
+                ImageCapture.OnImageSavedCallback {
+
+                override fun onError(
+                    exc:
+                        ImageCaptureException
+                ) {
+                    isSavingCameraPage =
+                        false
+
+                    view
+                        ?.findViewById<View>(
+                            R.id.btnCapture
+                        )
+                        ?.isEnabled =
+                        true
+
+                    if (!isAdded) {
+                        return
+                    }
+
+                    Log.e(
+                        "ScanFragment",
+                        "Photo capture failed: ${exc.message}",
+                        exc
+                    )
+
+                    Toast.makeText(
+                        context,
+                        "Failed to capture image",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
 
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    if (!isAdded) return
-                    processImageUri(
-                        rawUri = Uri.fromFile(photoFile),
-                        rawFilePath = photoFile.absolutePath,
-                        cropToGuide = true
-                    )
+                override fun onImageSaved(
+                    output:
+                        ImageCapture.OutputFileResults
+                ) {
+                    isSavingCameraPage =
+                        false
+
+                    view
+                        ?.findViewById<View>(
+                            R.id.btnCapture
+                        )
+                        ?.isEnabled =
+                        true
+
+                    if (!isAdded) {
+                        return
+                    }
+
+                    /*
+                     * Preserve the ORIGINAL camera behavior:
+                     * 1. crop exactly to the visible landscape guide
+                     * 2. run the SAME image-quality validation
+                     * 3. show the SAME custom warning dialog if the image
+                     *    is too blurry, too dark, too bright, or has glare
+                     *
+                     * The only change is that a valid page is queued instead
+                     * of immediately starting OCR.
+                     */
+                    val preparedPath =
+                        cropImageToVisibleGuideFrame(
+                            imageFile =
+                                photoFile
+                        ) ?: photoFile.absolutePath
+
+                    val qualityResult =
+                        validateImageBeforeOcr(
+                            preparedPath
+                        )
+
+                    if (
+                        !qualityResult.isValid
+                    ) {
+                        runCatching {
+                            File(
+                                preparedPath
+                            ).delete()
+                        }
+
+                        if (
+                            preparedPath !=
+                            photoFile.absolutePath
+                        ) {
+                            runCatching {
+                                photoFile.delete()
+                            }
+                        }
+
+                        showImageQualityWarning(
+                            qualityResult
+                        )
+
+                        return
+                    }
+
+                    if (
+                        preparedPath !=
+                        photoFile.absolutePath
+                    ) {
+                        runCatching {
+                            photoFile.delete()
+                        }
+                    }
+
+                    if (
+                        isCameraBatchMode
+                    ) {
+                        capturedCameraBatchPaths.add(
+                            preparedPath
+                        )
+
+                        renderCapturedCameraBatch()
+
+                        Toast.makeText(
+                            safeContext,
+                            if (
+                                capturedCameraBatchPaths.size ==
+                                1
+                            ) {
+                                "Page 1 ready. Capture another or tap Process."
+                            } else {
+                                "Page ${capturedCameraBatchPaths.size} ready."
+                            },
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        // Normal single-capture behavior:
+                        // valid 4:3 crop -> quality check -> process immediately.
+                        processImageUri(
+                            rawUri =
+                                Uri.fromFile(
+                                    File(
+                                        preparedPath
+                                    )
+                                ),
+                            rawFilePath =
+                                preparedPath,
+                            cropToGuide =
+                                false
+                        )
+                    }
                 }
             }
         )
+    }
+
+    private fun renderCapturedCameraBatch() {
+        val container =
+            cameraBatchThumbnails
+                ?: return
+
+        container.removeAllViews()
+
+        capturedCameraBatchPaths
+            .forEachIndexed {
+                    index,
+                    path ->
+
+                val card =
+                    MaterialCardView(
+                        requireContext()
+                    ).apply {
+                        radius =
+                            dpCameraBatch(
+                                12
+                            ).toFloat()
+
+                        cardElevation =
+                            0f
+
+                        strokeWidth =
+                            dpCameraBatch(
+                                1
+                            )
+
+                        strokeColor =
+                            Color.parseColor(
+                                "#AFC4F6"
+                            )
+
+                        setCardBackgroundColor(
+                            Color.parseColor(
+                                "#F7F9FF"
+                            )
+                        )
+                    }
+
+                val holder =
+                    FrameLayout(
+                        requireContext()
+                    )
+
+                val thumbnail =
+                    ImageView(
+                        requireContext()
+                    ).apply {
+                        scaleType =
+                            ImageView.ScaleType.CENTER_CROP
+
+                        contentDescription =
+                            "Captured whiteboard page ${index + 1}"
+
+                        setImageBitmap(
+                            decodeCameraBatchThumbnail(
+                                path
+                            )
+                        )
+                    }
+
+                holder.addView(
+                    thumbnail,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                )
+
+                val pageNumber =
+                    TextView(
+                        requireContext()
+                    ).apply {
+                        text =
+                            "${index + 1}"
+
+                        gravity =
+                            Gravity.CENTER
+
+                        textSize =
+                            9f
+
+                        setTextColor(
+                            Color.WHITE
+                        )
+
+                        setBackgroundColor(
+                            Color.parseColor(
+                                "#B3000000"
+                            )
+                        )
+                    }
+
+                holder.addView(
+                    pageNumber,
+                    FrameLayout.LayoutParams(
+                        dpCameraBatch(
+                            22
+                        ),
+                        dpCameraBatch(
+                            22
+                        ),
+                        Gravity.BOTTOM or
+                            Gravity.START
+                    )
+                )
+
+                val remove =
+                    TextView(
+                        requireContext()
+                    ).apply {
+                        text =
+                            "×"
+
+                        gravity =
+                            Gravity.CENTER
+
+                        textSize =
+                            16f
+
+                        setTextColor(
+                            Color.WHITE
+                        )
+
+                        setBackgroundColor(
+                            Color.parseColor(
+                                "#D9FF4D5D"
+                            )
+                        )
+
+                        contentDescription =
+                            "Remove page ${index + 1}"
+
+                        setOnClickListener {
+                            removeCapturedCameraPage(
+                                index
+                            )
+                        }
+                    }
+
+                holder.addView(
+                    remove,
+                    FrameLayout.LayoutParams(
+                        dpCameraBatch(
+                            24
+                        ),
+                        dpCameraBatch(
+                            24
+                        ),
+                        Gravity.TOP or
+                            Gravity.END
+                    )
+                )
+
+                card.addView(
+                    holder
+                )
+
+                container.addView(
+                    card,
+                    LinearLayout.LayoutParams(
+                        dpCameraBatch(
+                            66
+                        ),
+                        dpCameraBatch(
+                            66
+                        )
+                    ).apply {
+                        marginEnd =
+                            dpCameraBatch(
+                                8
+                            )
+                    }
+                )
+            }
+
+        val count =
+            capturedCameraBatchPaths.size
+
+        tvCameraBatchCount?.text =
+            when (count) {
+                0 ->
+                    ""
+
+                1 ->
+                    "1 page ready"
+
+                else ->
+                    "$count pages ready"
+            }
+
+        view
+            ?.findViewById<TextView>(
+                R.id.tvProcessCameraBatch
+            )
+            ?.text =
+            if (
+                count <= 1
+            ) {
+                "Process"
+            } else {
+                "Process $count"
+            }
+
+        cameraBatchTrayView?.visibility =
+            if (
+                count > 0
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        updateCaptureModeInstruction()
+    }
+
+    private fun removeCapturedCameraPage(
+        index: Int
+    ) {
+        if (
+            index !in
+            capturedCameraBatchPaths.indices
+        ) {
+            return
+        }
+
+        val path =
+            capturedCameraBatchPaths
+                .removeAt(
+                    index
+                )
+
+        runCatching {
+            File(
+                path
+            ).delete()
+        }
+
+        renderCapturedCameraBatch()
+    }
+
+    private fun clearCapturedCameraBatch() {
+        capturedCameraBatchPaths
+            .toList()
+            .forEach {
+                    path ->
+
+                runCatching {
+                    File(
+                        path
+                    ).delete()
+                }
+            }
+
+        capturedCameraBatchPaths.clear()
+
+        renderCapturedCameraBatch()
+    }
+
+    private fun decodeCameraBatchThumbnail(
+        path: String
+    ): Bitmap? =
+        BitmapFactory.decodeFile(
+            path,
+            BitmapFactory.Options().apply {
+                inSampleSize =
+                    8
+            }
+        )
+
+    private fun dpCameraBatch(
+        value: Int
+    ): Int =
+        (
+            value *
+                resources
+                    .displayMetrics
+                    .density
+            ).toInt()
+
+    /**
+     * Camera-batch counterpart of the existing Gallery batch.
+     *
+     * This deliberately reuses the same OCR, diagram detection,
+     * OCR-review, analyzing overlay, and PdfViewer flow already used
+     * elsewhere in this ScanFragment.
+     */
+    private fun processCapturedCameraBatch(
+        paths: List<String>
+    ) {
+        val safeContext =
+            context ?: return
+
+        if (
+            paths.isEmpty()
+        ) {
+            return
+        }
+
+        setLoading(
+            true
+        )
+
+        lifecycleScope.launch(
+            Dispatchers.IO
+        ) {
+            val recognizer =
+                TextRecognition.getClient(
+                    TextRecognizerOptions
+                        .DEFAULT_OPTIONS
+                )
+
+            val pageContents =
+                mutableListOf<String>()
+
+            val reviewIssues =
+                mutableListOf<String>()
+
+            try {
+                for (
+                (
+                    index,
+                    path
+                ) in paths.withIndex()
+                ) {
+                    val sourceFile =
+                        File(
+                            path
+                        )
+
+                    if (
+                        !sourceFile.exists()
+                    ) {
+                        continue
+                    }
+
+                    withContext(
+                        Dispatchers.Main
+                    ) {
+                        if (
+                            isAdded
+                        ) {
+                            showActualAnalysisState(
+                                AnalysisStage
+                                    .PREPARING_IMAGE
+                            )
+
+                            view
+                                ?.findViewById<TextView>(
+                                    R.id.tvCameraBatchProgress
+                                )
+                                ?.apply {
+                                    visibility =
+                                        View.VISIBLE
+
+                                    text =
+                                        "Processing ${index + 1} of ${paths.size}"
+                                }
+                        }
+                    }
+
+                    val image =
+                        InputImage
+                            .fromFilePath(
+                                safeContext,
+                                Uri.fromFile(
+                                    sourceFile
+                                )
+                            )
+
+                    withContext(
+                        Dispatchers.Main
+                    ) {
+                        if (
+                            isAdded
+                        ) {
+                            showActualAnalysisState(
+                                AnalysisStage
+                                    .DETECTING_TEXT
+                            )
+                        }
+                    }
+
+                    val visionText =
+                        recognizeBatchImage(
+                            recognizer,
+                            image
+                        )
+
+                    withContext(
+                        Dispatchers.Main
+                    ) {
+                        if (
+                            isAdded
+                        ) {
+                            showActualAnalysisState(
+                                AnalysisStage
+                                    .CHECKING_RECOGNITION
+                            )
+                        }
+                    }
+
+                    val pageNumber =
+                        index + 1
+
+                    val extractedText =
+                        visionText.text
+                            .ifBlank {
+                                "[No text detected]"
+                            }
+
+                    reviewIssues.addAll(
+                        findOcrIssues(
+                            visionText
+                        ).map {
+                            "Page $pageNumber: $it"
+                        }
+                    )
+
+                    val diagramHtml =
+                        detectDiagramHtml(
+                            path
+                        )
+
+                    val pageContent =
+                        buildString {
+                            append(
+                                extractedText
+                            )
+
+                            if (
+                                diagramHtml
+                                    .isNotBlank()
+                            ) {
+                                append(
+                                    "<br/><br/><b>Detected Diagram</b><br/>"
+                                )
+
+                                append(
+                                    diagramHtml
+                                )
+                            }
+                        }
+
+                    pageContents.add(
+                        pageContent
+                    )
+                }
+
+                withContext(
+                    Dispatchers.Main
+                ) {
+                    if (
+                        !isAdded
+                    ) {
+                        return@withContext
+                    }
+
+                    view
+                        ?.findViewById<TextView>(
+                            R.id.tvCameraBatchProgress
+                        )
+                        ?.visibility =
+                        View.GONE
+
+                    if (
+                        pageContents
+                            .isEmpty()
+                    ) {
+                        setLoading(
+                            false
+                        )
+
+                        WarningDialog(
+                            requireContext()
+                        ).show(
+                            title =
+                                "Unable to process batch",
+                            message =
+                                "Note2Snap could not process the captured pages. Please try again with clearer whiteboard photos.",
+                            primaryText =
+                                "Try again"
+                        )
+
+                        return@withContext
+                    }
+
+                    showActualAnalysisState(
+                        AnalysisStage
+                            .STRUCTURING_NOTES
+                    )
+
+                    val combinedContent =
+                        pageContents
+                            .joinToString(
+                                "<br/><br/><hr/><br/><br/>"
+                            )
+
+                    /*
+                     * Do not delete the first page before PdfViewer/History
+                     * receives its imagePath. Just clear the queue state.
+                     */
+                    capturedCameraBatchPaths
+                        .clear()
+
+                    renderCapturedCameraBatch()
+
+                    finishAnalyzingAndNavigate(
+                        content =
+                            combinedContent,
+
+                        imagePath =
+                            paths.first(),
+
+                        sourceImagePaths =
+                            paths,
+
+                        pageContents =
+                            pageContents,
+
+                        ocrIssues =
+                            reviewIssues
+                                .distinct()
+                                .take(
+                                    12
+                                ),
+
+                        titleOverride =
+                            null
+                    )
+                }
+
+            } catch (
+                error: Exception
+            ) {
+                Log.e(
+                    "ScanFragment",
+                    "Camera batch processing failed",
+                    error
+                )
+
+                withContext(
+                    Dispatchers.Main
+                ) {
+                    if (
+                        isAdded
+                    ) {
+                        view
+                            ?.findViewById<TextView>(
+                                R.id.tvCameraBatchProgress
+                            )
+                            ?.visibility =
+                            View.GONE
+
+                        setLoading(
+                            false
+                        )
+
+                        WarningDialog(
+                            requireContext()
+                        ).show(
+                            title =
+                                "Batch processing failed",
+                            message =
+                                "Something went wrong while processing the captured pages. Your captured pages are still in the batch so you can try again.",
+                            primaryText =
+                                "Got it"
+                        )
+                    }
+                }
+
+            } finally {
+                recognizer.close()
+            }
+        }
     }
 
     /**
@@ -773,6 +1814,9 @@ class ScanFragment : Fragment() {
             val reviewIssues =
                 mutableListOf<String>()
 
+            val batchSourcePaths =
+                mutableListOf<String>()
+
             var primaryImagePath: String? =
                 null
 
@@ -789,6 +1833,10 @@ class ScanFragment : Fragment() {
                             safeContext,
                             uri
                         ) ?: continue
+
+                    batchSourcePaths.add(
+                        cachedPath
+                    )
 
                     if (
                         primaryImagePath == null
@@ -937,12 +1985,16 @@ class ScanFragment : Fragment() {
                             combinedContent,
                         imagePath =
                             primaryImagePath,
+                        sourceImagePaths =
+                            batchSourcePaths,
+                        pageContents =
+                            pageContents,
                         ocrIssues =
                             reviewIssues
                                 .distinct()
                                 .take(12),
                         titleOverride =
-                            "Batch Scan (${pageContents.size} pages)"
+                            null
                     )
                 }
 
@@ -1799,9 +2851,91 @@ class ScanFragment : Fragment() {
         }
     }
 
+    private fun deriveTitleFromScannedContent(
+        content: String,
+        fallback: String
+    ): String {
+        val beforeDiagram =
+            content.substringBefore(
+                "<b>Detected Diagram</b>",
+                content
+            )
+
+        val plain =
+            beforeDiagram
+                .replace(
+                    Regex(
+                        """(?i)<br\s*/?>"""
+                    ),
+                    "\n"
+                )
+                .replace(
+                    Regex(
+                        """<[^>]+>"""
+                    ),
+                    " "
+                )
+                .replace(
+                    "**",
+                    ""
+                )
+
+        val candidate =
+            plain
+                .lines()
+                .map {
+                    it.trim()
+                        .trimStart(
+                            '•',
+                            '-',
+                            '*',
+                            ':',
+                            ' '
+                        )
+                        .trim()
+                }
+                .firstOrNull {
+                    line ->
+                    line.length in 3..100 &&
+                        !line.equals(
+                            "[No text detected]",
+                            ignoreCase =
+                                true
+                        ) &&
+                        !line.startsWith(
+                            "Detected Diagram",
+                            ignoreCase =
+                                true
+                        )
+                }
+                ?.trim()
+
+        if (
+            candidate.isNullOrBlank()
+        ) {
+            return fallback
+        }
+
+        return if (
+            candidate.length <=
+            70
+        ) {
+            candidate
+        } else {
+            candidate
+                .take(
+                    67
+                )
+                .trimEnd() +
+                "..."
+        }
+    }
+
     private fun navigateToPdfViewer(
         content: String,
         imagePath: String,
+        sourceImagePaths: List<String> = listOf(imagePath),
+        pageContents: List<String> = listOf(content),
         ocrIssues: List<String> = emptyList(),
         titleOverride: String? = null
     ) {
@@ -1822,9 +2956,41 @@ class ScanFragment : Fragment() {
                 Locale.getDefault()
             ).format(now)
 
+        val normalizedSourcePaths =
+            sourceImagePaths
+                .filter { it.isNotBlank() }
+                .distinct()
+                .ifEmpty { listOf(imagePath) }
+
+        val sourcePathsJson =
+            JSONArray(normalizedSourcePaths).toString()
+
+        val normalizedPageContents =
+            pageContents
+                .ifEmpty {
+                    listOf(
+                        content
+                    )
+                }
+
+        val pageContentsJson =
+            JSONArray(
+                normalizedPageContents
+            ).toString()
+
         val defaultTitle =
             titleOverride
-                ?: "Scan $titleTime"
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?: deriveTitleFromScannedContent(
+                    content =
+                        normalizedPageContents
+                            .firstOrNull()
+                            ?: content,
+                    fallback =
+                        "Scan $titleTime"
+                )
 
         // IMPORTANT:
         // A successful scan is added to HISTORY immediately.
@@ -1847,8 +3013,24 @@ class ScanFragment : Fragment() {
                     ScanHistory(
                         title = defaultTitle,
                         imagePath = imagePath,
+                        sourceImagePathsJson = sourcePathsJson,
+                        pageContentsJson = pageContentsJson,
                         timestamp = now,
                         date = historyDate
+                    )
+                )
+            } else if (
+                existingHistory.sourceImagePathsJson !=
+                sourcePathsJson ||
+                existingHistory.pageContentsJson !=
+                pageContentsJson
+            ) {
+                dao.updateScanHistory(
+                    existingHistory.copy(
+                        sourceImagePathsJson =
+                            sourcePathsJson,
+                        pageContentsJson =
+                            pageContentsJson
                     )
                 )
             }
@@ -1885,6 +3067,18 @@ class ScanFragment : Fragment() {
                         putExtra(
                             "IMAGE_PATH",
                             imagePath
+                        )
+
+                        putStringArrayListExtra(
+                            "IMAGE_PATHS",
+                            ArrayList(normalizedSourcePaths)
+                        )
+
+                        putStringArrayListExtra(
+                            "PAGE_CONTENTS",
+                            ArrayList(
+                                normalizedPageContents
+                            )
                         )
 
                         putExtra(
@@ -1953,6 +3147,13 @@ class ScanFragment : Fragment() {
         progressBar.visibility = View.GONE
         analysisSequenceStarted = false
 
+        view
+            ?.findViewById<TextView>(
+                R.id.tvCameraBatchProgress
+            )
+            ?.visibility =
+            View.GONE
+
         analyzingOverlay?.apply {
             animate().cancel()
             visibility = View.GONE
@@ -1965,6 +3166,8 @@ class ScanFragment : Fragment() {
     private fun finishAnalyzingAndNavigate(
         content: String,
         imagePath: String,
+        sourceImagePaths: List<String> = listOf(imagePath),
+        pageContents: List<String> = listOf(content),
         ocrIssues: List<String> = emptyList(),
         titleOverride: String? = null
     ) {
@@ -1982,6 +3185,8 @@ class ScanFragment : Fragment() {
             navigateToPdfViewer(
                 content = content,
                 imagePath = imagePath,
+                sourceImagePaths = sourceImagePaths,
+                pageContents = pageContents,
                 ocrIssues = ocrIssues,
                 titleOverride = titleOverride
             )
@@ -2266,6 +3471,17 @@ class ScanFragment : Fragment() {
         liveAnalyzer = null
         (liveHintView?.parent as? ViewGroup)?.removeView(liveHintView)
         liveHintView = null
+        cameraBatchTrayView =
+            null
+
+        cameraBatchThumbnails =
+            null
+
+        tvCameraBatchCount =
+            null
+
+        btnProcessCameraBatch =
+            null
 
         analyzingOverlay = null
         controlPanelView = null

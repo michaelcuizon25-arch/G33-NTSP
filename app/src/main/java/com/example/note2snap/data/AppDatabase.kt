@@ -16,7 +16,7 @@ import com.example.note2snap.model.ScanHistory
         Note::class,
         ScanHistory::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,6 +43,36 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        private val MIGRATION_4_5 =
+            object : Migration(4, 5) {
+                override fun migrate(
+                    database: SupportSQLiteDatabase
+                ) {
+                    database.execSQL(
+                        "ALTER TABLE notes ADD COLUMN sourceImagePathsJson TEXT NOT NULL DEFAULT ''"
+                    )
+
+                    database.execSQL(
+                        "ALTER TABLE scan_history ADD COLUMN sourceImagePathsJson TEXT NOT NULL DEFAULT ''"
+                    )
+                }
+            }
+
+        private val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override fun migrate(
+                    database: SupportSQLiteDatabase
+                ) {
+                    database.execSQL(
+                        "ALTER TABLE notes ADD COLUMN pageContentsJson TEXT NOT NULL DEFAULT ''"
+                    )
+
+                    database.execSQL(
+                        "ALTER TABLE scan_history ADD COLUMN pageContentsJson TEXT NOT NULL DEFAULT ''"
+                    )
+                }
+            }
+
         fun getDatabase(
             context: Context
         ): AppDatabase {
@@ -56,7 +86,9 @@ abstract class AppDatabase : RoomDatabase() {
                         "note2snap_database"
                     )
                         .addMigrations(
-                            MIGRATION_3_4
+                            MIGRATION_3_4,
+                            MIGRATION_4_5,
+                            MIGRATION_5_6
                         )
                         .fallbackToDestructiveMigration()
                         .build()

@@ -23,7 +23,9 @@ data class Note(
     val folderId: Int? = null, // Null if the note doesn't belong to any folder
     val title: String,
     val content: String = "",  // Stores parsed Rule Engine content
-    val imagePath: String,     // Path to physical photo stored on phone
+    val imagePath: String,     // Primary/thumbnail source image
+    val sourceImagePathsJson: String = "", // All source pages for batch scans
+    val pageContentsJson: String = "", // Structured content per source page
     val dateEdited: String,
     val isStarred: Boolean = false,
     val timestamp: Long = System.currentTimeMillis(), // Required for Time sorting

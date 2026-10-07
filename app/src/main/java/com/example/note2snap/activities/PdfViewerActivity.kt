@@ -5,6 +5,8 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.Canvas
 import android.graphics.Color
@@ -56,6 +58,7 @@ import android.text.style.StyleSpan
 import android.view.Gravity
 import android.widget.LinearLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -75,6 +78,17 @@ class PdfViewerActivity : AppCompatActivity() {
     private var currentTitle: String = "Untitled Note"
     private var currentRawContent: String = ""
     private var currentImagePath: String? = null
+
+    // Batch scans keep the source image and structured result per page.
+    // The primary imagePath is still used for Notes/History lookup.
+    private val currentImagePaths =
+        mutableListOf<String>()
+
+    private val currentPageContents =
+        mutableListOf<String>()
+
+    private var currentBatchPageIndex =
+        0
 
     private var isEditMode = false
     private var preservedDiagramHtml: String = ""
@@ -112,6 +126,12 @@ class PdfViewerActivity : AppCompatActivity() {
     )
 
     private var pendingPdfSnapshot: PdfMarkupSnapshot? = null
+
+    // Exact on-screen markup snapshots per source page.
+    // These preserve snapped highlights + freehand pen strokes in PDF export.
+    private var pendingAnnotationSnapshots:
+        List<Bitmap?> =
+        emptyList()
 
     private val markupMarkerPrefix = "<!--N2S_MARKUP_BASE64:"
     private val markupMarkerSuffix = "-->"
@@ -169,42 +189,79 @@ class PdfViewerActivity : AppCompatActivity() {
 
         currentNoteId = intent.getIntExtra("NOTE_ID", -1)
         currentTitle = intent.getStringExtra("TITLE") ?: "Untitled Note"
-        currentImagePath = sanitizeFilePath(intent.getStringExtra("IMAGE_PATH"))
-        val directContent = intent.getStringExtra("CONTENT")
+        currentImagePath =
+            sanitizeFilePath(
+                intent.getStringExtra(
+                    "IMAGE_PATH"
+                )
+            )
+
+        restoreSourcePathsFromIntent()
+
+        val directContent =
+            intent.getStringExtra(
+                "CONTENT"
+            )
 
         setupHeaderAndMetadata()
         setupToolRibbon()
         setupBottomActions()
         setupPageNavigation()
 
-        if (!directContent.isNullOrEmpty()) {
-            markupLoaded = false
-            val restored =
-                restoreMarkupFromPersistedContent(
-                    directContent
-                )
+        /*
+         * IMPORTANT:
+         * If this is an already-saved Note, always reload it from Room by NOTE_ID.
+         * The database contains the full batch:
+         * - sourceImagePathsJson
+         * - pageContentsJson
+         *
+         * Using only CONTENT + IMAGE_PATH would collapse a saved batch back to
+         * one page when reopened.
+         */
+        if (
+            currentNoteId !=
+            -1
+        ) {
+            fetchNoteFromDatabase()
+
+        } else if (
+            !directContent.isNullOrEmpty()
+        ) {
+            restorePageContentsFromIntent(
+                directContent
+            )
+
+            currentBatchPageIndex =
+                0
 
             currentRawContent =
-                sanitizeOcrText(
-                    stripPersistedMarkup(
-                        directContent
+                currentPageContents
+                    .firstOrNull()
+                    ?: sanitizeOcrText(
+                        stripPersistedMarkup(
+                            directContent
+                        )
                     )
-                )
 
-            if (!restored) {
-                markupLoaded = false
-            }
+            markupLoaded =
+                false
 
-            renderContent(currentRawContent)
+            clearMarkupUiForPageSwitch()
+
+            renderContent(
+                currentRawContent
+            )
 
             findViewById<View>(
                 R.id.tvPdfContent
             )?.post {
+                loadMarkupData()
                 maybeShowOcrReviewWarning()
             }
 
-            // Save/Sync initially so new scans exist in both Notes & History without duplicating
+            // New unsaved scan: create/sync its database record once.
             saveNoteToDatabase()
+
         } else {
             fetchNoteFromDatabase()
         }
@@ -502,6 +559,299 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
+    private fun restoreSourcePathsFromIntent() {
+        currentImagePaths.clear()
+
+        intent
+            .getStringArrayListExtra(
+                "IMAGE_PATHS"
+            )
+            .orEmpty()
+            .mapNotNull {
+                sanitizeFilePath(
+                    it
+                )
+            }
+            .filter {
+                File(it).exists()
+            }
+            .distinct()
+            .let {
+                currentImagePaths.addAll(
+                    it
+                )
+            }
+
+        if (
+            currentImagePaths.isEmpty() &&
+            !currentImagePath.isNullOrBlank() &&
+            File(currentImagePath!!).exists()
+        ) {
+            currentImagePaths.add(
+                currentImagePath!!
+            )
+        }
+
+        if (
+            currentImagePath.isNullOrBlank() &&
+            currentImagePaths.isNotEmpty()
+        ) {
+            currentImagePath =
+                currentImagePaths.first()
+        }
+    }
+
+    private fun restorePageContentsFromIntent(
+        fallbackContent: String
+    ) {
+        currentPageContents.clear()
+
+        intent
+            .getStringArrayListExtra(
+                "PAGE_CONTENTS"
+            )
+            .orEmpty()
+            .map {
+                sanitizeOcrText(
+                    stripPersistedMarkup(
+                        it
+                    )
+                )
+            }
+            .let {
+                currentPageContents.addAll(
+                    it
+                )
+            }
+
+        if (
+            currentPageContents.isEmpty()
+        ) {
+            currentPageContents.add(
+                sanitizeOcrText(
+                    stripPersistedMarkup(
+                        fallbackContent
+                    )
+                )
+            )
+        }
+
+        normalizeBatchLists()
+    }
+
+    private fun restoreBatchDataFromNote(
+        note: Note
+    ) {
+        currentImagePaths.clear()
+
+        if (
+            note.sourceImagePathsJson
+                .isNotBlank()
+        ) {
+            runCatching {
+                val array =
+                    JSONArray(
+                        note.sourceImagePathsJson
+                    )
+
+                for (
+                    index in
+                    0 until array.length()
+                ) {
+                    sanitizeFilePath(
+                        array.optString(
+                            index
+                        )
+                    )
+                        ?.takeIf {
+                            File(it).exists()
+                        }
+                        ?.let {
+                            currentImagePaths.add(
+                                it
+                            )
+                        }
+                }
+            }
+        }
+
+        if (
+            currentImagePaths.isEmpty() &&
+            note.imagePath.isNotBlank() &&
+            File(note.imagePath).exists()
+        ) {
+            currentImagePaths.add(
+                note.imagePath
+            )
+        }
+
+        currentPageContents.clear()
+
+        if (
+            note.pageContentsJson
+                .isNotBlank()
+        ) {
+            runCatching {
+                val array =
+                    JSONArray(
+                        note.pageContentsJson
+                    )
+
+                for (
+                    index in
+                    0 until array.length()
+                ) {
+                    currentPageContents.add(
+                        sanitizeOcrText(
+                            stripPersistedMarkup(
+                                array.optString(
+                                    index
+                                )
+                            )
+                        )
+                    )
+                }
+            }
+        }
+
+        if (
+            currentPageContents.isEmpty()
+        ) {
+            currentPageContents.add(
+                sanitizeOcrText(
+                    stripPersistedMarkup(
+                        note.content
+                    )
+                )
+            )
+        }
+
+        normalizeBatchLists()
+    }
+
+    private fun normalizeBatchLists() {
+        currentImagePaths
+            .distinct()
+            .toList()
+            .let {
+                currentImagePaths.clear()
+                currentImagePaths.addAll(
+                    it
+                )
+            }
+
+        if (
+            currentPageContents.isEmpty()
+        ) {
+            currentPageContents.add(
+                ""
+            )
+        }
+
+        currentBatchPageIndex =
+            currentBatchPageIndex.coerceIn(
+                0,
+                (
+                    batchPageCount() -
+                        1
+                    ).coerceAtLeast(
+                        0
+                    )
+            )
+    }
+
+    private fun batchPageCount(): Int {
+        return maxOf(
+            currentImagePaths.size,
+            currentPageContents.size,
+            1
+        )
+    }
+
+    private fun isBatchDocument(): Boolean =
+        batchPageCount() > 1
+
+    private fun currentSourcePath(): String? {
+        if (
+            currentImagePaths.isEmpty()
+        ) {
+            return currentImagePath
+        }
+
+        return currentImagePaths[
+            currentBatchPageIndex
+                .coerceIn(
+                    0,
+                    currentImagePaths.lastIndex
+                )
+        ]
+    }
+
+    private fun currentPageContent(): String {
+        if (
+            currentPageContents.isEmpty()
+        ) {
+            return currentRawContent
+        }
+
+        return currentPageContents[
+            currentBatchPageIndex
+                .coerceIn(
+                    0,
+                    currentPageContents.lastIndex
+                )
+        ]
+    }
+
+    private fun syncCurrentPageContentFromRaw() {
+        if (
+            currentPageContents.isEmpty()
+        ) {
+            currentPageContents.add(
+                currentRawContent
+            )
+            return
+        }
+
+        val index =
+            currentBatchPageIndex
+                .coerceIn(
+                    0,
+                    currentPageContents.lastIndex
+                )
+
+        currentPageContents[
+            index
+        ] =
+            currentRawContent
+    }
+
+    private fun pageContentsJson(): String =
+        JSONArray(
+            currentPageContents
+        ).toString()
+
+    private fun sourcePathsJson(): String =
+        JSONArray(
+            currentImagePaths
+                .ifEmpty {
+                    currentImagePath
+                        ?.let {
+                            listOf(it)
+                        }
+                        ?: emptyList()
+                }
+        ).toString()
+
+    private fun combinedBatchContent(): String {
+        syncCurrentPageContentFromRaw()
+
+        return currentPageContents
+            .joinToString(
+                "<br/><br/><hr/><br/><br/>"
+            )
+    }
+
     /**
      * Cleans OCR bullet artifacts (e.g. "oLeading Lines" -> "• Leading Lines")
      * and standardizes line-starting bullet characters.
@@ -546,7 +896,15 @@ class PdfViewerActivity : AppCompatActivity() {
         val btnToolText = findViewById<ImageButton>(R.id.btnToolText)
 
         val updatedText = etInlineEditor?.text?.toString() ?: ""
-        currentRawContent = sanitizeOcrText(updatedText.replace("\n", "<br/>"))
+        currentRawContent =
+            sanitizeOcrText(
+                updatedText.replace(
+                    "\n",
+                    "<br/>"
+                )
+            )
+
+        syncCurrentPageContentFromRaw()
 
         etInlineEditor?.visibility = View.GONE
         tvPdfContent?.visibility = View.VISIBLE
@@ -1928,11 +2286,27 @@ class PdfViewerActivity : AppCompatActivity() {
                 toggleInlineEditMode()
             }
 
+            syncCurrentPageContentFromRaw()
             saveMarkupData()
-            pendingPdfSnapshot = buildPdfMarkupSnapshot()
 
-            val sanitizedFileName = currentTitle.replace("[^a-zA-Z0-9._-]".toRegex(), "_")
-            createPdfLauncher.launch("$sanitizedFileName.pdf")
+            // PDF export is rebuilt from ALL batch pages as a reviewer,
+            // instead of rasterizing only the currently visible page.
+            pendingPdfSnapshot =
+                null
+
+            // Capture the saved highlight + pen layer for every batch page.
+            pendingAnnotationSnapshots =
+                buildAllAnnotationSnapshots()
+
+            val sanitizedFileName =
+                currentTitle.replace(
+                    "[^a-zA-Z0-9._-]".toRegex(),
+                    "_"
+                )
+
+            createPdfLauncher.launch(
+                "$sanitizedFileName.pdf"
+            )
         }
 
         findViewById<View>(R.id.btnActionShare)?.setOnClickListener {
@@ -1941,44 +2315,296 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun setupPageNavigation() {
-        val btnPageUp = findViewById<View>(R.id.btnPageUp)
-        val btnPageDown = findViewById<View>(R.id.btnPageDown)
-        val scrollView = findViewById<ScrollView>(R.id.scrollViewContent)
+        val btnPageUp =
+            findViewById<View>(
+                R.id.btnPageUp
+            )
+
+        val btnPageDown =
+            findViewById<View>(
+                R.id.btnPageDown
+            )
+
+        val scrollView =
+            findViewById<ScrollView>(
+                R.id.scrollViewContent
+            )
 
         updatePageIndicator()
 
-        scrollView?.setOnScrollChangeListener { v: View, _: Int, scrollY: Int, _: Int, _: Int ->
-            val childView = (v as? ScrollView)?.getChildAt(0)
-            if (childView != null && v.height > 0) {
-                val totalContentHeight = childView.height
-                val viewportHeight = v.height
+        /*
+         * For batch scans, these controls are real source-page navigation:
+         * 1 / 2, 2 / 2, etc. For a normal single-page note, the old
+         * scroll-position behavior is preserved.
+         */
+        scrollView?.setOnScrollChangeListener {
+                v: View,
+                _: Int,
+                scrollY: Int,
+                _: Int,
+                _: Int ->
 
-                totalPages = (totalContentHeight / viewportHeight.toFloat()).toInt().coerceAtLeast(1)
-                currentPage = ((scrollY / viewportHeight.toFloat()) + 1).toInt().coerceIn(1, totalPages)
+            if (
+                isBatchDocument()
+            ) {
+                return@setOnScrollChangeListener
+            }
+
+            val childView =
+                (v as? ScrollView)
+                    ?.getChildAt(
+                        0
+                    )
+
+            if (
+                childView != null &&
+                v.height > 0
+            ) {
+                val totalContentHeight =
+                    childView.height
+
+                val viewportHeight =
+                    v.height
+
+                totalPages =
+                    (
+                        totalContentHeight /
+                            viewportHeight
+                                .toFloat()
+                        )
+                        .toInt()
+                        .coerceAtLeast(
+                            1
+                        )
+
+                currentPage =
+                    (
+                        (
+                            scrollY /
+                                viewportHeight
+                                    .toFloat()
+                            ) +
+                            1
+                        )
+                        .toInt()
+                        .coerceIn(
+                            1,
+                            totalPages
+                        )
+
                 updatePageIndicator()
             }
         }
 
         btnPageUp?.setOnClickListener {
-            if (currentPage > 1) {
+            if (
+                isBatchDocument()
+            ) {
+                showBatchPage(
+                    currentBatchPageIndex -
+                        1
+                )
+            } else if (
+                currentPage > 1
+            ) {
                 currentPage--
+
                 updatePageIndicator()
-                scrollView?.fullScroll(View.FOCUS_UP)
+
+                scrollView?.fullScroll(
+                    View.FOCUS_UP
+                )
             }
         }
 
         btnPageDown?.setOnClickListener {
-            if (currentPage < totalPages) {
+            if (
+                isBatchDocument()
+            ) {
+                showBatchPage(
+                    currentBatchPageIndex +
+                        1
+                )
+            } else if (
+                currentPage <
+                totalPages
+            ) {
                 currentPage++
+
                 updatePageIndicator()
-                scrollView?.fullScroll(View.FOCUS_DOWN)
+
+                scrollView?.fullScroll(
+                    View.FOCUS_DOWN
+                )
             }
         }
     }
 
+    private fun showBatchPage(
+        targetIndex: Int
+    ) {
+        if (
+            !isBatchDocument()
+        ) {
+            return
+        }
+
+        val safeIndex =
+            targetIndex.coerceIn(
+                0,
+                batchPageCount() - 1
+            )
+
+        if (
+            safeIndex ==
+            currentBatchPageIndex
+        ) {
+            return
+        }
+
+        if (
+            isEditMode
+        ) {
+            /*
+             * toggleInlineEditMode() commits the current editor text before
+             * leaving text-edit mode.
+             */
+            toggleInlineEditMode()
+        }
+
+        syncCurrentPageContentFromRaw()
+        saveMarkupData()
+
+        currentBatchPageIndex =
+            safeIndex
+
+        currentRawContent =
+            currentPageContent()
+
+        clearMarkupUiForPageSwitch()
+
+        renderContent(
+            currentRawContent
+        )
+
+        findViewById<View>(
+            R.id.scrollViewContent
+        )?.let {
+            (it as? ScrollView)
+                ?.scrollTo(
+                    0,
+                    0
+                )
+        }
+
+        findViewById<View>(
+            R.id.tvPdfContent
+        )?.post {
+            loadMarkupData()
+        }
+
+        updatePageIndicator()
+    }
+
+    private fun clearMarkupUiForPageSwitch() {
+        activeTool =
+            ToolMode.NONE
+
+        findViewById<DrawingView>(
+            R.id.drawingView
+        )?.apply {
+            setTool(
+                ToolMode.NONE
+            )
+
+            setVectorStrokes(
+                emptyList()
+            )
+        }
+
+        highlightRanges.clear()
+        markupUndoStack.clear()
+        markupRedoStack.clear()
+        markupLoaded =
+            false
+
+        findViewById<EditText>(
+            R.id.etInlineEditor
+        )?.visibility =
+            View.GONE
+
+        findViewById<TextView>(
+            R.id.tvPdfContent
+        )?.visibility =
+            View.VISIBLE
+
+        isEditMode =
+            false
+    }
+
     private fun updatePageIndicator() {
-        val pageText = String.format(Locale.getDefault(), "%d / %d", currentPage, totalPages)
-        findViewById<TextView>(R.id.tvPageIndicator)?.text = pageText
+        val pageText =
+            if (
+                isBatchDocument()
+            ) {
+                String.format(
+                    Locale.getDefault(),
+                    "%d / %d",
+                    currentBatchPageIndex + 1,
+                    batchPageCount()
+                )
+            } else {
+                String.format(
+                    Locale.getDefault(),
+                    "%d / %d",
+                    currentPage,
+                    totalPages
+                )
+            }
+
+        findViewById<TextView>(
+            R.id.tvPageIndicator
+        )?.text =
+            pageText
+
+        if (
+            isBatchDocument()
+        ) {
+            findViewById<View>(
+                R.id.btnPageUp
+            )?.apply {
+                isEnabled =
+                    currentBatchPageIndex >
+                    0
+
+                alpha =
+                    if (
+                        isEnabled
+                    ) {
+                        1f
+                    } else {
+                        0.35f
+                    }
+            }
+
+            findViewById<View>(
+                R.id.btnPageDown
+            )?.apply {
+                isEnabled =
+                    currentBatchPageIndex <
+                    batchPageCount() -
+                    1
+
+                alpha =
+                    if (
+                        isEnabled
+                    ) {
+                        1f
+                    } else {
+                        0.35f
+                    }
+            }
+        }
     }
 
     private fun isDarkMode(): Boolean {
@@ -2008,139 +2634,433 @@ class PdfViewerActivity : AppCompatActivity() {
                 currentNote = it
                 currentNoteId = it.id
                 currentTitle = it.title
-                currentImagePath = sanitizeFilePath(it.imagePath)
+                currentImagePath =
+                    sanitizeFilePath(
+                        it.imagePath
+                    )
 
-                withContext(Dispatchers.Main) {
-                    markupLoaded = false
+                restoreBatchDataFromNote(
+                    it
+                )
 
-                    val restored =
-                        restoreMarkupFromPersistedContent(
-                            it.content
-                        )
+                currentBatchPageIndex =
+                    0
 
-                    currentRawContent =
-                        sanitizeOcrText(
-                            stripPersistedMarkup(
-                                it.content
-                            )
-                        )
+                currentRawContent =
+                    currentPageContent()
 
-                    if (!restored) {
-                        markupLoaded = false
+                withContext(
+                    Dispatchers.Main
+                ) {
+                    markupLoaded =
+                        false
+
+                    clearMarkupUiForPageSwitch()
+
+                    findViewById<TextView>(
+                        R.id.tvPdfTitle
+                    )?.text =
+                        currentTitle
+
+                    renderContent(
+                        currentRawContent
+                    )
+
+                    findViewById<View>(
+                        R.id.tvPdfContent
+                    )?.post {
+                        loadMarkupData()
                     }
-
-                    findViewById<TextView>(R.id.tvPdfTitle)?.text = currentTitle
-                    renderContent(currentRawContent)
                 }
             }
         }
     }
 
-    private fun renderContent(rawContent: String) {
-        val tvPdfContent = findViewById<TextView>(R.id.tvPdfContent)
-        val tvSectionHeader = findViewById<TextView>(R.id.tvSectionHeader)
-        val webViewContent = findViewById<WebView>(R.id.webViewContent)
-        val scrollViewContent = findViewById<View>(R.id.scrollViewContent)
-        val ivScannedImage = findViewById<ImageView>(R.id.ivScannedImage)
-        val cardScannedImage = findViewById<View>(R.id.cardScannedImage)
-
-        val cleanedText = sanitizeOcrText(rawContent)
-        val hasRichContent = cleanedText.contains("<table", ignoreCase = true) ||
-                cleanedText.contains("<img", ignoreCase = true)
-
-        if (ivScannedImage != null) {
-            val validPath = currentImagePath
-            if (!validPath.isNullOrEmpty() && File(validPath).exists()) {
-                val bitmap = BitmapFactory.decodeFile(validPath)
-                ivScannedImage.setImageBitmap(bitmap)
-                ivScannedImage.visibility = View.VISIBLE
-                cardScannedImage?.visibility = View.VISIBLE
-            } else {
-                ivScannedImage.visibility = View.GONE
-                cardScannedImage?.visibility = View.GONE
-            }
-        }
-
-        if (hasRichContent && webViewContent != null) {
-            scrollViewContent?.visibility = View.GONE
-            webViewContent.visibility = View.VISIBLE
-
-            val bgColorStr = colorHex(R.color.pdf_web_bg)
-            val textColorStr = colorHex(R.color.nts_text)
-            val headerBgStr = colorHex(R.color.nts_surface_blue)
-            val borderColorStr = colorHex(R.color.nts_blue_line)
-
-            val imageHtml = if (!currentImagePath.isNullOrEmpty() && File(currentImagePath!!).exists()) {
-                "<img src=\"file://${currentImagePath}\" style=\"max-width:100%; border-radius:8px; margin-bottom:12px;\"/>"
-            } else ""
-
-            val styledHtml = """
-                <html>
-                <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        body { font-family: sans-serif; padding: 12px; color: $textColorStr; background-color: $bgColorStr; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
-                        img { display: block; max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px; }
-                        th { background-color: $headerBgStr; font-weight: bold; text-align: left; padding: 8px; border: 1px solid $borderColorStr; color: $textColorStr; }
-                        td { padding: 8px; border: 1px solid $borderColorStr; vertical-align: top; color: $textColorStr; }
-                    </style>
-                </head>
-                <body>
-                    $imageHtml
-                    $cleanedText
-                </body>
-                </html>
-            """.trimIndent()
-
-            webViewContent.setBackgroundColor(bgColorStr.toColorInt())
-            webViewContent.webViewClient = WebViewClient()
-            webViewContent.settings.javaScriptEnabled = false
-            webViewContent.settings.allowFileAccess = true
-            webViewContent.loadDataWithBaseURL(
-                "file://${filesDir.absolutePath}/",
-                styledHtml,
-                "text/html",
-                "UTF-8",
-                null
+    private fun renderContent(
+        rawContent: String
+    ) {
+        val tvPdfContent =
+            findViewById<TextView>(
+                R.id.tvPdfContent
             )
-        } else {
-            webViewContent?.visibility = View.GONE
-            scrollViewContent?.visibility = View.VISIBLE
 
-            var detectedSubHeader: String? = null
+        val tvSectionHeader =
+            findViewById<TextView>(
+                R.id.tvSectionHeader
+            )
 
-            for (line in cleanedText.lines()) {
-                val trimmed = line.trim()
-                if (trimmed.isEmpty()) continue
+        val webViewContent =
+            findViewById<WebView>(
+                R.id.webViewContent
+            )
 
-                if ((trimmed.startsWith("Chapter", ignoreCase = true) || trimmed.startsWith("Section", ignoreCase = true))
-                    && !trimmed.equals(currentTitle, ignoreCase = true)) {
-                    detectedSubHeader = trimmed
-                    break
-                }
-            }
+        val scrollViewContent =
+            findViewById<View>(
+                R.id.scrollViewContent
+            )
 
-            if (!detectedSubHeader.isNullOrBlank()) {
-                tvSectionHeader?.text = detectedSubHeader
-                tvSectionHeader?.visibility = View.VISIBLE
+        val ivScannedImage =
+            findViewById<ImageView>(
+                R.id.ivScannedImage
+            )
+
+        val cardScannedImage =
+            findViewById<View>(
+                R.id.cardScannedImage
+            )
+
+        val cleanedContent =
+            sanitizeOcrText(
+                rawContent
+            )
+
+        val textOnly =
+            removeDiagramHtml(
+                cleanedContent
+            )
+
+        val diagramHtml =
+            getDiagramHtml(
+                cleanedContent
+            )
+
+        /*
+         * Keep the original viewer layout intact:
+         * Original Whiteboard -> Structured Notes -> Detected Diagrams.
+         *
+         * Do not switch the whole result into one WebView just because a
+         * diagram image exists. That was what made the page look like one
+         * long non-editable document.
+         */
+        webViewContent?.visibility =
+            View.GONE
+
+        scrollViewContent?.visibility =
+            View.VISIBLE
+
+        val sourcePath =
+            currentSourcePath()
+
+        if (
+            ivScannedImage != null &&
+            cardScannedImage != null &&
+            !sourcePath.isNullOrBlank() &&
+            File(sourcePath).exists()
+        ) {
+            val bitmap =
+                BitmapFactory.decodeFile(
+                    sourcePath
+                )
+
+            if (
+                bitmap != null
+            ) {
+                ivScannedImage.setImageBitmap(
+                    bitmap
+                )
+
+                ivScannedImage.visibility =
+                    View.VISIBLE
+
+                cardScannedImage.visibility =
+                    View.VISIBLE
             } else {
-                tvSectionHeader?.visibility = View.GONE
+                ivScannedImage.visibility =
+                    View.GONE
+
+                cardScannedImage.visibility =
+                    View.GONE
+            }
+        } else {
+            ivScannedImage?.visibility =
+                View.GONE
+
+            cardScannedImage?.visibility =
+                View.GONE
+        }
+
+        var detectedSubHeader:
+            String? =
+            null
+
+        for (
+            line in
+            cleanHtmlAndMarkdown(
+                textOnly
+            ).lines()
+        ) {
+            val trimmed =
+                line.trim()
+
+            if (
+                trimmed.isEmpty()
+            ) {
+                continue
             }
 
-            val htmlFormatted = cleanedText
-                .replace(Regex("\\*\\*(.*?)\\*\\*"), "<b>$1</b>")
-                .replace("\n", "<br/>")
+            if (
+                (
+                    trimmed.startsWith(
+                        "Chapter",
+                        ignoreCase =
+                            true
+                    ) ||
+                    trimmed.startsWith(
+                        "Section",
+                        ignoreCase =
+                            true
+                    )
+                ) &&
+                !trimmed.equals(
+                    currentTitle,
+                    ignoreCase =
+                        true
+                )
+            ) {
+                detectedSubHeader =
+                    trimmed
 
-            tvPdfContent?.text = HtmlCompat.fromHtml(htmlFormatted, HtmlCompat.FROM_HTML_MODE_COMPACT)
-            tvPdfContent?.setTextColor(ContextCompat.getColor(this, R.color.nts_text))
-
-            applySavedHighlightsToDisplayedText()
-
-            findViewById<DrawingView>(R.id.drawingView)?.post {
-                loadMarkupData()
+                break
             }
         }
+
+        if (
+            !detectedSubHeader
+                .isNullOrBlank()
+        ) {
+            tvSectionHeader?.text =
+                detectedSubHeader
+
+            tvSectionHeader?.visibility =
+                View.VISIBLE
+        } else {
+            tvSectionHeader?.visibility =
+                View.GONE
+        }
+
+        val htmlFormatted =
+            textOnly
+                .replace(
+                    Regex(
+                        "\\*\\*(.*?)\\*\\*"
+                    ),
+                    "<b>$1</b>"
+                )
+                .replace(
+                    "\n",
+                    "<br/>"
+                )
+
+        tvPdfContent?.text =
+            HtmlCompat.fromHtml(
+                htmlFormatted,
+                HtmlCompat
+                    .FROM_HTML_MODE_COMPACT
+            )
+
+        tvPdfContent?.setTextColor(
+            ContextCompat.getColor(
+                this,
+                R.color.nts_text
+            )
+        )
+
+        tvPdfContent?.visibility =
+            if (
+                isEditMode
+            ) {
+                View.GONE
+            } else {
+                View.VISIBLE
+            }
+
+        renderDetectedDiagrams(
+            diagramHtml
+        )
+
+        applySavedHighlightsToDisplayedText()
+
+        findViewById<DrawingView>(
+            R.id.drawingView
+        )?.post {
+            loadMarkupData()
+        }
+
+        updatePageIndicator()
+    }
+
+    private fun renderDetectedDiagrams(
+        diagramHtml: String
+    ) {
+        val section =
+            findViewById<View>(
+                R.id.llDetectedVisuals
+            )
+
+        val container =
+            findViewById<LinearLayout>(
+                R.id.llDetectedVisualItems
+            )
+
+        container?.removeAllViews()
+
+        if (
+            diagramHtml.isBlank() ||
+            container == null
+        ) {
+            section?.visibility =
+                View.GONE
+
+            return
+        }
+
+        val imagePaths =
+            extractDiagramImagePaths(
+                diagramHtml
+            )
+
+        if (
+            imagePaths.isEmpty()
+        ) {
+            section?.visibility =
+                View.GONE
+
+            return
+        }
+
+        imagePaths.forEach {
+                path ->
+
+            val bitmap =
+                BitmapFactory.decodeFile(
+                    path
+                ) ?: return@forEach
+
+            val card =
+                MaterialCardView(
+                    this
+                ).apply {
+                    radius =
+                        dp(
+                            16
+                        ).toFloat()
+
+                    cardElevation =
+                        0f
+
+                    strokeWidth =
+                        dp(
+                            1
+                        )
+
+                    strokeColor =
+                        ContextCompat.getColor(
+                            this@PdfViewerActivity,
+                            R.color.nts_blue_line
+                        )
+
+                    setCardBackgroundColor(
+                        ContextCompat.getColor(
+                            this@PdfViewerActivity,
+                            R.color.nts_surface_blue_soft
+                        )
+                    )
+                }
+
+            val image =
+                ImageView(
+                    this
+                ).apply {
+                    setImageBitmap(
+                        bitmap
+                    )
+
+                    scaleType =
+                        ImageView.ScaleType.FIT_CENTER
+
+                    adjustViewBounds =
+                        true
+
+                    setPadding(
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        )
+                    )
+
+                    contentDescription =
+                        "Detected whiteboard diagram"
+                }
+
+            card.addView(
+                image,
+                android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
+
+            container.addView(
+                card,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin =
+                        dp(
+                            10
+                        )
+                }
+            )
+        }
+
+        section?.visibility =
+            if (
+                container.childCount >
+                0
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+    }
+
+    private fun extractDiagramImagePaths(
+        diagramHtml: String
+    ): List<String> {
+        val regex =
+            Regex(
+                """src\s*=\s*['"]file://([^'"]+)['"]""",
+                RegexOption.IGNORE_CASE
+            )
+
+        return regex
+            .findAll(
+                diagramHtml
+            )
+            .mapNotNull {
+                match ->
+
+                match.groupValues
+                    .getOrNull(
+                        1
+                    )
+                    ?.takeIf {
+                        path ->
+                        path.isNotBlank() &&
+                            File(path).exists()
+                    }
+            }
+            .distinct()
+            .toList()
     }
 
     private fun toggleInlineEditMode() {
@@ -2228,13 +3148,18 @@ class PdfViewerActivity : AppCompatActivity() {
                 }
 
             currentRawContent =
-                if (preservedDiagramHtml.isBlank()) {
+                if (
+                    preservedDiagramHtml
+                        .isBlank()
+                ) {
                     updatedTextHtml
                 } else {
                     updatedTextHtml +
-                            "<br/><br/>" +
-                            preservedDiagramHtml
+                        "<br/><br/>" +
+                        preservedDiagramHtml
                 }
+
+            syncCurrentPageContentFromRaw()
 
             etInlineEditor?.visibility = View.GONE
             tvPdfContent?.visibility = View.VISIBLE
@@ -2519,7 +3444,11 @@ class PdfViewerActivity : AppCompatActivity() {
             mkdirs()
         }
 
-        val path = currentImagePath?.takeIf { it.isNotBlank() }
+        val path =
+            currentSourcePath()
+                ?.takeIf {
+                    it.isNotBlank()
+                }
 
         val stableName =
             if (path != null) {
@@ -2571,15 +3500,27 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        syncCurrentPageContentFromRaw()
         saveMarkupData()
         super.onPause()
     }
 
     private fun shareDocument() {
+        val shareContent =
+            if (
+                isBatchDocument()
+            ) {
+                combinedBatchContent()
+            } else {
+                currentRawContent
+            }
+
         DocxExporter.shareAsDocx(
             context = this,
             title = currentTitle,
-            content = cleanHtmlAndMarkdown(currentRawContent)
+            content = cleanHtmlAndMarkdown(
+                shareContent
+            )
         )
     }
 
@@ -2811,12 +3752,29 @@ class PdfViewerActivity : AppCompatActivity() {
                 db.updateNoteFolder(existingNote.id, folderId)
                 currentNote = existingNote.copy(folderId = folderId)
             } else {
+                syncCurrentPageContentFromRaw()
+
                 val newNote = Note(
-                    folderId = folderId,
-                    title = currentTitle,
-                    content = buildPersistedContent(),
-                    imagePath = currentImagePath ?: "",
-                    dateEdited = "Updated"
+                    folderId =
+                        folderId,
+                    title =
+                        currentTitle,
+                    content =
+                        if (
+                            isBatchDocument()
+                        ) {
+                            combinedBatchContent()
+                        } else {
+                            buildPersistedContent()
+                        },
+                    imagePath =
+                        currentImagePath ?: "",
+                    sourceImagePathsJson =
+                        sourcePathsJson(),
+                    pageContentsJson =
+                        pageContentsJson(),
+                    dateEdited =
+                        "Updated"
                 )
                 val newId = db.insertNote(newNote)
                 currentNoteId = newId.toInt()
@@ -2883,67 +3841,231 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun saveNoteToDatabase() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
-            val path = currentImagePath
+        syncCurrentPageContentFromRaw()
 
-            // Search for existing note by ID, or fallback to image path to prevent duplicates
-            val existingNote = currentNote
-                ?: (if (currentNoteId != -1) db.getNoteById(currentNoteId) else null)
-                ?: (if (!path.isNullOrEmpty()) db.getNoteByPath(path) else null)
+        val sourcePathsJson =
+            sourcePathsJson()
 
-            val formattedDate = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date())
+        val pageContentsJson =
+            pageContentsJson()
 
-            if (existingNote != null) {
-                val updatedNote = existingNote.copy(
-                    title = currentTitle,
-                    content = buildPersistedContent(),
-                    imagePath = path ?: existingNote.imagePath
+        val contentToStore =
+            if (
+                isBatchDocument()
+            ) {
+                combinedBatchContent()
+            } else {
+                buildPersistedContent()
+            }
+
+        lifecycleScope.launch(
+            Dispatchers.IO
+        ) {
+            val db =
+                AppDatabase
+                    .getDatabase(
+                        this@PdfViewerActivity
+                    )
+                    .appDao()
+
+            val path =
+                currentImagePath
+
+            // Search for existing note by ID, or fallback to primary image path.
+            val existingNote =
+                currentNote
+                    ?: (
+                        if (
+                            currentNoteId !=
+                            -1
+                        ) {
+                            db.getNoteById(
+                                currentNoteId
+                            )
+                        } else {
+                            null
+                        }
+                        )
+                    ?: (
+                        if (
+                            !path.isNullOrEmpty()
+                        ) {
+                            db.getNoteByPath(
+                                path
+                            )
+                        } else {
+                            null
+                        }
+                        )
+
+            val formattedDate =
+                SimpleDateFormat(
+                    "MMM d, yyyy",
+                    Locale.getDefault()
+                ).format(
+                    Date()
                 )
-                db.updateNote(updatedNote)
-                currentNote = updatedNote
-                currentNoteId = updatedNote.id
 
-                // Sync scan history title if path exists
-                val activePath = path ?: existingNote.imagePath
-                if (!activePath.isNullOrEmpty()) {
-                    db.updateScanHistoryTitleByPath(activePath, currentTitle)
+            if (
+                existingNote != null
+            ) {
+                val updatedNote =
+                    existingNote.copy(
+                        title =
+                            currentTitle,
+                        content =
+                            contentToStore,
+                        imagePath =
+                            path
+                                ?: existingNote.imagePath,
+                        sourceImagePathsJson =
+                            sourcePathsJson,
+                        pageContentsJson =
+                            pageContentsJson
+                    )
+
+                db.updateNote(
+                    updatedNote
+                )
+
+                currentNote =
+                    updatedNote
+
+                currentNoteId =
+                    updatedNote.id
+
+                val activePath =
+                    path
+                        ?: existingNote.imagePath
+
+                if (
+                    !activePath.isNullOrEmpty()
+                ) {
+                    val existingHistory =
+                        db.getScanHistoryByPath(
+                            activePath
+                        )
+
+                    if (
+                        existingHistory != null
+                    ) {
+                        db.updateScanHistory(
+                            existingHistory.copy(
+                                title =
+                                    currentTitle,
+                                sourceImagePathsJson =
+                                    sourcePathsJson,
+                                pageContentsJson =
+                                    pageContentsJson
+                            )
+                        )
+                    } else {
+                        db.insertScanHistory(
+                            ScanHistory(
+                                title =
+                                    currentTitle,
+                                imagePath =
+                                    activePath,
+                                sourceImagePathsJson =
+                                    sourcePathsJson,
+                                pageContentsJson =
+                                    pageContentsJson,
+                                timestamp =
+                                    System.currentTimeMillis(),
+                                date =
+                                    formattedDate
+                            )
+                        )
+                    }
                 }
             } else {
-                // Insert new note
-                val newNote = Note(
-                    title = currentTitle,
-                    content = buildPersistedContent(),
-                    imagePath = path ?: "",
-                    dateEdited = formattedDate
-                )
-                val insertedId = db.insertNote(newNote)
-                currentNoteId = insertedId.toInt()
-                currentNote = newNote.copy(id = currentNoteId)
+                val newNote =
+                    Note(
+                        title =
+                            currentTitle,
+                        content =
+                            contentToStore,
+                        imagePath =
+                            path ?: "",
+                        sourceImagePathsJson =
+                            sourcePathsJson,
+                        pageContentsJson =
+                            pageContentsJson,
+                        dateEdited =
+                            formattedDate
+                    )
 
-                // Sync / Insert into ScanHistory table
-                if (!path.isNullOrEmpty()) {
-                    val existingHistory = db.getScanHistoryByPath(path)
-                    if (existingHistory == null) {
-                        val history = ScanHistory(
-                            title = currentTitle,
-                            imagePath = path,
-                            timestamp = System.currentTimeMillis(),
-                            date = formattedDate
+                val insertedId =
+                    db.insertNote(
+                        newNote
+                    )
+
+                currentNoteId =
+                    insertedId.toInt()
+
+                currentNote =
+                    newNote.copy(
+                        id =
+                            currentNoteId
+                    )
+
+                if (
+                    !path.isNullOrEmpty()
+                ) {
+                    val existingHistory =
+                        db.getScanHistoryByPath(
+                            path
                         )
-                        db.insertScanHistory(history)
+
+                    if (
+                        existingHistory ==
+                        null
+                    ) {
+                        db.insertScanHistory(
+                            ScanHistory(
+                                title =
+                                    currentTitle,
+                                imagePath =
+                                    path,
+                                sourceImagePathsJson =
+                                    sourcePathsJson,
+                                pageContentsJson =
+                                    pageContentsJson,
+                                timestamp =
+                                    System.currentTimeMillis(),
+                                date =
+                                    formattedDate
+                            )
+                        )
                     } else {
-                        db.updateScanHistoryTitleByPath(path, currentTitle)
+                        db.updateScanHistory(
+                            existingHistory.copy(
+                                title =
+                                    currentTitle,
+                                sourceImagePathsJson =
+                                    sourcePathsJson,
+                                pageContentsJson =
+                                    pageContentsJson
+                            )
+                        )
                     }
                 }
             }
 
-            withContext(Dispatchers.Main) {
+            withContext(
+                Dispatchers.Main
+            ) {
                 saveMarkupData()
-                Toast.makeText(this@PdfViewerActivity, "Note saved!", Toast.LENGTH_SHORT).show()
+
+                Toast.makeText(
+                    this@PdfViewerActivity,
+                    "Note saved!",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
+
     private fun buildPdfMarkupSnapshot(): PdfMarkupSnapshot? {
         val textView =
             findViewById<TextView>(
@@ -3005,18 +4127,984 @@ class PdfViewerActivity : AppCompatActivity() {
         )
     }
 
-    private fun writePdfToUri(uri: Uri) {
-        val snapshot =
-            pendingPdfSnapshot
 
-        if (snapshot == null) {
-            Toast.makeText(
-                this,
-                "Unable to prepare PDF layout.",
-                Toast.LENGTH_SHORT
-            ).show()
-            return
+    private data class PageMarkupForExport(
+        val highlights: List<HighlightRange>,
+        val strokes: List<DrawingView.VectorStroke>
+    )
+
+    private fun markupFileForSourcePath(
+        sourcePath: String?
+    ): File? {
+        val path =
+            sourcePath
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?: return null
+
+        val directory =
+            File(
+                filesDir,
+                "annotations"
+            ).apply {
+                mkdirs()
+            }
+
+        val stableName =
+            "image_${path.hashCode().toUInt().toString(16)}_markup.json"
+
+        return File(
+            directory,
+            stableName
+        )
+    }
+
+    private fun readMarkupForExport(
+        sourcePath: String?
+    ): PageMarkupForExport {
+        val file =
+            markupFileForSourcePath(
+                sourcePath
+            )
+
+        if (
+            file == null ||
+            !file.exists()
+        ) {
+            return PageMarkupForExport(
+                highlights =
+                    emptyList(),
+                strokes =
+                    emptyList()
+            )
         }
+
+        return runCatching {
+            val root =
+                JSONObject(
+                    file.readText()
+                )
+
+            val highlights =
+                mutableListOf<HighlightRange>()
+
+            val highlightsJson =
+                root.optJSONArray(
+                    "highlights"
+                )
+                    ?: JSONArray()
+
+            for (
+                index in
+                0 until highlightsJson.length()
+            ) {
+                val item =
+                    highlightsJson
+                        .optJSONObject(
+                            index
+                        )
+                        ?: continue
+
+                highlights.add(
+                    HighlightRange(
+                        start =
+                            item.optInt(
+                                "start"
+                            ),
+                        end =
+                            item.optInt(
+                                "end"
+                            ),
+                        color =
+                            item.optInt(
+                                "color"
+                            )
+                    )
+                )
+            }
+
+            val strokes =
+                mutableListOf<DrawingView.VectorStroke>()
+
+            val strokesJson =
+                root.optJSONArray(
+                    "strokes"
+                )
+                    ?: JSONArray()
+
+            for (
+                index in
+                0 until strokesJson.length()
+            ) {
+                val strokeObject =
+                    strokesJson
+                        .optJSONObject(
+                            index
+                        )
+                        ?: continue
+
+                val points =
+                    mutableListOf<DrawingView.StrokePoint>()
+
+                val pointsJson =
+                    strokeObject
+                        .optJSONArray(
+                            "points"
+                        )
+                        ?: JSONArray()
+
+                for (
+                    pointIndex in
+                    0 until pointsJson.length()
+                ) {
+                    val pointObject =
+                        pointsJson
+                            .optJSONObject(
+                                pointIndex
+                            )
+                            ?: continue
+
+                    points.add(
+                        DrawingView.StrokePoint(
+                            x =
+                                pointObject
+                                    .optDouble(
+                                        "x"
+                                    )
+                                    .toFloat(),
+                            y =
+                                pointObject
+                                    .optDouble(
+                                        "y"
+                                    )
+                                    .toFloat()
+                        )
+                    )
+                }
+
+                if (
+                    points.size >=
+                    2
+                ) {
+                    strokes.add(
+                        DrawingView.VectorStroke(
+                            points =
+                                points,
+                            color =
+                                strokeObject
+                                    .optInt(
+                                        "color"
+                                    ),
+                            width =
+                                strokeObject
+                                    .optDouble(
+                                        "width"
+                                    )
+                                    .toFloat(),
+                            alpha =
+                                strokeObject
+                                    .optInt(
+                                        "alpha",
+                                        255
+                                    )
+                        )
+                    )
+                }
+            }
+
+            PageMarkupForExport(
+                highlights =
+                    highlights,
+                strokes =
+                    strokes
+            )
+
+        }.getOrElse {
+            PageMarkupForExport(
+                highlights =
+                    emptyList(),
+                strokes =
+                    emptyList()
+            )
+        }
+    }
+
+    private fun buildAnnotationSnapshotForPage(
+        rawPage: String,
+        sourcePath: String?
+    ): Bitmap? {
+        val markup =
+            readMarkupForExport(
+                sourcePath
+            )
+
+        if (
+            markup.highlights.isEmpty() &&
+            markup.strokes.isEmpty()
+        ) {
+            return null
+        }
+
+        val referenceTextView =
+            findViewById<TextView>(
+                R.id.tvPdfContent
+            )
+
+        val referenceDrawingView =
+            findViewById<DrawingView>(
+                R.id.drawingView
+            )
+
+        val logicalWidth =
+            referenceTextView
+                ?.width
+                ?.takeIf {
+                    it > 0
+                }
+                ?: (
+                    resources
+                        .displayMetrics
+                        .widthPixels -
+                    dpExport(
+                        64
+                    )
+                    ).coerceAtLeast(
+                        320
+                    )
+
+        val styledText =
+            buildReviewerStyledText(
+                cleanHtmlAndMarkdown(
+                    removeDiagramHtml(
+                        rawPage
+                    )
+                )
+            )
+
+        val text =
+            SpannableStringBuilder(
+                styledText
+            )
+
+        markup.highlights
+            .forEach {
+                    range ->
+
+                val start =
+                    range.start
+                        .coerceIn(
+                            0,
+                            text.length
+                        )
+
+                val end =
+                    range.end
+                        .coerceIn(
+                            start,
+                            text.length
+                        )
+
+                if (
+                    end >
+                    start
+                ) {
+                    text.setSpan(
+                        BackgroundColorSpan(
+                            range.color
+                        ),
+                        start,
+                        end,
+                        Spannable
+                            .SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
+
+        val bodyPaint =
+            TextPaint().apply {
+                textSize =
+                    13f *
+                    resources
+                        .displayMetrics
+                        .scaledDensity
+
+                color =
+                    Color.BLACK
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                isAntiAlias =
+                    true
+            }
+
+        val layout =
+            StaticLayout
+                .Builder
+                .obtain(
+                    text,
+                    0,
+                    text.length,
+                    bodyPaint,
+                    logicalWidth
+                )
+                .setAlignment(
+                    Layout.Alignment.ALIGN_NORMAL
+                )
+                .setIncludePad(
+                    false
+                )
+                .setLineSpacing(
+                    2f *
+                    resources
+                        .displayMetrics
+                        .density,
+                    1f
+                )
+                .build()
+
+        val strokeBottom =
+            markup.strokes
+                .flatMap {
+                    it.points
+                }
+                .maxOfOrNull {
+                    it.y
+                }
+                ?: 0f
+
+        val logicalHeight =
+            maxOf(
+                layout.height +
+                    dpExport(
+                        24
+                    ),
+                strokeBottom
+                    .toInt() +
+                    dpExport(
+                        24
+                    ),
+                referenceDrawingView
+                    ?.height
+                    ?: 0,
+                dpExport(
+                    120
+                )
+            )
+
+        val bitmap =
+            Bitmap.createBitmap(
+                logicalWidth,
+                logicalHeight,
+                Bitmap.Config.ARGB_8888
+            )
+
+        val canvas =
+            Canvas(
+                bitmap
+            )
+
+        canvas.drawColor(
+            Color.WHITE
+        )
+
+        canvas.save()
+
+        canvas.translate(
+            0f,
+            dpExport(
+                10
+            ).toFloat()
+        )
+
+        layout.draw(
+            canvas
+        )
+
+        canvas.restore()
+
+        markup.strokes
+            .forEach {
+                    stroke ->
+
+                if (
+                    stroke.points.size <
+                    2
+                ) {
+                    return@forEach
+                }
+
+                val paint =
+                    Paint(
+                        Paint.ANTI_ALIAS_FLAG
+                    ).apply {
+                        color =
+                            stroke.color
+
+                        strokeWidth =
+                            stroke.width
+
+                        alpha =
+                            stroke.alpha
+
+                        style =
+                            Paint.Style.STROKE
+
+                        strokeCap =
+                            Paint.Cap.ROUND
+
+                        strokeJoin =
+                            Paint.Join.ROUND
+                    }
+
+                val path =
+                    Path()
+
+                stroke.points
+                    .forEachIndexed {
+                            index,
+                            point ->
+
+                        /*
+                         * DrawingView stores pen points NORMALIZED from 0f..1f.
+                         * Convert them back to bitmap pixel coordinates before
+                         * drawing the exported annotation snapshot.
+                         */
+                        val px =
+                            point.x *
+                            bitmap.width
+
+                        val py =
+                            point.y *
+                            bitmap.height
+
+                        if (
+                            index ==
+                            0
+                        ) {
+                            path.moveTo(
+                                px,
+                                py
+                            )
+                        } else {
+                            path.lineTo(
+                                px,
+                                py
+                            )
+                        }
+                    }
+
+                canvas.drawPath(
+                    path,
+                    paint
+                )
+            }
+
+        return bitmap
+    }
+
+    private fun buildAllAnnotationSnapshots():
+        List<Bitmap?> {
+        saveMarkupData()
+
+        val pages =
+            currentPageContents
+                .toList()
+                .ifEmpty {
+                    listOf(
+                        currentRawContent
+                    )
+                }
+
+        val paths =
+            currentImagePaths
+                .toList()
+                .ifEmpty {
+                    listOfNotNull(
+                        currentImagePath
+                    )
+                }
+
+        return pages.mapIndexed {
+                index,
+                page ->
+
+            buildAnnotationSnapshotForPage(
+                rawPage =
+                    page,
+                sourcePath =
+                    paths.getOrNull(
+                        index
+                    )
+                        ?: currentImagePath
+            )
+        }
+    }
+
+    private fun dpExport(
+        value: Int
+    ): Int =
+        (
+            value *
+            resources
+                .displayMetrics
+                .density
+            ).toInt()
+
+    private enum class ReviewerPdfBlockType {
+        SECTION,
+        SUBHEADING,
+        BULLET,
+        BODY
+    }
+
+    private data class ReviewerPdfBlock(
+        val type: ReviewerPdfBlockType,
+        val text: String
+    )
+
+    private fun reviewerPdfBlocks(
+        plainText: String
+    ): List<ReviewerPdfBlock> {
+        val blocks =
+            mutableListOf<ReviewerPdfBlock>()
+
+        plainText
+            .replace(
+                "\r\n",
+                "\n"
+            )
+            .split("\n")
+            .forEach {
+                    rawLine ->
+
+                val line =
+                    rawLine
+                        .trim()
+
+                if (
+                    line.isBlank()
+                ) {
+                    return@forEach
+                }
+
+                val normalized =
+                    line
+                        .replace(
+                            Regex(
+                                """^[▪■□◦●○]+\s*"""
+                            ),
+                            "• "
+                        )
+
+                val type =
+                    when {
+                        isReviewerSectionHeader(
+                            normalized
+                        ) ->
+                            ReviewerPdfBlockType.SECTION
+
+                        normalized.startsWith(
+                            "•"
+                        ) ||
+                        normalized.startsWith(
+                            "-"
+                        ) ->
+                            ReviewerPdfBlockType.BULLET
+
+                        isReviewerSubheading(
+                            normalized
+                        ) ->
+                            ReviewerPdfBlockType.SUBHEADING
+
+                        else ->
+                            ReviewerPdfBlockType.BODY
+                    }
+
+                blocks.add(
+                    ReviewerPdfBlock(
+                        type =
+                            type,
+                        text =
+                            normalized
+                    )
+                )
+            }
+
+        return blocks
+    }
+
+    private fun drawReviewerPdfFooter(
+        canvas: Canvas,
+        pageNumber: Int,
+        pageWidth: Int,
+        pageHeight: Int,
+        outerMargin: Float,
+        accentPaint: Paint,
+        footerPaint: Paint
+    ) {
+        val lineY =
+            pageHeight -
+                27f
+
+        canvas.drawRect(
+            outerMargin,
+            lineY,
+            pageWidth -
+                outerMargin -
+                34f,
+            lineY +
+                1.1f,
+            accentPaint
+        )
+
+        val pageBox =
+            RectF(
+                pageWidth -
+                    outerMargin -
+                    28f,
+                lineY -
+                    10f,
+                pageWidth -
+                    outerMargin,
+                lineY +
+                    14f
+            )
+
+        canvas.drawRoundRect(
+            pageBox,
+            2f,
+            2f,
+            accentPaint
+        )
+
+        val pageText =
+            pageNumber
+                .toString()
+
+        val textWidth =
+            footerPaint
+                .measureText(
+                    pageText
+                )
+
+        canvas.drawText(
+            pageText,
+            pageBox.centerX() -
+                textWidth /
+                2f,
+            pageBox.centerY() +
+                3.7f,
+            footerPaint
+        )
+    }
+
+    private fun reviewerBlockHeight(
+        block: ReviewerPdfBlock,
+        width: Int,
+        bodyPaint: TextPaint,
+        headingPaint: TextPaint,
+        sectionPaint: TextPaint
+    ): Int {
+        return when (
+            block.type
+        ) {
+            ReviewerPdfBlockType.SECTION -> {
+                val layout =
+                    createStaticLayout(
+                        block.text.uppercase(
+                            Locale.getDefault()
+                        ),
+                        sectionPaint,
+                        (
+                            width -
+                            16
+                        ).coerceAtLeast(
+                            1
+                        )
+                    )
+
+                layout.height +
+                    14
+            }
+
+            ReviewerPdfBlockType.SUBHEADING -> {
+                val layout =
+                    createStaticLayout(
+                        block.text,
+                        headingPaint,
+                        (
+                            width -
+                            16
+                        ).coerceAtLeast(
+                            1
+                        )
+                    )
+
+                layout.height +
+                    14
+            }
+
+            ReviewerPdfBlockType.BULLET -> {
+                val clean =
+                    block.text
+                        .trimStart(
+                            '•',
+                            '-',
+                            ' '
+                        )
+
+                val layout =
+                    createStaticLayout(
+                        clean,
+                        bodyPaint,
+                        (
+                            width -
+                            18
+                        ).coerceAtLeast(
+                            1
+                        )
+                    )
+
+                layout.height +
+                    7
+            }
+
+            ReviewerPdfBlockType.BODY -> {
+                val layout =
+                    createStaticLayout(
+                        block.text,
+                        bodyPaint,
+                        width.coerceAtLeast(
+                            1
+                        )
+                    )
+
+                layout.height +
+                    7
+            }
+        }
+    }
+
+    private fun drawReviewerBlock(
+        canvas: Canvas,
+        block: ReviewerPdfBlock,
+        x: Float,
+        y: Float,
+        width: Int,
+        bodyPaint: TextPaint,
+        headingPaint: TextPaint,
+        sectionPaint: TextPaint,
+        sectionFillPaint: Paint,
+        subheadingFillPaint: Paint,
+        bulletPaint: Paint
+    ): Float {
+        return when (
+            block.type
+        ) {
+            ReviewerPdfBlockType.SECTION -> {
+                val text =
+                    block.text.uppercase(
+                        Locale.getDefault()
+                    )
+
+                val layout =
+                    createStaticLayout(
+                        text,
+                        sectionPaint,
+                        (
+                            width -
+                            16
+                        ).coerceAtLeast(
+                            1
+                        )
+                    )
+
+                val height =
+                    maxOf(
+                        20f,
+                        layout.height +
+                            7f
+                    )
+
+                val rect =
+                    RectF(
+                        x,
+                        y,
+                        x +
+                            width,
+                        y +
+                            height
+                    )
+
+                canvas.drawRect(
+                    rect,
+                    sectionFillPaint
+                )
+
+                canvas.withTranslation(
+                    x +
+                        8f,
+                    y +
+                        (
+                            height -
+                            layout.height
+                        ) /
+                        2f
+                ) {
+                    layout.draw(
+                        canvas
+                    )
+                }
+
+                y +
+                    height +
+                    6f
+            }
+
+            ReviewerPdfBlockType.SUBHEADING -> {
+                val layout =
+                    createStaticLayout(
+                        block.text,
+                        headingPaint,
+                        (
+                            width -
+                            16
+                        ).coerceAtLeast(
+                            1
+                        )
+                    )
+
+                val height =
+                    maxOf(
+                        18f,
+                        layout.height +
+                            6f
+                    )
+
+                val rect =
+                    RectF(
+                        x,
+                        y,
+                        x +
+                            width,
+                        y +
+                            height
+                    )
+
+                canvas.drawRect(
+                    rect,
+                    subheadingFillPaint
+                )
+
+                canvas.withTranslation(
+                    x +
+                        8f,
+                    y +
+                        (
+                            height -
+                            layout.height
+                        ) /
+                        2f
+                ) {
+                    layout.draw(
+                        canvas
+                    )
+                }
+
+                y +
+                    height +
+                    6f
+            }
+
+            ReviewerPdfBlockType.BULLET -> {
+                val clean =
+                    block.text
+                        .trimStart(
+                            '•',
+                            '-',
+                            ' '
+                        )
+
+                canvas.drawCircle(
+                    x +
+                        4.5f,
+                    y +
+                        6.2f,
+                    1.5f,
+                    bulletPaint
+                )
+
+                val layout =
+                    createStaticLayout(
+                        clean,
+                        bodyPaint,
+                        (
+                            width -
+                            18
+                        ).coerceAtLeast(
+                            1
+                        )
+                    )
+
+                canvas.withTranslation(
+                    x +
+                        12f,
+                    y
+                ) {
+                    layout.draw(
+                        canvas
+                    )
+                }
+
+                y +
+                    layout.height +
+                    6f
+            }
+
+            ReviewerPdfBlockType.BODY -> {
+                val layout =
+                    createStaticLayout(
+                        block.text,
+                        bodyPaint,
+                        width.coerceAtLeast(
+                            1
+                        )
+                    )
+
+                canvas.withTranslation(
+                    x,
+                    y
+                ) {
+                    layout.draw(
+                        canvas
+                    )
+                }
+
+                y +
+                    layout.height +
+                    6f
+            }
+        }
+    }
+
+    private fun writePdfToUri(
+        uri: Uri
+    ) {
+        syncCurrentPageContentFromRaw()
+
+        val exportPages =
+            currentPageContents
+                .toList()
+                .ifEmpty {
+                    listOf(
+                        currentRawContent
+                    )
+                }
 
         lifecycleScope.launch(
             Dispatchers.IO
@@ -3025,9 +5113,34 @@ class PdfViewerActivity : AppCompatActivity() {
                 val pdfDocument =
                     PdfDocument()
 
-                val pageWidth = 595
-                val pageHeight = 842
-                val outerMargin = 28f
+                val pageWidth =
+                    595
+
+                val pageHeight =
+                    842
+
+                val outerMargin =
+                    34f
+
+                val columnGap =
+                    18f
+
+                val footerReserve =
+                    38f
+
+                val contentWidth =
+                    pageWidth -
+                        (
+                            outerMargin *
+                            2f
+                        )
+
+                val columnWidth =
+                    (
+                        contentWidth -
+                            columnGap
+                        ) /
+                        2f
 
                 val titleTypeface =
                     ResourcesCompat.getFont(
@@ -3035,176 +5148,819 @@ class PdfViewerActivity : AppCompatActivity() {
                         R.font.poppins_semibold
                     )
 
+                val bodyTypeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                val accent =
+                    "#244F8F"
+                        .toColorInt()
+
+                val lightBlue =
+                    "#DCE9FB"
+                        .toColorInt()
+
+                val textColor =
+                    "#171717"
+                        .toColorInt()
+
+                val secondaryText =
+                    "#4B5563"
+                        .toColorInt()
+
                 val titlePaint =
                     TextPaint().apply {
-                        textSize = 14f
-                        color = Color.BLACK
-                        typeface = titleTypeface
-                        isAntiAlias = true
+                        textSize =
+                            17.5f
+
+                        color =
+                            "#081B57"
+                                .toColorInt()
+
+                        typeface =
+                            titleTypeface
+
+                        isAntiAlias =
+                            true
                     }
 
-                val contentWidth =
-                    pageWidth -
-                            (outerMargin * 2f)
+                val bodyPaint =
+                    TextPaint().apply {
+                        textSize =
+                            8.2f
 
-                val bitmap =
-                    snapshot.bitmap
+                        color =
+                            textColor
 
-                val scale =
-                    contentWidth /
-                            bitmap.width
-                                .coerceAtLeast(1)
-                                .toFloat()
+                        typeface =
+                            bodyTypeface
 
-                var sourceTop = 0f
-                var pageNumber = 1
-                var firstPage = true
+                        isAntiAlias =
+                            true
+                    }
 
-                while (
-                    sourceTop <
-                    bitmap.height
-                        .toFloat()
+                val headingPaint =
+                    TextPaint().apply {
+                        textSize =
+                            8.3f
+
+                        color =
+                            "#163D79"
+                                .toColorInt()
+
+                        typeface =
+                            titleTypeface
+
+                        isAntiAlias =
+                            true
+                    }
+
+                val sectionTextPaint =
+                    TextPaint().apply {
+                        textSize =
+                            7.7f
+
+                        color =
+                            Color.WHITE
+
+                        typeface =
+                            titleTypeface
+
+                        isAntiAlias =
+                            true
+                    }
+
+                val metaPaint =
+                    TextPaint().apply {
+                        textSize =
+                            6.8f
+
+                        color =
+                            secondaryText
+
+                        typeface =
+                            bodyTypeface
+
+                        isAntiAlias =
+                            true
+                    }
+
+                val sectionFillPaint =
+                    Paint(
+                        Paint.ANTI_ALIAS_FLAG
+                    ).apply {
+                        color =
+                            accent
+                    }
+
+                val subheadingFillPaint =
+                    Paint(
+                        Paint.ANTI_ALIAS_FLAG
+                    ).apply {
+                        color =
+                            lightBlue
+                    }
+
+                val rulePaint =
+                    Paint(
+                        Paint.ANTI_ALIAS_FLAG
+                    ).apply {
+                        color =
+                            "#D5DCE8"
+                                .toColorInt()
+
+                        strokeWidth =
+                            0.7f
+                    }
+
+                val bulletPaint =
+                    Paint(
+                        Paint.ANTI_ALIAS_FLAG
+                    ).apply {
+                        color =
+                            Color.BLACK
+                    }
+
+                val footerPagePaint =
+                    Paint(
+                        Paint.ANTI_ALIAS_FLAG
+                    ).apply {
+                        color =
+                            Color.WHITE
+
+                        textSize =
+                            8f
+
+                        typeface =
+                            Typeface.DEFAULT_BOLD
+                    }
+
+                var outputPageNumber =
+                    1
+
+                var page:
+                    PdfDocument.Page? =
+                    null
+
+                var canvas:
+                    Canvas? =
+                    null
+
+                var currentColumn =
+                    0
+
+                var y =
+                    outerMargin
+
+                var pageTop =
+                    outerMargin
+
+                fun startNewPdfPage(
+                    showTitle: Boolean
                 ) {
-                    val pageInfo =
-                        PdfDocument.PageInfo.Builder(
-                            pageWidth,
-                            pageHeight,
-                            pageNumber
-                        ).create()
+                    page?.let {
+                        drawReviewerPdfFooter(
+                            canvas =
+                                it.canvas,
+                            pageNumber =
+                                outputPageNumber -
+                                    1,
+                            pageWidth =
+                                pageWidth,
+                            pageHeight =
+                                pageHeight,
+                            outerMargin =
+                                outerMargin,
+                            accentPaint =
+                                sectionFillPaint,
+                            footerPaint =
+                                footerPagePaint
+                        )
 
-                    val page =
+                        pdfDocument.finishPage(
+                            it
+                        )
+                    }
+
+                    val pageInfo =
+                        PdfDocument
+                            .PageInfo
+                            .Builder(
+                                pageWidth,
+                                pageHeight,
+                                outputPageNumber
+                            )
+                            .create()
+
+                    page =
                         pdfDocument.startPage(
                             pageInfo
                         )
 
-                    val canvas =
-                        page.canvas
+                    canvas =
+                        page!!.canvas
 
-                    // Keep PDF background clean and predictable.
-                    canvas.drawColor(
+                    canvas!!.drawColor(
                         Color.WHITE
                     )
 
-                    var bodyTop =
+                    pageTop =
                         outerMargin
 
-                    if (firstPage) {
+                    if (
+                        showTitle
+                    ) {
                         val titleLayout =
                             createStaticLayout(
                                 currentTitle,
                                 titlePaint,
-                                contentWidth.toInt()
+                                contentWidth
+                                    .toInt()
                             )
 
-                        canvas.withTranslation(
+                        canvas!!.withTranslation(
                             outerMargin,
-                            bodyTop
+                            pageTop
                         ) {
                             titleLayout.draw(
-                                canvas
+                                canvas!!
                             )
                         }
 
-                        bodyTop +=
+                        pageTop +=
                             titleLayout.height +
-                                    14f
+                                7f
+
+                        canvas!!.drawRect(
+                            outerMargin,
+                            pageTop,
+                            pageWidth -
+                                outerMargin,
+                            pageTop +
+                                2.2f,
+                            sectionFillPaint
+                        )
+
+                        pageTop +=
+                            10f
+
+                        val subtitle =
+                            "Note2Snap Reviewer"
+
+                        val subtitleLayout =
+                            createStaticLayout(
+                                subtitle,
+                                metaPaint,
+                                contentWidth
+                                    .toInt()
+                            )
+
+                        canvas!!.withTranslation(
+                            outerMargin,
+                            pageTop
+                        ) {
+                            subtitleLayout.draw(
+                                canvas!!
+                            )
+                        }
+
+                        pageTop +=
+                            subtitleLayout.height +
+                                11f
                     }
 
-                    val availableHeight =
+                    // Thin divider between columns.
+                    canvas!!.drawLine(
+                        outerMargin +
+                            columnWidth +
+                            columnGap /
+                            2f,
+                        pageTop,
+                        outerMargin +
+                            columnWidth +
+                            columnGap /
+                            2f,
                         pageHeight -
-                                outerMargin -
-                                bodyTop
+                            footerReserve,
+                        rulePaint
+                    )
 
-                    val sourceHeight =
-                        (availableHeight / scale)
-                            .coerceAtLeast(1f)
+                    currentColumn =
+                        0
 
-                    val sourceBottom =
-                        minOf(
-                            sourceTop +
-                                    sourceHeight,
-                            bitmap.height
-                                .toFloat()
+                    y =
+                        pageTop
+
+                    outputPageNumber++
+                }
+
+                fun moveToNextColumnOrPage() {
+                    if (
+                        currentColumn ==
+                        0
+                    ) {
+                        currentColumn =
+                            1
+
+                        y =
+                            pageTop
+                    } else {
+                        startNewPdfPage(
+                            showTitle =
+                                false
                         )
+                    }
+                }
 
-                    val srcRect =
-                        android.graphics.Rect(
-                            0,
-                            sourceTop
-                                .toInt()
-                                .coerceAtLeast(0),
-                            bitmap.width,
-                            kotlin.math.ceil(
-                                sourceBottom
-                            )
-                                .toInt()
-                                .coerceAtMost(
-                                    bitmap.height
+                /*
+                 * Draws the exact editor content (text + highlights + pen)
+                 * as ONE continuous reviewer content stream.
+                 * It can continue into the next column/page without creating
+                 * a separate "Highlights & Pen Notes" section.
+                 */
+                fun drawAnnotatedContent(
+                    bitmap: Bitmap
+                ) {
+                    val scale =
+                        columnWidth /
+                            bitmap.width
+                                .coerceAtLeast(
+                                    1
                                 )
-                        )
+                                .toFloat()
 
-                    val renderedHeight =
-                        srcRect.height() *
+                    var sourceTop =
+                        0f
+
+                    while (
+                        sourceTop <
+                        bitmap.height
+                    ) {
+                        var availableHeight =
+                            pageHeight -
+                                footerReserve -
+                                y
+
+                        if (
+                            availableHeight <
+                            36f
+                        ) {
+                            moveToNextColumnOrPage()
+
+                            availableHeight =
+                                pageHeight -
+                                    footerReserve -
+                                    y
+                        }
+
+                        val sourceHeightThatFits =
+                            (
+                                availableHeight /
+                                    scale
+                                )
+                                .coerceAtLeast(
+                                    1f
+                                )
+
+                        val sourceBottom =
+                            minOf(
+                                bitmap.height
+                                    .toFloat(),
+                                sourceTop +
+                                    sourceHeightThatFits
+                            )
+
+                        val destinationHeight =
+                            (
+                                sourceBottom -
+                                    sourceTop
+                                ) *
                                 scale
 
-                    val dstRect =
-                        android.graphics.RectF(
-                            outerMargin,
-                            bodyTop,
+                        val x =
                             outerMargin +
-                                    contentWidth,
-                            bodyTop +
-                                    renderedHeight
+                                currentColumn *
+                                (
+                                    columnWidth +
+                                        columnGap
+                                )
+
+                        val sourceRect =
+                            android.graphics.Rect(
+                                0,
+                                sourceTop
+                                    .toInt()
+                                    .coerceAtLeast(
+                                        0
+                                    ),
+                                bitmap.width,
+                                sourceBottom
+                                    .toInt()
+                                    .coerceAtMost(
+                                        bitmap.height
+                                    )
+                            )
+
+                        val destinationRect =
+                            RectF(
+                                x,
+                                y,
+                                x +
+                                    columnWidth,
+                                y +
+                                    destinationHeight
+                            )
+
+                        canvas!!.drawBitmap(
+                            bitmap,
+                            sourceRect,
+                            destinationRect,
+                            Paint(
+                                Paint.ANTI_ALIAS_FLAG or
+                                    Paint.FILTER_BITMAP_FLAG
+                            )
                         )
 
-                    canvas.drawBitmap(
-                        bitmap,
-                        srcRect,
-                        dstRect,
-                        Paint(
-                            Paint.ANTI_ALIAS_FLAG or
-                                    Paint.FILTER_BITMAP_FLAG
-                        )
+                        y +=
+                            destinationHeight +
+                                6f
+
+                        sourceTop =
+                            sourceBottom
+
+                        if (
+                            sourceTop <
+                            bitmap.height
+                        ) {
+                            moveToNextColumnOrPage()
+                        }
+                    }
+                }
+
+                startNewPdfPage(
+                    showTitle =
+                        true
+                )
+
+                exportPages
+                    .forEachIndexed {
+                            sourceIndex,
+                            rawPage ->
+
+                        val textOnly =
+                            cleanHtmlAndMarkdown(
+                                removeDiagramHtml(
+                                    rawPage
+                                )
+                            )
+                                .trim()
+
+                        val blocks =
+                            reviewerPdfBlocks(
+                                textOnly
+                            )
+
+                        val sourceMeta =
+                            if (
+                                exportPages.size >
+                                1
+                            ) {
+                                "PAGE ${sourceIndex + 1} OF ${exportPages.size}"
+                            } else {
+                                null
+                            }
+
+                        if (
+                            sourceMeta != null
+                        ) {
+                            val metaLayout =
+                                createStaticLayout(
+                                    sourceMeta,
+                                    metaPaint,
+                                    columnWidth
+                                        .toInt()
+                                )
+
+                            if (
+                                y +
+                                    metaLayout.height +
+                                    12f >
+                                pageHeight -
+                                    footerReserve
+                            ) {
+                                moveToNextColumnOrPage()
+                            }
+
+                            val x =
+                                outerMargin +
+                                    currentColumn *
+                                    (
+                                        columnWidth +
+                                            columnGap
+                                    )
+
+                            canvas!!.withTranslation(
+                                x,
+                                y
+                            ) {
+                                metaLayout.draw(
+                                    canvas!!
+                                )
+                            }
+
+                            y +=
+                                metaLayout.height +
+                                    7f
+                        }
+
+                        val annotationBitmap =
+                            pendingAnnotationSnapshots
+                                .getOrNull(
+                                    sourceIndex
+                                )
+
+                        if (
+                            annotationBitmap !=
+                            null
+                        ) {
+                            /*
+                             * ONE version only:
+                             * structured text + highlight + pen together.
+                             * Do not print the clean text again underneath.
+                             */
+                            drawAnnotatedContent(
+                                annotationBitmap
+                            )
+
+                        } else {
+                            for (
+                                block in
+                                blocks
+                            ) {
+                                val required =
+                                    reviewerBlockHeight(
+                                        block =
+                                            block,
+                                        width =
+                                            columnWidth
+                                                .toInt(),
+                                        bodyPaint =
+                                            bodyPaint,
+                                        headingPaint =
+                                            headingPaint,
+                                        sectionPaint =
+                                            sectionTextPaint
+                                    )
+
+                                if (
+                                    y +
+                                        required >
+                                    pageHeight -
+                                        footerReserve
+                                ) {
+                                    moveToNextColumnOrPage()
+                                }
+
+                                val x =
+                                    outerMargin +
+                                        currentColumn *
+                                        (
+                                            columnWidth +
+                                                columnGap
+                                        )
+
+                                y =
+                                    drawReviewerBlock(
+                                        canvas =
+                                            canvas!!,
+                                        block =
+                                            block,
+                                        x =
+                                            x,
+                                        y =
+                                            y,
+                                        width =
+                                            columnWidth
+                                                .toInt(),
+                                        bodyPaint =
+                                            bodyPaint,
+                                        headingPaint =
+                                            headingPaint,
+                                        sectionPaint =
+                                            sectionTextPaint,
+                                        sectionFillPaint =
+                                            sectionFillPaint,
+                                        subheadingFillPaint =
+                                            subheadingFillPaint,
+                                        bulletPaint =
+                                            bulletPaint
+                                    )
+                            }
+                        }
+
+                        val diagramPaths =
+                            extractDiagramImagePaths(
+                                getDiagramHtml(
+                                    rawPage
+                                )
+                            )
+
+                        if (
+                            diagramPaths
+                                .isNotEmpty()
+                        ) {
+                            val diagramHeader =
+                                ReviewerPdfBlock(
+                                    type =
+                                        ReviewerPdfBlockType.SUBHEADING,
+                                    text =
+                                        "Detected Diagram"
+                                )
+
+                            val headerHeight =
+                                reviewerBlockHeight(
+                                    block =
+                                        diagramHeader,
+                                    width =
+                                        columnWidth
+                                            .toInt(),
+                                    bodyPaint =
+                                        bodyPaint,
+                                    headingPaint =
+                                        headingPaint,
+                                    sectionPaint =
+                                        sectionTextPaint
+                                )
+
+                            if (
+                                y +
+                                    headerHeight +
+                                    80f >
+                                pageHeight -
+                                    footerReserve
+                            ) {
+                                moveToNextColumnOrPage()
+                            }
+
+                            val x =
+                                outerMargin +
+                                    currentColumn *
+                                    (
+                                        columnWidth +
+                                            columnGap
+                                    )
+
+                            y =
+                                drawReviewerBlock(
+                                    canvas =
+                                        canvas!!,
+                                    block =
+                                        diagramHeader,
+                                    x =
+                                        x,
+                                    y =
+                                        y,
+                                    width =
+                                        columnWidth
+                                            .toInt(),
+                                    bodyPaint =
+                                        bodyPaint,
+                                    headingPaint =
+                                        headingPaint,
+                                    sectionPaint =
+                                        sectionTextPaint,
+                                    sectionFillPaint =
+                                        sectionFillPaint,
+                                    subheadingFillPaint =
+                                        subheadingFillPaint,
+                                    bulletPaint =
+                                        bulletPaint
+                                )
+
+                            diagramPaths
+                                .take(
+                                    3
+                                )
+                                .forEach {
+                                        imagePath ->
+
+                                    val bitmap =
+                                        BitmapFactory
+                                            .decodeFile(
+                                                imagePath
+                                            )
+                                            ?: return@forEach
+
+                                    val maxWidth =
+                                        columnWidth
+
+                                    val maxHeight =
+                                        150f
+
+                                    val scale =
+                                        minOf(
+                                            maxWidth /
+                                                bitmap.width,
+                                            maxHeight /
+                                                bitmap.height
+                                        )
+
+                                    val drawWidth =
+                                        bitmap.width *
+                                            scale
+
+                                    val drawHeight =
+                                        bitmap.height *
+                                            scale
+
+                                    if (
+                                        y +
+                                            drawHeight +
+                                            8f >
+                                        pageHeight -
+                                            footerReserve
+                                    ) {
+                                        moveToNextColumnOrPage()
+                                    }
+
+                                    val imageX =
+                                        outerMargin +
+                                            currentColumn *
+                                            (
+                                                columnWidth +
+                                                    columnGap
+                                            )
+
+                                    val destination =
+                                        RectF(
+                                            imageX,
+                                            y,
+                                            imageX +
+                                                drawWidth,
+                                            y +
+                                                drawHeight
+                                        )
+
+                                    canvas!!.drawBitmap(
+                                        bitmap,
+                                        null,
+                                        destination,
+                                        Paint(
+                                            Paint.ANTI_ALIAS_FLAG or
+                                                Paint.FILTER_BITMAP_FLAG
+                                        )
+                                    )
+
+                                    y +=
+                                        drawHeight +
+                                            10f
+                                }
+                        }
+
+                        // Small breathing space between scanned source pages.
+                        y +=
+                            6f
+                    }
+
+                page?.let {
+                    drawReviewerPdfFooter(
+                        canvas =
+                            it.canvas,
+                        pageNumber =
+                            outputPageNumber -
+                                1,
+                        pageWidth =
+                            pageWidth,
+                        pageHeight =
+                            pageHeight,
+                        outerMargin =
+                            outerMargin,
+                        accentPaint =
+                            sectionFillPaint,
+                        footerPaint =
+                            footerPagePaint
                     )
 
                     pdfDocument.finishPage(
-                        page
+                        it
                     )
-
-                    sourceTop =
-                        sourceBottom
-
-                    firstPage = false
-                    pageNumber++
                 }
 
                 val pdfBytes =
-                    ByteArrayOutputStream().use {
-                            memoryStream ->
-                        pdfDocument.writeTo(
-                            memoryStream
-                        )
-                        memoryStream
-                            .toByteArray()
-                    }
+                    ByteArrayOutputStream()
+                        .use {
+                                memory ->
+
+                            pdfDocument.writeTo(
+                                memory
+                            )
+
+                            memory.toByteArray()
+                        }
 
                 pdfDocument.close()
-
-                if (
-                    pdfBytes.size < 5 ||
-                    pdfBytes[0].toInt()
-                        .toChar() != '%' ||
-                    pdfBytes[1].toInt()
-                        .toChar() != 'P' ||
-                    pdfBytes[2].toInt()
-                        .toChar() != 'D' ||
-                    pdfBytes[3].toInt()
-                        .toChar() != 'F'
-                ) {
-                    throw IllegalStateException(
-                        "Generated file is not a valid PDF."
-                    )
-                }
 
                 val outputStream =
                     contentResolver
@@ -3213,30 +5969,31 @@ class PdfViewerActivity : AppCompatActivity() {
                             "w"
                         )
                         ?: throw IllegalStateException(
-                            "Unable to open the selected PDF file."
+                            "Unable to open PDF output."
                         )
 
                 outputStream.use {
                     it.write(
                         pdfBytes
                     )
+
                     it.flush()
                 }
 
                 withContext(
                     Dispatchers.Main
                 ) {
-                    pendingPdfSnapshot = null
-
                     Toast.makeText(
                         this@PdfViewerActivity,
-                        "PDF saved successfully!",
+                        "Reviewer PDF saved!",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
 
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (
+                error: Exception
+            ) {
+                error.printStackTrace()
 
                 withContext(
                     Dispatchers.Main
@@ -3249,6 +6006,33 @@ class PdfViewerActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun findLastLineThatFits(
+        layout: StaticLayout,
+        availableHeight: Int
+    ): Int {
+        var lastLine =
+            -1
+
+        for (
+            line in
+            0 until layout.lineCount
+        ) {
+            if (
+                layout.getLineBottom(
+                    line
+                ) <=
+                availableHeight
+            ) {
+                lastLine =
+                    line
+            } else {
+                break
+            }
+        }
+
+        return lastLine
     }
 
     private fun createStaticLayout(text: CharSequence, paint: TextPaint, width: Int): StaticLayout {

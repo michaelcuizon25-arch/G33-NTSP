@@ -30,7 +30,7 @@
         android:background="@drawable/bg_camera_frame"
         android:elevation="2dp"
         app:layout_constraintBottom_toTopOf="@id/controlPanel"
-        app:layout_constraintDimensionRatio="16:9"
+        app:layout_constraintDimensionRatio="4:3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -177,6 +177,102 @@
         app:layout_constraintTop_toBottomOf="@id/viewFrame"
         tools:ignore="HardcodedText" />
 
+
+    <!-- CAMERA BATCH TRAY
+         Hidden for normal single camera preview; appears only after a valid capture.
+         This is an overlay and does not replace the original camera controls. -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cameraBatchTray"
+        android:layout_width="0dp"
+        android:layout_height="94dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginBottom="10dp"
+        android:elevation="10dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#F20C0C0C"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="8dp"
+        app:strokeColor="#665A7FDB"
+        app:strokeWidth="1dp"
+        app:layout_constraintBottom_toTopOf="@id/controlPanel"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvCameraBatchCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_medium"
+                    android:text="1 page ready"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10.5sp"
+                    tools:ignore="HardcodedText" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_weight="1"
+                    android:fillViewport="false"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/cameraBatchThumbnails"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal" />
+
+                </HorizontalScrollView>
+
+            </LinearLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnProcessCameraBatch"
+                android:layout_width="94dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="#AFC4F6"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp">
+
+                <TextView
+                    android:id="@+id/tvProcessCameraBatch"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:text="Process"
+                    android:textColor="#171717"
+                    android:textSize="11sp"
+                    tools:ignore="HardcodedText" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
     <LinearLayout
         android:id="@+id/controlPanel"
         android:layout_width="0dp"
@@ -189,14 +285,76 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <TextView
+        <!-- Capture mode tabs: text-based like a camera mode selector, not a switch. -->
+        <LinearLayout
+            android:id="@+id/captureModeTabs"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/poppins_medium"
-            android:text="Scan"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            tools:ignore="HardcodedText" />
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/btnSingleMode"
+                android:layout_width="72dp"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_horizontal|bottom"
+                android:orientation="vertical"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:id="@+id/tvSingleMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:text="Single"
+                    android:textColor="#AFC4F6"
+                    android:textSize="11sp"
+                    tools:ignore="HardcodedText" />
+
+                <View
+                    android:id="@+id/indicatorSingleMode"
+                    android:layout_width="28dp"
+                    android:layout_height="2dp"
+                    android:background="#AFC4F6" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnBatchMode"
+                android:layout_width="72dp"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_horizontal|bottom"
+                android:orientation="vertical"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:id="@+id/tvBatchMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:gravity="center"
+                    android:text="Batch"
+                    android:textColor="#8A8A92"
+                    android:textSize="11sp"
+                    tools:ignore="HardcodedText" />
+
+                <View
+                    android:id="@+id/indicatorBatchMode"
+                    android:layout_width="28dp"
+                    android:layout_height="2dp"
+                    android:background="#AFC4F6"
+                    android:visibility="invisible" />
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -315,6 +473,19 @@
             android:text="Hang on! This may take a few seconds."
             android:textColor="#F2F2F2"
             android:textSize="12sp"
+            tools:ignore="HardcodedText" />
+
+        <TextView
+            android:id="@+id/tvCameraBatchProgress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:gravity="center"
+            android:text="Processing 1 of 3"
+            android:textColor="#AFC4F6"
+            android:textSize="11sp"
+            android:visibility="gone"
             tools:ignore="HardcodedText" />
 
         <Space

@@ -1,14 +1,11 @@
 package com.example.note2snap.activities
 
-import android.content.Context
-import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.note2snap.R
@@ -35,37 +32,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomNavContainer: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val sharedPref =
-            getSharedPreferences(
-                "AppSettings",
-                Context.MODE_PRIVATE
-            )
-
-        val isSystemDark =
-            (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                    Configuration.UI_MODE_NIGHT_YES
-
-        val isDarkModeSaved =
-            sharedPref.getBoolean(
-                "DARK_MODE",
-                isSystemDark
-            )
-
-        val targetMode =
-            if (isDarkModeSaved) {
-                AppCompatDelegate.MODE_NIGHT_YES
-            } else {
-                AppCompatDelegate.MODE_NIGHT_NO
-            }
-
-        if (
-            AppCompatDelegate.getDefaultNightMode() !=
-            targetMode
-        ) {
-            AppCompatDelegate.setDefaultNightMode(
-                targetMode
-            )
-        }
+        // Apply the Appearance setting before inflating any UI.
+        // Do not read the old AppSettings/DARK_MODE preference here.
+        ThemeManager.applySavedTheme(this)
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -120,37 +89,6 @@ class MainActivity : AppCompatActivity() {
 
         textSettings =
             findViewById(R.id.textSettings)
-    }
-
-    override fun onResume() {
-        super.onResume()
-
-        val sharedPref =
-            getSharedPreferences(
-                "AppSettings",
-                Context.MODE_PRIVATE
-            )
-
-        val shouldBeDark =
-            sharedPref.getBoolean(
-                "DARK_MODE",
-                false
-            )
-
-        val isCurrentlyDark =
-            (resources.configuration.uiMode and
-                    Configuration.UI_MODE_NIGHT_MASK) ==
-                    Configuration.UI_MODE_NIGHT_YES
-
-        if (shouldBeDark != isCurrentlyDark) {
-            AppCompatDelegate.setDefaultNightMode(
-                if (shouldBeDark) {
-                    AppCompatDelegate.MODE_NIGHT_YES
-                } else {
-                    AppCompatDelegate.MODE_NIGHT_NO
-                }
-            )
-        }
     }
 
     private fun setupClickListeners() {
