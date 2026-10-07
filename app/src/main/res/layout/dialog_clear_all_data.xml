@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardBackgroundColor="@color/nts_surface"
+    app:cardCornerRadius="26dp"
+    app:cardElevation="8dp"
+    app:strokeColor="@color/nts_blue_line"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="22dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="22dp"
+        android:paddingBottom="20dp">
+
+        <!-- Warning icon -->
+        <TextView
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/bg_warning_circle"
+            android:fontFamily="@font/poppins_semibold"
+            android:gravity="center"
+            android:text="!"
+            android:textColor="#C44A4A"
+            android:textSize="22sp" />
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:text="Clear all data?"
+            android:textColor="@color/nts_text"
+            android:textSize="20sp" />
+
+        <!-- Description -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/poppins_regular"
+            android:lineSpacingExtra="2dp"
+            android:text="Everything saved in Note2Snap will be permanently removed from this device."
+            android:textColor="@color/nts_text_secondary"
+            android:textSize="12sp" />
+
+        <!-- Data summary -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_delete_summary"
+            android:orientation="vertical"
+            android:padding="15dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semibold"
+                android:text="This will remove"
+                android:textColor="@color/nts_text"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="9dp"
+                android:fontFamily="@font/poppins_regular"
+                android:lineSpacingExtra="3dp"
+                android:text="• Saved notes and folders&#10;• Scanned and saved images&#10;• Scan history&#10;• Temporary app files"
+                android:textColor="@color/nts_text_secondary"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+
+        <!-- Warning -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:background="@drawable/bg_warning_circle_small"
+                android:fontFamily="@font/poppins_semibold"
+                android:gravity="center"
+                android:text="!"
+                android:textColor="#C44A4A"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_medium"
+                android:text="This action cannot be undone."
+                android:textColor="#C44A4A"
+                android:textSize="10.5sp" />
+
+        </LinearLayout>
+
+        <!-- Delete button -->
+        <TextView
+            android:id="@+id/btnConfirmClearDialog"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_delete_button"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="@font/poppins_semibold"
+            android:gravity="center"
+            android:text="Delete everything"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp" />
+
+        <!-- Cancel button -->
+        <TextView
+            android:id="@+id/btnCancelDialog"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_cancel_button"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="@font/poppins_medium"
+            android:gravity="center"
+            android:text="Keep my data"
+            android:textColor="@color/nts_text"
+            android:textSize="12.5sp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
