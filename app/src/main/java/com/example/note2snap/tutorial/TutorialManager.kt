@@ -10,6 +10,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -387,6 +388,61 @@ class TutorialManager(
                 } else {
                     "Next  →"
                 }
+
+            bubble.animate()
+                .cancel()
+
+            bubble.alpha =
+                0f
+
+            bubble.translationY =
+                dp(
+                    10
+                ).toFloat()
+
+            bubble.animate()
+                .alpha(
+                    1f
+                )
+                .translationY(
+                    0f
+                )
+                .setDuration(
+                    190L
+                )
+                .start()
+
+            robot.animate()
+                .cancel()
+
+            robot.scaleX =
+                0.9f
+
+            robot.scaleY =
+                0.9f
+
+            robot.rotation =
+                -3f
+
+            robot.animate()
+                .scaleX(
+                    1f
+                )
+                .scaleY(
+                    1f
+                )
+                .rotation(
+                    0f
+                )
+                .setDuration(
+                    280L
+                )
+                .setInterpolator(
+                    OvershootInterpolator(
+                        1.25f
+                    )
+                )
+                .start()
 
             val target =
                 step.targetView

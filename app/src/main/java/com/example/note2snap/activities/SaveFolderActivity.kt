@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -237,8 +238,13 @@ class SaveFolderActivity : AppCompatActivity() {
 
                 listCard.addView(
                     createDestinationRow(
-                        "Main Screen",
-                        note.folderId == null
+                        title =
+                            "Main Screen",
+                        isCurrent =
+                            note.folderId ==
+                            null,
+                        folderColor =
+                            null
                     ) {
                         moveNote(
                             note,
@@ -252,9 +258,13 @@ class SaveFolderActivity : AppCompatActivity() {
                 folders.forEach { folder ->
                     listCard.addView(
                         createDestinationRow(
-                            folder.name,
-                            note.folderId ==
-                                    folder.id
+                            title =
+                                folder.name,
+                            isCurrent =
+                                note.folderId ==
+                                    folder.id,
+                            folderColor =
+                                folder.colorHex
                         ) {
                             moveNote(
                                 note,
@@ -289,82 +299,191 @@ class SaveFolderActivity : AppCompatActivity() {
                 )
 
             launch(Dispatchers.Main) {
-                Toast.makeText(
-                    this@SaveFolderActivity,
-                    "Moved to $destinationName",
-                    Toast.LENGTH_SHORT
-                ).show()
+                com.example.note2snap.utils
+                    .Note2SnapNotice
+                    .show(
+                        anchor =
+                            findViewById(
+                                android.R.id.content
+                            ),
+                        title =
+                            "Note moved",
+                        message =
+                            destinationName,
+                        symbol =
+                            "✓"
+                    )
             }
         }
     }
 
     private fun createDestinationRow(
-        name: String,
+        title: String,
         isCurrent: Boolean,
+        folderColor: String? = null,
         action: () -> Unit
     ): View {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        return LinearLayout(
+            this
+        ).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+
+            gravity =
+                Gravity.CENTER_VERTICAL
+
             setPadding(
-                dp(10),
-                dp(11),
-                dp(10),
-                dp(11)
+                dp(
+                    10
+                ),
+                dp(
+                    10
+                ),
+                dp(
+                    10
+                ),
+                dp(
+                    10
+                )
             )
+
             background =
                 roundedBackground(
-                    if (isCurrent) {
-                        colorHex(R.color.nts_blue_soft)
+                    if (
+                        isCurrent
+                    ) {
+                        colorHex(
+                            R.color.nts_blue_soft
+                        )
                     } else {
-                        colorHex(R.color.nts_surface)
+                        colorHex(
+                            R.color.nts_surface
+                        )
                     },
                     16f
                 )
 
-            addView(
-                TextView(this@SaveFolderActivity).apply {
-                    text =
-                        if (isCurrent) "✓" else "▣"
-                    textSize = 18f
-                    gravity = Gravity.CENTER
-                    setTextColor(
-                        if (isCurrent) {
-                            ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_blue)
+            isClickable =
+                true
+
+            isFocusable =
+                true
+
+            setOnClickListener {
+                action()
+            }
+
+            val icon =
+                ImageView(
+                    this@SaveFolderActivity
+                ).apply {
+                    setImageResource(
+                        if (
+                            folderColor !=
+                            null
+                        ) {
+                            R.drawable.ic_folder_cute
                         } else {
-                            ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_text)
+                            R.drawable.ic_note_custom
                         }
                     )
-                    background =
-                        roundedBackground(
-                            if (isCurrent) {
-                                colorHex(R.color.nts_blue_line)
-                            } else {
-                                colorHex(R.color.nts_surface_blue_soft)
-                            },
-                            14f
+
+                    val tint =
+                        if (
+                            folderColor !=
+                            null
+                        ) {
+                            runCatching {
+                                Color.parseColor(
+                                    folderColor
+                                )
+                            }.getOrDefault(
+                                ContextCompat.getColor(
+                                    this@SaveFolderActivity,
+                                    R.color.nts_blue
+                                )
+                            )
+                        } else {
+                            ContextCompat.getColor(
+                                this@SaveFolderActivity,
+                                R.color.nts_blue
+                            )
+                        }
+
+                    androidx.core.widget
+                        .ImageViewCompat
+                        .setImageTintList(
+                            this,
+                            android.content.res
+                                .ColorStateList
+                                .valueOf(
+                                    tint
+                                )
                         )
-                },
+
+                    setPadding(
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        )
+                    )
+                }
+
+            addView(
+                icon,
                 LinearLayout.LayoutParams(
-                    dp(44),
-                    dp(44)
+                    dp(
+                        44
+                    ),
+                    dp(
+                        44
+                    )
                 )
             )
 
             val label =
-                TextView(this@SaveFolderActivity).apply {
+                TextView(
+                    this@SaveFolderActivity
+                ).apply {
                     text =
-                        if (isCurrent) {
-                            "$name\nCurrent location"
+                        if (
+                            isCurrent
+                        ) {
+                            "$title\nCurrent location"
                         } else {
-                            name
+                            title
                         }
-                    textSize = 13f
+
+                    textSize =
+                        12f
+
+                    typeface =
+                        androidx.core.content.res
+                            .ResourcesCompat
+                            .getFont(
+                                this@SaveFolderActivity,
+                                R.font.poppins_medium
+                            )
+
                     setTextColor(
-                        ContextCompat.getColor(this@SaveFolderActivity, R.color.nts_text)
+                        ContextCompat.getColor(
+                            this@SaveFolderActivity,
+                            R.color.nts_text
+                        )
                     )
+
                     setPadding(
-                        dp(12),
+                        dp(
+                            12
+                        ),
                         0,
                         0,
                         0
@@ -375,16 +494,11 @@ class SaveFolderActivity : AppCompatActivity() {
                 label,
                 LinearLayout.LayoutParams(
                     0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams
+                        .WRAP_CONTENT,
                     1f
                 )
             )
-
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                if (!isCurrent) action()
-            }
         }
     }
 

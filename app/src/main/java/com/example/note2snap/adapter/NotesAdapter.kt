@@ -19,14 +19,20 @@ import com.example.note2snap.R
 import com.example.note2snap.model.Note
 import com.example.note2snap.utils.NoteThumbnailLoader
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import org.json.JSONArray
 
 class NotesAdapter(
     private var notes: List<Note>,
     private val onItemClick: (Note) -> Unit,
     private val onMoveClick: (Note) -> Unit,
     private val onDeleteClick: (Note) -> Unit,
-    private val onToggleStarClick: (Note) -> Unit
+    private val onToggleStarClick: (Note) -> Unit,
+    private val selectionEnabled: Boolean = false,
+    private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<NotesAdapter.NoteViewHolder>() {
+
+    private val selectedIds =
+        linkedSetOf<Int>()
 
     enum class DisplayMode {
         LIST,
@@ -48,6 +54,16 @@ class NotesAdapter(
 
         val tvDate: TextView =
             view.findViewById(R.id.tvNoteDate)
+
+        val tvPreview: TextView? =
+            view.findViewById(
+                R.id.tvNotePreview
+            )
+
+        val tvPageBadge: TextView? =
+            view.findViewById(
+                R.id.tvNotePageBadge
+            )
 
         val ivThumbnail: ImageView =
             view.findViewById(R.id.ivNoteThumbnail)
@@ -108,6 +124,31 @@ class NotesAdapter(
         holder.tvDate.text =
             note.dateEdited
 
+        holder.tvPreview?.text =
+            notePreview(
+                note.content
+            )
+
+        val pageCount =
+            notePageCount(
+                note
+            )
+
+        holder.tvPageBadge?.apply {
+            visibility =
+                if (
+                    pageCount >
+                    1
+                ) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
+
+            text =
+                "$pageCount pages"
+        }
+
         holder.tvTitle.typeface =
             ResourcesCompat.getFont(
                 holder.itemView.context,
@@ -138,12 +179,100 @@ class NotesAdapter(
 
         applyDisplayMode(holder)
 
+        val selected =
+            selectedIds.contains(
+                note.id
+            )
+
+        val card =
+            holder.itemView as?
+                com.google.android.material.card.MaterialCardView
+
+        card?.strokeWidth =
+            if (
+                selected
+            ) {
+                3
+            } else {
+                1
+            }
+
+        card?.strokeColor =
+            ContextCompat.getColor(
+                holder.itemView.context,
+                if (
+                    selected
+                ) {
+                    R.color.nts_blue
+                } else {
+                    R.color.nts_outline
+                }
+            )
+
+        card?.setCardBackgroundColor(
+            ContextCompat.getColor(
+                holder.itemView.context,
+                if (
+                    selected
+                ) {
+                    R.color.nts_surface_blue_soft
+                } else {
+                    R.color.nts_surface_blue
+                }
+            )
+        )
+
+        val selectionMode =
+            selectedIds.isNotEmpty()
+
+        holder.ivStar.visibility =
+            if (
+                selectionMode
+            ) {
+                View.INVISIBLE
+            } else {
+                View.VISIBLE
+            }
+
+        holder.btnMore.visibility =
+            if (
+                selectionMode
+            ) {
+                View.INVISIBLE
+            } else {
+                View.VISIBLE
+            }
+
         holder.ivStar.setOnClickListener {
             onToggleStarClick(note)
         }
 
         holder.itemView.setOnClickListener {
-            onItemClick(note)
+            if (
+                selectionEnabled &&
+                selectedIds.isNotEmpty()
+            ) {
+                toggleSelection(
+                    note
+                )
+            } else {
+                onItemClick(
+                    note
+                )
+            }
+        }
+
+        holder.itemView.setOnLongClickListener {
+            if (
+                selectionEnabled
+            ) {
+                toggleSelection(
+                    note
+                )
+                true
+            } else {
+                false
+            }
         }
 
         holder.btnMore.setOnClickListener {
@@ -206,6 +335,72 @@ class NotesAdapter(
         )
     }
 
+    fun isSelectionMode():
+        Boolean =
+        selectedIds.isNotEmpty()
+
+    fun selectedNotes():
+        List<Note> =
+        notes.filter {
+            selectedIds.contains(
+                it.id
+            )
+        }
+
+    fun clearSelection() {
+        if (
+            selectedIds.isEmpty()
+        ) {
+            return
+        }
+
+        selectedIds.clear()
+        notifyDataSetChanged()
+        onSelectionChanged(
+            0
+        )
+    }
+
+    fun selectAll() {
+        selectedIds.clear()
+
+        selectedIds.addAll(
+            notes.map {
+                it.id
+            }
+        )
+
+        notifyDataSetChanged()
+
+        onSelectionChanged(
+            selectedIds.size
+        )
+    }
+
+    private fun toggleSelection(
+        note: Note
+    ) {
+        if (
+            selectedIds.contains(
+                note.id
+            )
+        ) {
+            selectedIds.remove(
+                note.id
+            )
+        } else {
+            selectedIds.add(
+                note.id
+            )
+        }
+
+        notifyDataSetChanged()
+
+        onSelectionChanged(
+            selectedIds.size
+        )
+    }
+
     fun setDisplayMode(
         mode: DisplayMode
     ) {
@@ -227,9 +422,9 @@ class NotesAdapter(
         if (displayMode != DisplayMode.GRID) {
             val rowHeight =
                 when (displayMode) {
-                    DisplayMode.LIST -> dp(68)
+                    DisplayMode.LIST -> dp(82)
                     DisplayMode.GRID -> dp(112)
-                    DisplayMode.COMPACT -> dp(54)
+                    DisplayMode.COMPACT -> dp(58)
                 }
 
             holder.rowRoot?.layoutParams =
@@ -291,6 +486,60 @@ class NotesAdapter(
                     if (displayMode == DisplayMode.COMPACT) 28 else 30
                 )
             }
+    }
+
+    private fun notePageCount(
+        note: Note
+    ): Int {
+        if (
+            note.sourceImagePathsJson
+                .isBlank()
+        ) {
+            return 1
+        }
+
+        return runCatching {
+            JSONArray(
+                note.sourceImagePathsJson
+            ).length()
+                .coerceAtLeast(
+                    1
+                )
+        }.getOrDefault(
+            1
+        )
+    }
+
+    private fun notePreview(
+        raw: String
+    ): String {
+        return raw
+            .replace(
+                Regex(
+                    """(?i)<br\s*/?>"""
+                ),
+                " "
+            )
+            .replace(
+                Regex(
+                    """<[^>]+>"""
+                ),
+                " "
+            )
+            .replace(
+                "**",
+                ""
+            )
+            .replace(
+                Regex(
+                    """\s+"""
+                ),
+                " "
+            )
+            .trim()
+            .take(
+                92
+            )
     }
 
     private fun bindThumbnail(

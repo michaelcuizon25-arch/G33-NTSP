@@ -27,6 +27,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 
 class HistoryFragment : Fragment() {
 
@@ -55,6 +56,17 @@ class HistoryFragment : Fragment() {
                 R.id.llEmptyHistory
             )
 
+        view.findViewById<View>(
+            R.id.btnEmptyHistoryScan
+        ).setOnClickListener {
+            (
+                    activity as?
+                            MainActivity
+                    )
+                ?.openScan()
+        }
+
+
         rvHistory.layoutManager =
             LinearLayoutManager(
                 requireContext()
@@ -65,12 +77,12 @@ class HistoryFragment : Fragment() {
                 historyList =
                     emptyList(),
 
-                onItemClick = { item ->
+                onItemClick = {
+                        item ->
 
                     lifecycleScope.launch(
                         Dispatchers.IO
                     ) {
-
                         val dao =
                             AppDatabase
                                 .getDatabase(
@@ -80,8 +92,8 @@ class HistoryFragment : Fragment() {
 
                         val existingNote =
                             if (
-                                !item.imagePath
-                                    .isNullOrEmpty()
+                                item.imagePath
+                                    .isNotBlank()
                             ) {
                                 dao.getNoteByPath(
                                     item.imagePath
@@ -90,16 +102,60 @@ class HistoryFragment : Fragment() {
                                 null
                             }
 
+                        val sourcePaths =
+                            runCatching {
+                                val array =
+                                    JSONArray(
+                                        item.sourceImagePathsJson
+                                    )
+
+                                List(
+                                    array.length()
+                                ) {
+                                        index ->
+                                    array.optString(
+                                        index
+                                    )
+                                }
+                                    .filter {
+                                        it.isNotBlank()
+                                    }
+                            }.getOrDefault(
+                                listOfNotNull(
+                                    item.imagePath
+                                        .takeIf {
+                                            it.isNotBlank()
+                                        }
+                                )
+                            )
+
+                        val pageContents =
+                            runCatching {
+                                val array =
+                                    JSONArray(
+                                        item.pageContentsJson
+                                    )
+
+                                List(
+                                    array.length()
+                                ) {
+                                        index ->
+                                    array.optString(
+                                        index
+                                    )
+                                }
+                            }.getOrDefault(
+                                emptyList()
+                            )
+
                         withContext(
                             Dispatchers.Main
                         ) {
-
                             val intent =
                                 Intent(
                                     requireContext(),
                                     PdfViewerActivity::class.java
                                 ).apply {
-
                                     putExtra(
                                         "NOTE_ID",
                                         existingNote?.id
@@ -115,6 +171,34 @@ class HistoryFragment : Fragment() {
                                         "IMAGE_PATH",
                                         item.imagePath
                                     )
+
+                                    if (
+                                        existingNote ==
+                                        null
+                                    ) {
+                                        pageContents
+                                            .firstOrNull()
+                                            ?.let {
+                                                putExtra(
+                                                    "CONTENT",
+                                                    it
+                                                )
+                                            }
+
+                                        putStringArrayListExtra(
+                                            "IMAGE_PATHS",
+                                            ArrayList(
+                                                sourcePaths
+                                            )
+                                        )
+
+                                        putStringArrayListExtra(
+                                            "PAGE_CONTENTS",
+                                            ArrayList(
+                                                pageContents
+                                            )
+                                        )
+                                    }
                                 }
 
                             startActivity(
@@ -128,11 +212,36 @@ class HistoryFragment : Fragment() {
                     showOptionsDialog(
                         item
                     )
+                },
+
+                onSelectionChanged = {
+                        count ->
+                    updateHistorySelectionBar(
+                        count
+                    )
                 }
             )
 
         rvHistory.adapter =
             historyAdapter
+
+        view.findViewById<View>(
+            R.id.btnHistorySelectAll
+        ).setOnClickListener {
+            historyAdapter?.selectAll()
+        }
+
+        view.findViewById<View>(
+            R.id.btnHistoryCancelSelection
+        ).setOnClickListener {
+            historyAdapter?.clearSelection()
+        }
+
+        view.findViewById<View>(
+            R.id.btnHistoryDeleteSelected
+        ).setOnClickListener {
+            showBulkDeleteHistoryDialog()
+        }
 
         AppDatabase
             .getDatabase(
@@ -169,6 +278,111 @@ class HistoryFragment : Fragment() {
             }
 
         return view
+    }
+
+    private fun updateHistorySelectionBar(
+        count: Int
+    ) {
+        val root =
+            view ?: return
+
+        root.findViewById<View>(
+            R.id.historySelectionBar
+        )?.visibility =
+            if (
+                count > 0
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        root.findViewById<TextView>(
+            R.id.tvHistorySelectedCount
+        )?.text =
+            if (
+                count == 1
+            ) {
+                "1 selected"
+            } else {
+                "$count selected"
+            }
+    }
+
+    private fun showBulkDeleteHistoryDialog() {
+        val selected =
+            historyAdapter
+                ?.selectedItems()
+                .orEmpty()
+
+        if (
+            selected.isEmpty()
+        ) {
+            return
+        }
+
+        androidx.appcompat.app.AlertDialog
+            .Builder(
+                requireContext()
+            )
+            .setTitle(
+                "Delete ${selected.size} history items?"
+            )
+            .setMessage(
+                "This removes only the selected scan history entries. Saved Notes are not deleted."
+            )
+            .setNegativeButton(
+                "Cancel",
+                null
+            )
+            .setPositiveButton(
+                "Delete"
+            ) {
+                    _,
+                    _ ->
+
+                lifecycleScope.launch(
+                    Dispatchers.IO
+                ) {
+                    val dao =
+                        AppDatabase
+                            .getDatabase(
+                                requireContext()
+                            )
+                            .appDao()
+
+                    selected.forEach {
+                            item ->
+                        dao.deleteScanHistory(
+                            item
+                        )
+                    }
+
+                    withContext(
+                        Dispatchers.Main
+                    ) {
+                        historyAdapter
+                            ?.clearSelection()
+
+                        view?.let {
+                                anchorView ->
+                            com.example.note2snap.utils
+                                .Note2SnapNotice
+                                .show(
+                                    anchor =
+                                        anchorView,
+                                    title =
+                                        "History deleted",
+                                    message =
+                                        "${selected.size} removed",
+                                    symbol =
+                                        "×"
+                                )
+                        }
+                    }
+                }
+            }
+            .show()
     }
 
     private fun showOptionsDialog(

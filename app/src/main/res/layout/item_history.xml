@@ -74,12 +74,32 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="3dp"
             android:fontFamily="@font/poppins_regular"
-            android:text="Synced to Local"
+            android:text="Saved locally"
             android:textColor="@color/nts_text_secondary"
-            android:textSize="7.5sp"
+            android:textSize="8sp"
             app:layout_constraintBottom_toBottomOf="@id/ivLocalStatus"
             app:layout_constraintStart_toEndOf="@id/ivLocalStatus"
             app:layout_constraintTop_toTopOf="@id/ivLocalStatus" />
+
+
+        <TextView
+            android:id="@+id/tvHistoryPageBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:layout_marginStart="7dp"
+            android:background="@drawable/bg_filter_active"
+            android:fontFamily="@font/poppins_medium"
+            android:gravity="center"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:text="3 pages"
+            android:textColor="@color/nts_blue"
+            android:textSize="7.5sp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/ivLocalStatus"
+            app:layout_constraintStart_toEndOf="@id/tvHistoryStatus"
+            app:layout_constraintTop_toTopOf="@id/ivLocalStatus"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/tvHistoryDate"

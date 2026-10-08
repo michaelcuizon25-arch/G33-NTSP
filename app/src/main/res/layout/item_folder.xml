@@ -44,20 +44,37 @@
             android:src="@drawable/ic_tool_more"
             app:tint="@color/nts_text" />
 
-        <TextView
-            android:id="@+id/tvFolderName"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:layout_marginStart="10dp"
             android:layout_toEndOf="@id/ivFolderIcon"
             android:layout_toStartOf="@id/btnFolderMore"
-            android:ellipsize="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvFolderName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
             android:fontFamily="@font/poppins_regular"
             android:maxLines="1"
             android:textColor="@color/nts_text"
             android:textSize="11.5sp"
-            tools:text="CS 101" />
+                tools:text="CS 101" />
+
+            <TextView
+                android:id="@+id/tvFolderMeta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:fontFamily="@font/poppins_regular"
+                android:textColor="@color/nts_text_secondary"
+                android:textSize="8.5sp"
+                tools:text="4 notes" />
+
+        </LinearLayout>
 
     </RelativeLayout>
 

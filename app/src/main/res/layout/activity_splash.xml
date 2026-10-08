@@ -1,49 +1,205 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#DCE5F7">
+    android:background="@color/nts_background">
 
+    <!-- Tiny brand, intentionally not a giant centered logo -->
+    <TextView
+        android:id="@+id/tvSplashBrand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="26dp"
+        android:layout_marginTop="28dp"
+        android:fontFamily="@font/apple_garamond_bold"
+        android:text="Note2Snap"
+        android:textColor="@color/nts_text"
+        android:textSize="23sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <!-- Whiteboard scene -->
     <FrameLayout
-        android:id="@+id/logoContainer"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:layout_centerInParent="true">
+        android:id="@+id/whiteboardScene"
+        android:layout_width="300dp"
+        android:layout_height="205dp"
+        android:background="@drawable/bg_splash_whiteboard"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:elevation="2dp"
+        android:padding="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.40">
 
-        <!-- Outer Rotating Camera Ring -->
-        <ImageView
-            android:id="@+id/ivScanRing"
+        <!-- fake whiteboard content -->
+        <LinearLayout
+            android:id="@+id/whiteboardContent"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:src="@drawable/ic_camera_roll" />
+            android:orientation="vertical">
 
-        <!-- Central NS Logo (Replaced VideoView with ImageView) -->
-        <ImageView
-            android:id="@+id/ivLogo"
-            android:layout_width="180dp"
-            android:layout_height="180dp"
-            android:layout_gravity="center"
-            android:contentDescription="App Logo"
-            android:src="@drawable/ns" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semibold"
+                android:text="LESSON"
+                android:textColor="@color/nts_text"
+                android:textSize="10sp" />
 
-        <!-- Animated Scanner Beam -->
+            <View
+                android:layout_width="168dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="13dp"
+                android:background="@color/nts_blue" />
+
+            <View
+                android:layout_width="220dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="10dp"
+                android:background="@color/nts_blue_line" />
+
+            <View
+                android:layout_width="194dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="9dp"
+                android:background="@color/nts_blue_line" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <View
+                    android:layout_width="64dp"
+                    android:layout_height="44dp"
+                    android:background="@color/nts_yellow" />
+
+                <View
+                    android:layout_width="26dp"
+                    android:layout_height="2dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp"
+                    android:background="@color/nts_blue" />
+
+                <View
+                    android:layout_width="64dp"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@color/nts_surface_blue_soft" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Scanning beam -->
         <View
-            android:id="@+id/vScanBeam"
-            android:layout_width="140dp"
-            android:layout_height="3dp"
-            android:layout_gravity="center_horizontal"
-            android:background="#4A70E2" />
+            android:id="@+id/scanBeam"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_gravity="top"
+            android:background="@drawable/bg_splash_scan_beam"
+            android:elevation="6dp" />
+
+        <!-- Structured note result; fades in -->
+        <LinearLayout
+            android:id="@+id/structuredNotePreview"
+            android:layout_width="148dp"
+            android:layout_height="132dp"
+            android:layout_gravity="center|end"
+            android:alpha="0"
+            android:background="@drawable/bg_splash_note_chip"
+            android:orientation="vertical"
+            android:padding="13dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semibold"
+                android:text="Structured note"
+                android:textColor="@color/nts_blue"
+                android:textSize="8sp" />
+
+            <View
+                android:layout_width="98dp"
+                android:layout_height="4dp"
+                android:layout_marginTop="12dp"
+                android:background="@color/nts_text" />
+
+            <View
+                android:layout_width="110dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/nts_blue_line" />
+
+            <View
+                android:layout_width="84dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="7dp"
+                android:background="@color/nts_blue_line" />
+
+            <View
+                android:layout_width="102dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="7dp"
+                android:background="@color/nts_blue_line" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:fontFamily="@font/poppins_medium"
+                android:text="Ready to review"
+                android:textColor="@color/nts_text_secondary"
+                android:textSize="7sp" />
+
+        </LinearLayout>
+
+        <!-- Snap peeks from the board corner -->
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/splashRobot"
+            android:layout_width="92dp"
+            android:layout_height="92dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="-24dp"
+            android:layout_marginBottom="-36dp"
+            android:contentDescription="Snap mascot"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true"
+            app:lottie_rawRes="@raw/robot_mascot"
+            app:lottie_speed="0.70" />
+
     </FrameLayout>
 
     <TextView
-        android:id="@+id/tvAppName"
+        android:id="@+id/tvSplashHeadline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/logoContainer"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="32dp"
-        android:text="Note2Snap"
-        android:textColor="#3A5199"
-        android:textSize="28sp"
-        android:textStyle="bold" />
-</RelativeLayout>
+        android:layout_marginTop="24dp"
+        android:fontFamily="@font/apple_garamond_bold"
+        android:text="From board to note."
+        android:textColor="@color/nts_text"
+        android:textSize="26sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/whiteboardScene" />
+
+    <TextView
+        android:id="@+id/tvSplashStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="@font/poppins_regular"
+        android:text="Capturing the important parts."
+        android:textColor="@color/nts_text_secondary"
+        android:textSize="9.5sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvSplashHeadline" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

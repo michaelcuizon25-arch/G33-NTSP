@@ -20,6 +20,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Size
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.widget.FrameLayout
 import android.util.Log
 import android.view.LayoutInflater
@@ -58,6 +59,7 @@ import com.example.note2snap.ccl.RegionType
 import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.ScanHistory
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.snackbar.Snackbar
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -82,6 +84,7 @@ class ScanFragment : Fragment() {
     private var imageAnalysis: ImageAnalysis? = null
     private var liveAnalyzer: LiveCameraQualityAnalyzer? = null
     private var liveHintView: View? = null
+    private var currentLiveHint: LiveCameraHint? = null
     private var isScanBusy = false
     private var isFlashOn = false
     private lateinit var cameraExecutor: ExecutorService
@@ -128,6 +131,104 @@ class ScanFragment : Fragment() {
     }
 
 
+
+    // Note2Snap custom gallery picker.
+    // The Android system picker remains available only as a privacy-friendly fallback.
+    private val customGalleryLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+
+            if (
+                result.resultCode !=
+                android.app.Activity.RESULT_OK
+            ) {
+                return@registerForActivityResult
+            }
+
+            val data =
+                result.data
+
+            val uris =
+                data
+                    ?.getStringArrayListExtra(
+                        GalleryPickerActivity.EXTRA_SELECTED_URIS
+                    )
+                    .orEmpty()
+                    .mapNotNull {
+                        runCatching {
+                            Uri.parse(
+                                it
+                            )
+                        }.getOrNull()
+                    }
+
+            handleSelectedGalleryImages(
+                uris
+            )
+        }
+
+    private fun hapticScan(
+        view: View?,
+        strong: Boolean = false
+    ) {
+        view?.performHapticFeedback(
+            if (
+                strong
+            ) {
+                HapticFeedbackConstants.LONG_PRESS
+            } else {
+                HapticFeedbackConstants.KEYBOARD_TAP
+            }
+        )
+    }
+
+    private fun animatePress(
+        target: View?
+    ) {
+        target ?: return
+
+        target.isPressed =
+            true
+
+        target.postDelayed(
+            {
+                target.isPressed =
+                    false
+            },
+            45L
+        )
+    }
+
+    private fun handleSelectedGalleryImages(
+        uris: List<Uri>
+    ) {
+        when {
+            uris.isEmpty() -> {
+                showScanSnackbar(
+                    "No photos selected"
+                )
+            }
+
+            uris.size == 1 -> {
+                processImageUri(
+                    rawUri =
+                        uris.first(),
+                    cropToGuide =
+                        false,
+                    validateQuality =
+                        false
+                )
+            }
+
+            else -> {
+                processBatchImages(
+                    uris
+                )
+            }
+        }
+    }
+
     // Gallery Picker Contract
     // Allows selecting up to 10 whiteboard images in one batch.
     private val selectImageLauncher =
@@ -135,32 +236,9 @@ class ScanFragment : Fragment() {
             ActivityResultContracts.PickMultipleVisualMedia(10)
         ) { uris: List<Uri> ->
 
-            when {
-                uris.isEmpty() -> {
-                    context?.let {
-                        Toast.makeText(
-                            it,
-                            "No images selected",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-
-                uris.size == 1 -> {
-                    // Keep the normal single-image flow unchanged.
-                    processImageUri(
-                        rawUri = uris.first(),
-                        cropToGuide = false,
-                        validateQuality = false
-                    )
-                }
-
-                else -> {
-                    processBatchImages(
-                        uris
-                    )
-                }
-            }
+            handleSelectedGalleryImages(
+                uris
+            )
         }
 
     // Camera Permission Contract
@@ -245,6 +323,10 @@ class ScanFragment : Fragment() {
 
         btnSingleMode
             ?.setOnClickListener {
+                hapticScan(
+                    btnSingleMode
+                )
+
                 if (
                     capturedCameraBatchPaths
                         .isNotEmpty()
@@ -287,6 +369,10 @@ class ScanFragment : Fragment() {
 
         btnBatchMode
             ?.setOnClickListener {
+                hapticScan(
+                    btnBatchMode
+                )
+
                 isCameraBatchMode =
                     true
 
@@ -310,11 +396,28 @@ class ScanFragment : Fragment() {
         checkCameraPermissionAndStart()
 
         btnCapture?.setOnClickListener {
+            hapticScan(
+                btnCapture,
+                strong =
+                    true
+            )
+            animatePress(
+                btnCapture
+            )
             takePhoto()
         }
 
         btnProcessCameraBatch
             ?.setOnClickListener {
+                hapticScan(
+                    btnProcessCameraBatch,
+                    strong =
+                        true
+                )
+                animatePress(
+                    btnProcessCameraBatch
+                )
+
                 if (
                     capturedCameraBatchPaths
                         .isNotEmpty()
@@ -327,9 +430,17 @@ class ScanFragment : Fragment() {
             }
 
         btnGallery?.setOnClickListener {
-            selectImageLauncher.launch(
-                PickVisualMediaRequest(
-                    ActivityResultContracts.PickVisualMedia.ImageOnly
+            hapticScan(
+                btnGallery
+            )
+            animatePress(
+                btnGallery
+            )
+
+            customGalleryLauncher.launch(
+                Intent(
+                    requireContext(),
+                    GalleryPickerActivity::class.java
                 )
             )
         }
@@ -573,6 +684,10 @@ class ScanFragment : Fragment() {
                 rawFilePath =
                     file.absolutePath,
                 cropToGuide =
+                    false,
+                // Built-in tutorial asset is known-good.
+                // Do not reject the tutorial because of camera-quality heuristics.
+                validateQuality =
                     false
             )
 
@@ -774,8 +889,36 @@ class ScanFragment : Fragment() {
     private fun showLiveHint(hint: LiveCameraHint?) {
         if (!isAdded) return
 
+        currentLiveHint =
+            if (isScanBusy) null else hint
+
         if (hint == null || isScanBusy) {
-            liveHintView?.visibility = View.GONE
+            liveHintView?.let {
+                if (
+                    it.visibility ==
+                    View.VISIBLE
+                ) {
+                    it.animate()
+                        .alpha(
+                            0f
+                        )
+                        .translationY(
+                            -10f
+                        )
+                        .setDuration(
+                            120L
+                        )
+                        .withEndAction {
+                            it.visibility =
+                                View.GONE
+                            it.alpha =
+                                1f
+                            it.translationY =
+                                0f
+                        }
+                        .start()
+                }
+            }
             return
         }
 
@@ -786,9 +929,41 @@ class ScanFragment : Fragment() {
             parent.addView(it)
         }
 
-        banner.findViewById<TextView>(R.id.tvLiveHintTitle).text = hint.title
-        banner.findViewById<TextView>(R.id.tvLiveHintMessage).text = hint.message
-        banner.visibility = View.VISIBLE
+        banner.findViewById<TextView>(
+            R.id.tvLiveHintTitle
+        ).text =
+            hint.title
+
+        banner.findViewById<TextView>(
+            R.id.tvLiveHintMessage
+        ).text =
+            hint.message
+
+        if (
+            banner.visibility !=
+            View.VISIBLE
+        ) {
+            banner.alpha =
+                0f
+
+            banner.translationY =
+                -12f
+
+            banner.visibility =
+                View.VISIBLE
+
+            banner.animate()
+                .alpha(
+                    1f
+                )
+                .translationY(
+                    0f
+                )
+                .setDuration(
+                    180L
+                )
+                .start()
+        }
     }
 
     /**
@@ -809,10 +984,19 @@ class ScanFragment : Fragment() {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER
+                Gravity.TOP
             ).apply {
-                marginStart = (14 * density).toInt()
-                marginEnd = (14 * density).toInt()
+                marginStart =
+                    (14 * density)
+                        .toInt()
+
+                marginEnd =
+                    (14 * density)
+                        .toInt()
+
+                topMargin =
+                    (82 * density)
+                        .toInt()
             }
         }
     }
@@ -983,6 +1167,26 @@ class ScanFragment : Fragment() {
             context ?: return
 
         if (isScanBusy || isSavingCameraPage) {
+            return
+        }
+
+        currentLiveHint?.let {
+                hint ->
+
+            showScanSnackbar(
+                "Resolve the camera warning first • ${hint.title}"
+            )
+
+            return
+        }
+
+        currentLiveHint?.let {
+                hint ->
+
+            showScanSnackbar(
+                "Fix before capture • ${hint.title}"
+            )
+
             return
         }
 
@@ -1204,6 +1408,26 @@ class ScanFragment : Fragment() {
         )
     }
 
+    private fun showScanSnackbar(
+        message: String
+    ) {
+        val anchor =
+            view ?: return
+
+        com.example.note2snap.utils
+            .Note2SnapNotice
+            .show(
+                anchor =
+                    anchor,
+                title =
+                    message,
+                message =
+                    "",
+                symbol =
+                    "!"
+            )
+    }
+
     private fun renderCapturedCameraBatch() {
         val container =
             cameraBatchThumbnails
@@ -1216,36 +1440,7 @@ class ScanFragment : Fragment() {
                     index,
                     path ->
 
-                val card =
-                    MaterialCardView(
-                        requireContext()
-                    ).apply {
-                        radius =
-                            dpCameraBatch(
-                                12
-                            ).toFloat()
-
-                        cardElevation =
-                            0f
-
-                        strokeWidth =
-                            dpCameraBatch(
-                                1
-                            )
-
-                        strokeColor =
-                            Color.parseColor(
-                                "#AFC4F6"
-                            )
-
-                        setCardBackgroundColor(
-                            Color.parseColor(
-                                "#F7F9FF"
-                            )
-                        )
-                    }
-
-                val holder =
+                val item =
                     FrameLayout(
                         requireContext()
                     )
@@ -1257,6 +1452,9 @@ class ScanFragment : Fragment() {
                         scaleType =
                             ImageView.ScaleType.CENTER_CROP
 
+                        clipToOutline =
+                            true
+
                         contentDescription =
                             "Captured whiteboard page ${index + 1}"
 
@@ -1265,14 +1463,46 @@ class ScanFragment : Fragment() {
                                 path
                             )
                         )
+
+                        background =
+                            android.graphics.drawable
+                                .GradientDrawable()
+                                .apply {
+                                    cornerRadius =
+                                        dpCameraBatch(
+                                            8
+                                        ).toFloat()
+
+                                    setColor(
+                                        Color.parseColor(
+                                            "#EEF3FF"
+                                        )
+                                    )
+
+                                    setStroke(
+                                        dpCameraBatch(
+                                            1
+                                        ),
+                                        Color.parseColor(
+                                            "#AFC4F6"
+                                        )
+                                    )
+                                }
                     }
 
-                holder.addView(
+                item.addView(
                     thumbnail,
                     FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
-                    )
+                        dpCameraBatch(
+                            46
+                        ),
+                        dpCameraBatch(
+                            46
+                        )
+                    ).apply {
+                        gravity =
+                            Gravity.CENTER
+                    }
                 )
 
                 val pageNumber =
@@ -1286,32 +1516,77 @@ class ScanFragment : Fragment() {
                             Gravity.CENTER
 
                         textSize =
-                            9f
+                            7f
 
                         setTextColor(
                             Color.WHITE
                         )
 
-                        setBackgroundColor(
-                            Color.parseColor(
-                                "#B3000000"
-                            )
-                        )
+                        background =
+                            android.graphics.drawable
+                                .GradientDrawable()
+                                .apply {
+                                    shape =
+                                        android.graphics.drawable
+                                            .GradientDrawable.OVAL
+
+                                    setColor(
+                                        Color.parseColor(
+                                            "#B3000000"
+                                        )
+                                    )
+                                }
                     }
 
-                holder.addView(
+                item.addView(
                     pageNumber,
                     FrameLayout.LayoutParams(
                         dpCameraBatch(
-                            22
+                            16
                         ),
                         dpCameraBatch(
-                            22
-                        ),
-                        Gravity.BOTTOM or
+                            16
+                        )
+                    ).apply {
+                        gravity =
+                            Gravity.BOTTOM or
                             Gravity.START
-                    )
+
+                        marginStart =
+                            dpCameraBatch(
+                                2
+                            )
+
+                        bottomMargin =
+                            dpCameraBatch(
+                                2
+                            )
+                    }
                 )
+
+                val removeHitArea =
+                    FrameLayout(
+                        requireContext()
+                    ).apply {
+                        isClickable =
+                            true
+
+                        isFocusable =
+                            true
+
+                        contentDescription =
+                            "Remove page ${index + 1}"
+
+                        setOnClickListener {
+                            hapticScan(
+                                this
+                            )
+
+                            removeCapturedCameraPage(
+                                index
+                            )
+                        }
+                    }
 
                 val remove =
                     TextView(
@@ -1324,59 +1599,72 @@ class ScanFragment : Fragment() {
                             Gravity.CENTER
 
                         textSize =
-                            16f
+                            13f
 
                         setTextColor(
                             Color.WHITE
                         )
 
-                        setBackgroundColor(
-                            Color.parseColor(
-                                "#D9FF4D5D"
-                            )
-                        )
+                        background =
+                            android.graphics.drawable
+                                .GradientDrawable()
+                                .apply {
+                                    shape =
+                                        android.graphics.drawable
+                                            .GradientDrawable.OVAL
 
-                        contentDescription =
-                            "Remove page ${index + 1}"
-
-                        setOnClickListener {
-                            removeCapturedCameraPage(
-                                index
-                            )
-                        }
+                                    setColor(
+                                        Color.parseColor(
+                                            "#D91F2937"
+                                        )
+                                    )
+                                }
                     }
 
-                holder.addView(
+                removeHitArea.addView(
                     remove,
                     FrameLayout.LayoutParams(
                         dpCameraBatch(
-                            24
+                            20
                         ),
                         dpCameraBatch(
-                            24
-                        ),
-                        Gravity.TOP or
-                            Gravity.END
-                    )
+                            20
+                        )
+                    ).apply {
+                        gravity =
+                            Gravity.CENTER
+                    }
                 )
 
-                card.addView(
-                    holder
+                item.addView(
+                    removeHitArea,
+                    FrameLayout.LayoutParams(
+                        dpCameraBatch(
+                            34
+                        ),
+                        dpCameraBatch(
+                            34
+                        )
+                    ).apply {
+                        gravity =
+                            Gravity.TOP or
+                            Gravity.END
+                    }
                 )
 
                 container.addView(
-                    card,
+                    item,
                     LinearLayout.LayoutParams(
                         dpCameraBatch(
-                            66
+                            52
                         ),
                         dpCameraBatch(
-                            66
+                            52
                         )
                     ).apply {
                         marginEnd =
                             dpCameraBatch(
-                                8
+                                5
                             )
                     }
                 )
@@ -1391,10 +1679,10 @@ class ScanFragment : Fragment() {
                     ""
 
                 1 ->
-                    "1 page ready"
+                    "1 page"
 
                 else ->
-                    "$count pages ready"
+                    "$count pages"
             }
 
         view
@@ -1403,7 +1691,8 @@ class ScanFragment : Fragment() {
             )
             ?.text =
             if (
-                count <= 1
+                count <=
+                1
             ) {
                 "Process"
             } else {
@@ -1412,7 +1701,8 @@ class ScanFragment : Fragment() {
 
         cameraBatchTrayView?.visibility =
             if (
-                count > 0
+                count >
+                0
             ) {
                 View.VISIBLE
             } else {
@@ -1521,6 +1811,9 @@ class ScanFragment : Fragment() {
             val pageContents =
                 mutableListOf<String>()
 
+            val acceptedSourcePaths =
+                mutableListOf<String>()
+
             val reviewIssues =
                 mutableListOf<String>()
 
@@ -1613,9 +1906,22 @@ class ScanFragment : Fragment() {
 
                     val extractedText =
                         visionText.text
-                            .ifBlank {
-                                "[No text detected]"
-                            }
+
+                    if (
+                        !hasMeaningfulRecognizedText(
+                            extractedText
+                        )
+                    ) {
+                        reviewIssues.add(
+                            "Page $pageNumber: No readable writing detected; page was skipped."
+                        )
+
+                        continue
+                    }
+
+                    acceptedSourcePaths.add(
+                        path
+                    )
 
                     reviewIssues.addAll(
                         findOcrIssues(
@@ -1683,9 +1989,9 @@ class ScanFragment : Fragment() {
                             requireContext()
                         ).show(
                             title =
-                                "Unable to process batch",
+                                "No readable writing detected",
                             message =
-                                "Note2Snap could not process the captured pages. Please try again with clearer whiteboard photos.",
+                                "Note2Snap could not find readable text in any captured page. Make sure the writing is visible and in focus, then try again.",
                             primaryText =
                                 "Try again"
                         )
@@ -1721,7 +2027,7 @@ class ScanFragment : Fragment() {
                             paths.first(),
 
                         sourceImagePaths =
-                            paths,
+                            acceptedSourcePaths,
 
                         pageContents =
                             pageContents,
@@ -1834,10 +2140,6 @@ class ScanFragment : Fragment() {
                             uri
                         ) ?: continue
 
-                    batchSourcePaths.add(
-                        cachedPath
-                    )
-
                     if (
                         primaryImagePath == null
                     ) {
@@ -1901,9 +2203,29 @@ class ScanFragment : Fragment() {
 
                     val extractedText =
                         visionText.text
-                            .ifBlank {
-                                "[No text detected]"
-                            }
+
+                    if (
+                        !hasMeaningfulRecognizedText(
+                            extractedText
+                        )
+                    ) {
+                        reviewIssues.add(
+                            "Page $pageNumber: No readable writing detected; page was skipped."
+                        )
+
+                        continue
+                    }
+
+                    batchSourcePaths.add(
+                        cachedPath
+                    )
+
+                    if (
+                        primaryImagePath == null
+                    ) {
+                        primaryImagePath =
+                            cachedPath
+                    }
 
                     val pageIssues =
                         findOcrIssues(
@@ -2067,6 +2389,23 @@ class ScanFragment : Fragment() {
                 }
         }
 
+    private fun hasMeaningfulRecognizedText(
+        text: String
+    ): Boolean {
+        val meaningfulCharacters =
+            text.count {
+                it.isLetterOrDigit()
+            }
+
+        /*
+         * Prevent blank boards / accidental photos from becoming notes.
+         * Three alphanumeric characters is deliberately permissive so short
+         * headings like "AI", formulas, or labels are not rejected too easily.
+         */
+        return meaningfulCharacters >=
+            3
+    }
+
     private fun processImageUri(
         rawUri: Uri,
         rawFilePath: String? = null,
@@ -2158,7 +2497,9 @@ class ScanFragment : Fragment() {
                         visionText.text
 
                     if (
-                        extractedText.isBlank()
+                        !hasMeaningfulRecognizedText(
+                            extractedText
+                        )
                     ) {
                         recognizer.close()
 
@@ -3126,9 +3467,31 @@ class ScanFragment : Fragment() {
             overlay.visibility = View.VISIBLE
             overlay.bringToFront()
             overlay.animate()
-                .alpha(1f)
-                .setDuration(180L)
+                .alpha(
+                    1f
+                )
+                .setDuration(
+                    180L
+                )
                 .start()
+
+            view
+                ?.findViewById<View>(
+                    R.id.ivAnalyzingIcon
+                )
+                ?.apply {
+                    visibility =
+                        View.VISIBLE
+
+                    alpha =
+                        1f
+
+                    scaleX =
+                        1f
+
+                    scaleY =
+                        1f
+                }
 
             applyAnalyzingBlur(true)
         }
@@ -3301,6 +3664,93 @@ class ScanFragment : Fragment() {
             AnalysisStage.COMPLETE -> {
                 completeAllAnalysisSteps()
             }
+        }
+
+        animateAnalysisStage(
+            stage
+        )
+    }
+
+    private fun animateAnalysisStage(
+        stage: AnalysisStage
+    ) {
+        val root =
+            view ?: return
+
+        val activeId =
+            when (stage) {
+                AnalysisStage.PREPARING_IMAGE ->
+                    R.id.tvStepEnhance
+
+                AnalysisStage.DETECTING_TEXT ->
+                    R.id.tvStepText
+
+                AnalysisStage.CHECKING_RECOGNITION ->
+                    R.id.tvStepElements
+
+                AnalysisStage.STRUCTURING_NOTES ->
+                    R.id.tvStepStructure
+
+                AnalysisStage.COMPLETE ->
+                    null
+            }
+
+        activeId
+            ?.let {
+                root.findViewById<View>(
+                    it
+                )
+            }
+            ?.apply {
+                alpha =
+                    0.55f
+
+                translationX =
+                    -10f
+
+                animate()
+                    .alpha(
+                        1f
+                    )
+                    .translationX(
+                        0f
+                    )
+                    .setDuration(
+                        170L
+                    )
+                    .start()
+            }
+
+        root.findViewById<View>(
+            R.id.ivAnalyzingIcon
+        )?.apply {
+            animate()
+                .cancel()
+
+            animate()
+                .scaleX(
+                    1.035f
+                )
+                .scaleY(
+                    1.035f
+                )
+                .setDuration(
+                    120L
+                )
+                .withEndAction {
+                    animate()
+                        .scaleX(
+                            1f
+                        )
+                        .scaleY(
+                            1f
+                        )
+                        .setDuration(
+                            140L
+                        )
+                        .start()
+                }
+                .start()
         }
     }
 

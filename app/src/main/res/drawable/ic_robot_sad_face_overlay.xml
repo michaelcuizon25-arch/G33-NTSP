@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="150dp"
+    android:height="150dp"
+    android:viewportWidth="150"
+    android:viewportHeight="150">
+
+    <!-- Cover only the original smile area -->
+    <path
+        android:fillColor="#102D3C"
+        android:pathData="M60,52 L90,52 L90,69 L60,69 Z" />
+
+    <!-- Simple sad mouth -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M67,65 C71,58 79,58 83,65"
+        android:strokeColor="#54E5F4"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.8" />
+
+</vector>

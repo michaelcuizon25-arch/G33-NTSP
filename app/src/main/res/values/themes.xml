@@ -23,4 +23,14 @@
     <style name="RoundedSquare" parent="ShapeAppearance.Material3.Corner.Small">
         <item name="cornerSize">8dp</item>
     </style>
+
+    <style name="Theme.Note2Snap.Splash"
+        parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/nts_background</item>
+        <item name="android:statusBarColor">@color/nts_background</item>
+        <item name="android:navigationBarColor">@color/nts_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
 </resources>

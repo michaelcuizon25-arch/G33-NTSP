@@ -10,13 +10,32 @@ import java.util.zip.ZipOutputStream
 
 object DocxExporter {
 
-    fun shareAsDocx(context: Context, title: String, content: String) {
-        val docxFile = createDocxFile(context, title, content)
-        val uri = FileProvider.getUriForFile(
+    fun createDocxUri(
+        context: Context,
+        title: String,
+        content: String
+    ): android.net.Uri {
+        val docxFile =
+            createDocxFile(
+                context,
+                title,
+                content
+            )
+
+        return FileProvider.getUriForFile(
             context,
             "${context.packageName}.provider",
             docxFile
         )
+    }
+
+    fun shareAsDocx(context: Context, title: String, content: String) {
+        val uri =
+            createDocxUri(
+                context,
+                title,
+                content
+            )
 
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

@@ -34,6 +34,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class SortType { NAME, TIME, SIZE, TYPE }
 enum class FilterType { ALL, NOTES, FOLDERS }
@@ -56,6 +57,8 @@ class NotesFragment : Fragment() {
 
     private var tvResultCount: TextView? = null
     private var tvNotFound: TextView? = null
+    private var emptyStateContainer: View? = null
+    private var tvEmptyNotesSubtitle: TextView? = null
     private var btnSort: ImageView? = null
     private var btnViewMode: ImageView? = null
 
@@ -69,6 +72,82 @@ class NotesFragment : Fragment() {
     private var currentSort = SortType.NAME
     private var currentFilter = FilterType.ALL
     private var searchQuery = ""
+
+
+    private fun startSadRobotMotion(
+        robot: View
+    ) {
+        robot.animate()
+            .cancel()
+
+        val distance =
+            4f *
+                    resources
+                        .displayMetrics
+                        .density
+
+        fun moveDown() {
+            if (
+                !isAdded ||
+                robot.windowToken ==
+                null
+            ) {
+                return
+            }
+
+            robot.animate()
+                .translationY(
+                    distance
+                )
+                .rotation(
+                    -1.2f
+                )
+                .scaleX(
+                    0.995f
+                )
+                .scaleY(
+                    0.995f
+                )
+                .setDuration(
+                    1100L
+                )
+                .setInterpolator(
+                    android.view.animation
+                        .AccelerateDecelerateInterpolator()
+                )
+                .withEndAction {
+                    robot.animate()
+                        .translationY(
+                            0f
+                        )
+                        .rotation(
+                            1.2f
+                        )
+                        .scaleX(
+                            1.005f
+                        )
+                        .scaleY(
+                            1.005f
+                        )
+                        .setDuration(
+                            1100L
+                        )
+                        .setInterpolator(
+                            android.view.animation
+                                .AccelerateDecelerateInterpolator()
+                        )
+                        .withEndAction {
+                            moveDown()
+                        }
+                        .start()
+                }
+                .start()
+        }
+
+        robot.post {
+            moveDown()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -90,6 +169,17 @@ class NotesFragment : Fragment() {
 
         tvResultCount = view.findViewById(R.id.tvResultCount)
         tvNotFound = view.findViewById(R.id.tvNotFound)
+
+        emptyStateContainer =
+            view.findViewById(
+                R.id.emptyStateContainer
+            )
+
+        tvEmptyNotesSubtitle =
+            view.findViewById(
+                R.id.tvEmptyNotesSubtitle
+            )
+
         btnSort = view.findViewById(R.id.btnSort)
         btnViewMode = view.findViewById(R.id.btnViewMode)
 
@@ -133,10 +223,36 @@ class NotesFragment : Fragment() {
             },
             onMoveClick = { note -> showMoveNoteDialog(note) },
             onDeleteClick = { note -> deleteNote(note) },
-            onToggleStarClick = { note -> toggleStarNote(note) }
+            onToggleStarClick = { note -> toggleStarNote(note) },
+            selectionEnabled =
+                true,
+            onSelectionChanged = {
+                    count ->
+                updateNotesSelectionBar(
+                    count
+                )
+            }
         )
         rvNotes.layoutManager = LinearLayoutManager(context)
         rvNotes.adapter = notesAdapter
+
+        view.findViewById<View>(
+            R.id.btnNotesSelectAll
+        ).setOnClickListener {
+            notesAdapter.selectAll()
+        }
+
+        view.findViewById<View>(
+            R.id.btnNotesCancelSelection
+        ).setOnClickListener {
+            notesAdapter.clearSelection()
+        }
+
+        view.findViewById<View>(
+            R.id.btnNotesDeleteSelected
+        ).setOnClickListener {
+            showBulkDeleteNotesDialog()
+        }
 
         folderAdapter = FolderAdapter(
             folderList = emptyList(),
@@ -175,6 +291,35 @@ class NotesFragment : Fragment() {
             putExtra("FOLDER_NAME", folder.name)
         }
         startActivity(intent)
+    }
+
+    private fun showNotesNotice(
+        title: String,
+        message: String
+    ) {
+        view?.let {
+            com.example.note2snap.utils
+                .Note2SnapNotice
+                .show(
+                    anchor =
+                        it,
+                    title =
+                        title,
+                    message =
+                        message,
+                    symbol =
+                        if (
+                            title.contains(
+                                "delete",
+                                true
+                            )
+                        ) {
+                            "×"
+                        } else {
+                            "✓"
+                        }
+                )
+        }
     }
 
     private fun showMoveNoteDialog(note: Note) {
@@ -220,11 +365,10 @@ class NotesFragment : Fragment() {
                         )
 
                     launch(Dispatchers.Main) {
-                        Toast.makeText(
-                            context,
-                            "Moved to Main Screen",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        showNotesNotice(
+                            "Note moved",
+                            "Main Screen"
+                        )
                         dialog.dismiss()
                     }
                 }
@@ -238,7 +382,9 @@ class NotesFragment : Fragment() {
                     subtitle = "Move note into this folder",
                     isCurrent =
                         note.folderId ==
-                                folder.id
+                                folder.id,
+                    folderColor =
+                        folder.colorHex
                 ) {
                     lifecycleScope.launch(Dispatchers.IO) {
                         AppDatabase
@@ -275,51 +421,127 @@ class NotesFragment : Fragment() {
         title: String,
         subtitle: String,
         isCurrent: Boolean,
+        folderColor: String? = null,
         onClick: () -> Unit
     ): View {
-        return LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        return LinearLayout(
+            requireContext()
+        ).apply {
+            orientation =
+                LinearLayout.HORIZONTAL
+
+            gravity =
+                Gravity.CENTER_VERTICAL
+
             setPadding(
-                dp(10),
-                dp(10),
-                dp(10),
-                dp(10)
+                dp(
+                    10
+                ),
+                dp(
+                    10
+                ),
+                dp(
+                    10
+                ),
+                dp(
+                    10
+                )
             )
 
             background =
                 roundedBackground(
-                    if (isCurrent) {
-                        colorHex(R.color.nts_blue_soft)
+                    if (
+                        isCurrent
+                    ) {
+                        colorHex(
+                            R.color.nts_blue_soft
+                        )
                     } else {
-                        colorHex(R.color.nts_surface)
+                        colorHex(
+                            R.color.nts_surface
+                        )
                     },
                     16f
                 )
 
+            isClickable =
+                true
+
+            isFocusable =
+                true
+
+            setOnClickListener {
+                onClick()
+            }
+
             val icon =
-                TextView(requireContext()).apply {
-                    text =
-                        if (isCurrent) "✓" else "▣"
-                    textSize = 17f
-                    gravity = Gravity.CENTER
-                    setTextColor(
-                        ContextCompat.getColor(
-                            requireContext(),
-                            if (isCurrent) {
+                ImageView(
+                    requireContext()
+                ).apply {
+                    setImageResource(
+                        if (
+                            folderColor !=
+                            null
+                        ) {
+                            R.drawable.ic_folder_cute
+                        } else {
+                            R.drawable.ic_note_custom
+                        }
+                    )
+
+                    val tint =
+                        if (
+                            folderColor !=
+                            null
+                        ) {
+                            runCatching {
+                                Color.parseColor(
+                                    folderColor
+                                )
+                            }.getOrDefault(
+                                ContextCompat.getColor(
+                                    requireContext(),
+                                    R.color.nts_blue
+                                )
+                            )
+                        } else {
+                            ContextCompat.getColor(
+                                requireContext(),
                                 R.color.nts_blue
-                            } else {
-                                R.color.nts_text
-                            }
+                            )
+                        }
+
+                    androidx.core.widget
+                        .ImageViewCompat
+                        .setImageTintList(
+                            this,
+                            android.content.res
+                                .ColorStateList
+                                .valueOf(
+                                    tint
+                                )
+                        )
+
+                    setPadding(
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
+                        ),
+                        dp(
+                            8
                         )
                     )
+
                     background =
                         roundedBackground(
-                            if (isCurrent) {
-                                colorHex(R.color.nts_blue_line)
-                            } else {
-                                colorHex(R.color.nts_surface_blue_soft)
-                            },
+                            colorHex(
+                                R.color.nts_surface_blue_soft
+                            ),
                             14f
                         )
                 }
@@ -327,32 +549,54 @@ class NotesFragment : Fragment() {
             addView(
                 icon,
                 LinearLayout.LayoutParams(
-                    dp(42),
-                    dp(42)
+                    dp(
+                        44
+                    ),
+                    dp(
+                        44
+                    )
                 )
             )
 
-            val labels =
-                LinearLayout(requireContext()).apply {
+            val textWrap =
+                LinearLayout(
+                    requireContext()
+                ).apply {
                     orientation =
                         LinearLayout.VERTICAL
+
                     setPadding(
-                        dp(12),
+                        dp(
+                            12
+                        ),
                         0,
                         0,
                         0
                     )
                 }
 
-            labels.addView(
-                TextView(requireContext()).apply {
-                    text = title
-                    textSize = 12.5f
+            textWrap.addView(
+                TextView(
+                    requireContext()
+                ).apply {
+                    text =
+                        if (
+                            isCurrent
+                        ) {
+                            "$title  •  Current"
+                        } else {
+                            title
+                        }
+
+                    textSize =
+                        12f
+
                     typeface =
                         ResourcesCompat.getFont(
                             requireContext(),
-                            R.font.poppins_medium
+                            R.font.poppins_semibold
                         )
+
                     setTextColor(
                         ContextCompat.getColor(
                             requireContext(),
@@ -362,48 +606,40 @@ class NotesFragment : Fragment() {
                 }
             )
 
-            labels.addView(
-                TextView(requireContext()).apply {
+            textWrap.addView(
+                TextView(
+                    requireContext()
+                ).apply {
                     text =
-                        if (isCurrent) {
-                            "Current location"
-                        } else {
-                            subtitle
-                        }
-                    textSize = 9.5f
+                        subtitle
+
+                    textSize =
+                        9.5f
+
                     typeface =
                         ResourcesCompat.getFont(
                             requireContext(),
                             R.font.poppins_regular
                         )
+
                     setTextColor(
                         ContextCompat.getColor(
                             requireContext(),
-                            if (isCurrent) {
-                                R.color.nts_blue
-                            } else {
-                                R.color.nts_text_secondary
-                            }
+                            R.color.nts_text_secondary
                         )
                     )
                 }
             )
 
             addView(
-                labels,
+                textWrap,
                 LinearLayout.LayoutParams(
                     0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams
+                        .WRAP_CONTENT,
                     1f
                 )
             )
-
-            isClickable = !isCurrent
-            isFocusable = !isCurrent
-
-            setOnClickListener {
-                if (!isCurrent) onClick()
-            }
         }
     }
 
@@ -482,8 +718,27 @@ class NotesFragment : Fragment() {
             SortType.TYPE -> filteredFolders.sortedBy { it.name.lowercase() }
         }
 
-        currentFilteredFolders = filteredFolders
-        folderAdapter.updateFolders(currentFilteredFolders)
+        currentFilteredFolders =
+            filteredFolders
+
+        val folderCounts =
+            masterNotesList
+                .mapNotNull {
+                        note ->
+                    note.folderId
+                }
+                .groupingBy {
+                    it
+                }
+                .eachCount()
+
+        folderAdapter.updateFolderNoteCounts(
+            folderCounts
+        )
+
+        folderAdapter.updateFolders(
+            currentFilteredFolders
+        )
 
         // 2. FILTER & SORT ROOT NOTES (Unassigned notes on main screen)
         var filteredNotes = masterNotesList.filter { it.folderId == null }
@@ -524,29 +779,150 @@ class NotesFragment : Fragment() {
         notesAdapter.updateNotes(currentFilteredNotes)
 
         // 3. TOGGLE VISIBILITY
-        val showFoldersSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.FOLDERS) && currentFilteredFolders.isNotEmpty()
-        val showNotesSection = (currentFilter == FilterType.ALL || currentFilter == FilterType.NOTES) && currentFilteredNotes.isNotEmpty()
+        val showFoldersSection =
+            (
+                    currentFilter ==
+                            FilterType.ALL ||
+                            currentFilter ==
+                            FilterType.FOLDERS
+                    ) &&
+                    currentFilteredFolders
+                        .isNotEmpty()
 
-        rvFolders?.visibility = if (showFoldersSection) View.VISIBLE else View.GONE
-        tvFoldersLabel?.visibility = if (showFoldersSection) View.VISIBLE else View.GONE
+        val showNotesSection =
+            (
+                    currentFilter ==
+                            FilterType.ALL ||
+                            currentFilter ==
+                            FilterType.NOTES
+                    ) &&
+                    currentFilteredNotes
+                        .isNotEmpty()
 
-        rvNotes.visibility = if (showNotesSection) View.VISIBLE else View.GONE
-        tvNotesLabel?.visibility = if (showNotesSection) View.VISIBLE else View.GONE
-
-        val visibleItemCount = (if (showFoldersSection) currentFilteredFolders.size else 0) + (if (showNotesSection) currentFilteredNotes.size else 0)
-
-        if (visibleItemCount == 0) {
-            tvNotFound?.setText(R.string.no_file_found)
-            tvNotFound?.visibility = View.VISIBLE
-            tvResultCount?.visibility = View.GONE
-        } else {
-            tvNotFound?.visibility = View.GONE
-            if (searchQuery.isNotEmpty()) {
-                tvResultCount?.visibility = View.VISIBLE
-                tvResultCount?.text = getString(R.string.found_items_count, visibleItemCount)
+        rvFolders?.visibility =
+            if (
+                showFoldersSection
+            ) {
+                View.VISIBLE
             } else {
-                tvResultCount?.visibility = View.GONE
+                View.GONE
             }
+
+        tvFoldersLabel?.visibility =
+            if (
+                showFoldersSection
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        rvNotes.visibility =
+            if (
+                showNotesSection
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        tvNotesLabel?.visibility =
+            if (
+                showNotesSection
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        val visibleItemCount =
+            (
+                    if (
+                        showFoldersSection
+                    ) {
+                        currentFilteredFolders.size
+                    } else {
+                        0
+                    }
+                    ) +
+                    (
+                            if (
+                                showNotesSection
+                            ) {
+                                currentFilteredNotes.size
+                            } else {
+                                0
+                            }
+                            )
+
+        val hasAnySavedNote =
+            masterNotesList
+                .isNotEmpty()
+
+        val isSearching =
+            searchQuery
+                .isNotEmpty()
+
+        val showNoNotesRobot =
+            !isSearching &&
+                    !hasAnySavedNote &&
+                    currentFilter !=
+                    FilterType.FOLDERS
+
+        val showSearchEmpty =
+            isSearching &&
+                    visibleItemCount ==
+                    0
+
+        emptyStateContainer?.visibility =
+            if (
+                showNoNotesRobot ||
+                showSearchEmpty
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        if (
+            showNoNotesRobot
+        ) {
+            tvNotFound?.text =
+                "No saved notes yet"
+
+            tvEmptyNotesSubtitle?.text =
+                "Scans stay in History until you tap Save."
+
+        } else if (
+            showSearchEmpty
+        ) {
+            tvNotFound?.text =
+                "No matches found"
+
+            tvEmptyNotesSubtitle?.text =
+                "Try another note or folder name."
+        }
+
+        tvResultCount?.visibility =
+            if (
+                isSearching &&
+                visibleItemCount >
+                0
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        if (
+            tvResultCount?.visibility ==
+            View.VISIBLE
+        ) {
+            tvResultCount?.text =
+                getString(
+                    R.string.found_items_count,
+                    visibleItemCount
+                )
         }
     }
 
@@ -1256,11 +1632,106 @@ class NotesFragment : Fragment() {
         dialog.show()
     }
 
+    private fun updateNotesSelectionBar(
+        count: Int
+    ) {
+        val root =
+            view ?: return
+
+        root.findViewById<View>(
+            R.id.notesSelectionBar
+        )?.visibility =
+            if (
+                count > 0
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        root.findViewById<TextView>(
+            R.id.tvNotesSelectedCount
+        )?.text =
+            if (
+                count == 1
+            ) {
+                "1 selected"
+            } else {
+                "$count selected"
+            }
+    }
+
+    private fun showBulkDeleteNotesDialog() {
+        val selected =
+            notesAdapter.selectedNotes()
+
+        if (
+            selected.isEmpty()
+        ) {
+            return
+        }
+
+        androidx.appcompat.app.AlertDialog
+            .Builder(
+                requireContext()
+            )
+            .setTitle(
+                "Delete ${selected.size} notes?"
+            )
+            .setMessage(
+                "This removes the selected saved Notes. Their scan history remains available."
+            )
+            .setNegativeButton(
+                "Cancel",
+                null
+            )
+            .setPositiveButton(
+                "Delete"
+            ) {
+                    _,
+                    _ ->
+
+                lifecycleScope.launch(
+                    Dispatchers.IO
+                ) {
+                    val dao =
+                        AppDatabase
+                            .getDatabase(
+                                requireContext()
+                            )
+                            .appDao()
+
+                    selected.forEach {
+                            note ->
+                        dao.deleteNote(
+                            note
+                        )
+                    }
+
+                    withContext(
+                        Dispatchers.Main
+                    ) {
+                        notesAdapter
+                            .clearSelection()
+
+                        showNotesNotice(
+                            "Notes deleted",
+                            "${selected.size} removed"
+                        )
+                    }
+                }
+            }
+            .show()
+    }
+
     private fun deleteNote(note: Note) {
         lifecycleScope.launch(Dispatchers.IO) {
             AppDatabase.getDatabase(requireContext()).appDao().deleteNote(note)
             launch(Dispatchers.Main) {
-                Toast.makeText(context, R.string.note_deleted, Toast.LENGTH_SHORT).show()
+                showNotesNotice(
+                    "Note deleted",
+                    "Removed from Notes"
+                )
             }
         }
     }

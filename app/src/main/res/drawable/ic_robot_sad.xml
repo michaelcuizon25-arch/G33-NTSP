@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="150dp"
+    android:height="150dp"
+    android:viewportWidth="150"
+    android:viewportHeight="150">
+
+    <!-- soft shadow -->
+    <path
+        android:fillColor="#16000000"
+        android:pathData="M52,133 C52,128 98,128 98,133 C98,138 52,138 52,133Z" />
+
+    <!-- ears -->
+    <path
+        android:fillColor="#C8D0DA"
+        android:pathData="M24,45 C15,45 12,52 12,63 L12,74 C12,85 17,91 27,91 L32,91 L32,45Z" />
+    <path
+        android:fillColor="#C8D0DA"
+        android:pathData="M126,45 C135,45 138,52 138,63 L138,74 C138,85 133,91 123,91 L118,91 L118,45Z" />
+
+    <!-- head -->
+    <path
+        android:fillColor="#E4E9EF"
+        android:pathData="M32,28 C32,18 40,12 50,12 L100,12 C110,12 118,18 118,28 L118,78 C118,88 110,94 100,94 L50,94 C40,94 32,88 32,78Z" />
+
+    <!-- face screen -->
+    <path
+        android:fillColor="#102D3C"
+        android:pathData="M40,34 C40,27 46,23 53,23 L97,23 C104,23 110,27 110,34 L110,67 C110,74 104,78 97,78 L53,78 C46,78 40,74 40,67Z" />
+
+    <!-- sad eyes -->
+    <path
+        android:fillColor="#54E5F4"
+        android:pathData="M53,47 C56,43 62,43 65,47 C66,49 66,52 65,54 C61,52 57,52 53,54 C52,52 52,49 53,47Z" />
+    <path
+        android:fillColor="#54E5F4"
+        android:pathData="M85,47 C88,43 94,43 97,47 C98,49 98,52 97,54 C93,52 89,52 85,54 C84,52 84,49 85,47Z" />
+
+    <!-- sad mouth -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M65,67 C70,61 80,61 85,67"
+        android:strokeColor="#54E5F4"
+        android:strokeLineCap="round"
+        android:strokeWidth="3" />
+
+    <!-- neck -->
+    <path
+        android:fillColor="#BCC5D0"
+        android:pathData="M65,91 L85,91 L85,102 C85,107 81,110 75,110 C69,110 65,107 65,102Z" />
+
+    <!-- body -->
+    <path
+        android:fillColor="#E4E9EF"
+        android:pathData="M50,99 C54,94 62,92 75,92 C88,92 96,94 100,99 L106,119 C107,129 95,137 75,137 C55,137 43,129 44,119Z" />
+
+    <!-- chest detail -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M56,111 L68,116 L82,116 L94,111"
+        android:strokeColor="#BEC7D2"
+        android:strokeLineCap="round"
+        android:strokeWidth="2" />
+
+    <!-- arms -->
+    <path
+        android:fillColor="#D5DCE4"
+        android:pathData="M47,101 C38,102 33,110 34,120 C35,129 39,133 44,132 C50,131 52,125 51,116Z" />
+    <path
+        android:fillColor="#D5DCE4"
+        android:pathData="M103,101 C112,102 117,110 116,120 C115,129 111,133 106,132 C100,131 98,125 99,116Z" />
+</vector>

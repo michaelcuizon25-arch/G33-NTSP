@@ -183,16 +183,14 @@
          This is an overlay and does not replace the original camera controls. -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cameraBatchTray"
-        android:layout_width="0dp"
-        android:layout_height="94dp"
-        android:layout_marginStart="14dp"
-        android:layout_marginEnd="14dp"
-        android:layout_marginBottom="10dp"
-        android:elevation="10dp"
+        android:layout_width="292dp"
+        android:layout_height="68dp"
+        android:layout_marginBottom="8dp"
+        android:elevation="8dp"
         android:visibility="gone"
         app:cardBackgroundColor="#F20C0C0C"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="8dp"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="6dp"
         app:strokeColor="#665A7FDB"
         app:strokeWidth="1dp"
         app:layout_constraintBottom_toTopOf="@id/controlPanel"
@@ -204,32 +202,35 @@
             android:layout_height="match_parent"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="12dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="10dp"
-            android:paddingBottom="10dp">
+            android:paddingStart="10dp"
+            android:paddingTop="7dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="7dp">
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/tvCameraBatchCount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="42dp"
+                    android:layout_height="match_parent"
                     android:fontFamily="@font/poppins_medium"
-                    android:text="1 page ready"
+                    android:gravity="center"
+                    android:text="1 page"
                     android:textColor="#FFFFFF"
-                    android:textSize="10.5sp"
+                    android:textSize="8.5sp"
                     tools:ignore="HardcodedText" />
 
                 <HorizontalScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_marginTop="5dp"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="5dp"
                     android:layout_weight="1"
+                    android:clipToPadding="false"
                     android:fillViewport="false"
                     android:scrollbars="none">
 
@@ -246,14 +247,14 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnProcessCameraBatch"
-                android:layout_width="94dp"
-                android:layout_height="48dp"
-                android:layout_marginStart="10dp"
+                android:layout_width="78dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="7dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="#AFC4F6"
-                app:cardCornerRadius="16dp"
+                app:cardCornerRadius="13dp"
                 app:cardElevation="0dp">
 
                 <TextView
@@ -264,7 +265,7 @@
                     android:gravity="center"
                     android:text="Process"
                     android:textColor="#171717"
-                    android:textSize="11sp"
+                    android:textSize="9sp"
                     tools:ignore="HardcodedText" />
 
             </com.google.android.material.card.MaterialCardView>
@@ -276,7 +277,7 @@
     <LinearLayout
         android:id="@+id/controlPanel"
         android:layout_width="0dp"
-        android:layout_height="160dp"
+        android:layout_height="150dp"
         android:background="#000000"
         android:elevation="6dp"
         android:gravity="center"
@@ -289,13 +290,13 @@
         <LinearLayout
             android:id="@+id/captureModeTabs"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="34dp"
             android:gravity="center"
             android:orientation="horizontal">
 
             <LinearLayout
                 android:id="@+id/btnSingleMode"
-                android:layout_width="72dp"
+                android:layout_width="64dp"
                 android:layout_height="match_parent"
                 android:clickable="true"
                 android:focusable="true"
@@ -312,12 +313,12 @@
                     android:gravity="center"
                     android:text="Single"
                     android:textColor="#AFC4F6"
-                    android:textSize="11sp"
+                    android:textSize="10.5sp"
                     tools:ignore="HardcodedText" />
 
                 <View
                     android:id="@+id/indicatorSingleMode"
-                    android:layout_width="28dp"
+                    android:layout_width="24dp"
                     android:layout_height="2dp"
                     android:background="#AFC4F6" />
 
@@ -325,7 +326,7 @@
 
             <LinearLayout
                 android:id="@+id/btnBatchMode"
-                android:layout_width="72dp"
+                android:layout_width="64dp"
                 android:layout_height="match_parent"
                 android:clickable="true"
                 android:focusable="true"
@@ -347,7 +348,7 @@
 
                 <View
                     android:id="@+id/indicatorBatchMode"
-                    android:layout_width="28dp"
+                    android:layout_width="24dp"
                     android:layout_height="2dp"
                     android:background="#AFC4F6"
                     android:visibility="invisible" />
@@ -378,7 +379,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:contentDescription="Open Gallery"
-                    android:src="@android:drawable/ic_menu_gallery"
+                    android:src="@drawable/ic_scan_gallery"
                     app:tint="#AFC4F6" />
 
             </LinearLayout>
@@ -446,13 +447,18 @@
 
         <ImageView
             android:id="@+id/ivAnalyzingIcon"
-            android:layout_width="160dp"
-            android:layout_height="130dp"
-            android:layout_marginBottom="8dp"
-            android:adjustViewBounds="true"
-            android:contentDescription="Analyzing icon"
+            android:layout_width="112dp"
+            android:layout_height="82dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="12dp"
+            android:alpha="1"
+            android:background="@android:color/transparent"
+            android:contentDescription="Note2Snap whiteboard"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_analysis_face" />
+            android:src="@drawable/ic_analysis_face"
+            android:visibility="visible" />
+
+
 
         <TextView
             android:layout_width="wrap_content"

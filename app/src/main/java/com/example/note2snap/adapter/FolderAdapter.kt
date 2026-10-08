@@ -28,6 +28,10 @@ class FolderAdapter(
     private val onDeleteClick: (Folder) -> Unit
 ) : RecyclerView.Adapter<FolderAdapter.FolderViewHolder>() {
 
+    private var folderNoteCounts:
+        Map<Int, Int> =
+        emptyMap()
+
     class FolderViewHolder(
         view: View
     ) : RecyclerView.ViewHolder(view) {
@@ -45,6 +49,11 @@ class FolderAdapter(
         val tvFolderName: TextView =
             view.findViewById(
                 R.id.tvFolderName
+            )
+
+        val tvFolderMeta: TextView =
+            view.findViewById(
+                R.id.tvFolderMeta
             )
 
         val btnFolderMore: ImageView =
@@ -80,6 +89,21 @@ class FolderAdapter(
 
         holder.tvFolderName.text =
             folder.name
+
+        val noteCount =
+            folderNoteCounts[
+                folder.id
+            ] ?: 0
+
+        holder.tvFolderMeta.text =
+            if (
+                noteCount ==
+                1
+            ) {
+                "1 note"
+            } else {
+                "$noteCount notes"
+            }
 
         val folderColor =
             try {
@@ -153,6 +177,15 @@ class FolderAdapter(
 
     override fun getItemCount(): Int =
         folderList.size
+
+    fun updateFolderNoteCounts(
+        counts: Map<Int, Int>
+    ) {
+        folderNoteCounts =
+            counts
+
+        notifyDataSetChanged()
+    }
 
     fun updateFolders(
         newFolders: List<Folder>

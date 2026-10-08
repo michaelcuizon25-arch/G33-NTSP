@@ -37,9 +37,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="27dp"
-        android:layout_marginTop="22dp"
+        android:layout_marginTop="18dp"
         android:layout_marginEnd="27dp"
-        android:layout_marginBottom="0dp"
         android:clipToPadding="false"
         android:overScrollMode="never"
         android:paddingBottom="118dp"
@@ -55,62 +54,128 @@
         android:layout_height="0dp"
         android:gravity="center"
         android:orientation="vertical"
-        android:paddingBottom="72dp"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="96dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvHistoryTitle"
+        app:layout_constraintTop_toBottomOf="@id/historyHeaderLine"
         tools:visibility="visible">
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="94dp"
-            android:layout_height="66dp"
-            app:cardBackgroundColor="@color/nts_surface_blue"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/nts_outline"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_regular"
-                    android:gravity="center"
-                    android:text="•  •"
-                    android:textColor="@color/nts_text"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="-3dp"
-                    android:fontFamily="@font/poppins_regular"
-                    android:gravity="center"
-                    android:rotation="180"
-                    android:text="⌒"
-                    android:textColor="@color/nts_text"
-                    android:textSize="29sp" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottieEmptyHistoryRobot"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:contentDescription="Sad Note2Snap robot"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true"
+            app:lottie_rawRes="@raw/robot_sad"
+            app:lottie_speed="0.75" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:fontFamily="@font/poppins_regular"
-            android:text="No scans yet."
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:text="Nothing scanned yet"
             android:textColor="@color/nts_text"
-            android:textSize="12sp" />
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="260dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:fontFamily="@font/poppins_regular"
+            android:gravity="center"
+            android:text="Your scanned whiteboards will appear here."
+            android:textColor="@color/nts_text_secondary"
+            android:textSize="10.5sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEmptyHistoryScan"
+            android:layout_width="142dp"
+            android:layout_height="46dp"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:text="Scan now"
+            android:textAllCaps="false"
+            android:textColor="@color/nts_text"
+            android:textSize="11sp"
+            app:backgroundTint="@color/nts_yellow"
+            app:cornerRadius="16dp" />
 
     </LinearLayout>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/historySelectionBar"
+        android:layout_width="0dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="92dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/nts_surface"
+        app:cardCornerRadius="22dp"
+        app:cardElevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:strokeColor="@color/nts_blue_line"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="10dp">
+
+            <TextView
+                android:id="@+id/tvHistorySelectedCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_semibold"
+                android:text="1 selected"
+                android:textColor="@color/nts_text"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/btnHistorySelectAll"
+                android:layout_width="wrap_content"
+                android:layout_height="42dp"
+                android:gravity="center"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="Select all"
+                android:textColor="@color/nts_blue"
+                android:fontFamily="@font/poppins_medium"
+                android:textSize="9.5sp" />
+
+            <TextView
+                android:id="@+id/btnHistoryDeleteSelected"
+                android:layout_width="78dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_delete_button"
+                android:gravity="center"
+                android:text="Delete"
+                android:textColor="@android:color/white"
+                android:fontFamily="@font/poppins_semibold"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/btnHistoryCancelSelection"
+                android:layout_width="36dp"
+                android:layout_height="42dp"
+                android:gravity="center"
+                android:text="×"
+                android:textColor="@color/nts_text_secondary"
+                android:textSize="20sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

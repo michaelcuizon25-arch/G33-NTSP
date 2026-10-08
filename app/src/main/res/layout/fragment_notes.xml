@@ -202,36 +202,42 @@
             <LinearLayout
                 android:id="@+id/emptyStateContainer"
                 android:layout_width="match_parent"
-                android:layout_height="210dp"
+                android:layout_height="205dp"
                 android:gravity="center"
                 android:orientation="vertical"
                 android:visibility="gone">
 
-                <ImageView
-                    android:layout_width="78dp"
-                    android:layout_height="78dp"
-                    android:contentDescription="Empty Notes"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_folder_custom" />
+                <com.airbnb.lottie.LottieAnimationView
+                    android:id="@+id/lottieEmptyNotesRobot"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    android:contentDescription="Sad Note2Snap robot"
+                    app:lottie_autoPlay="true"
+                    app:lottie_loop="true"
+                    app:lottie_rawRes="@raw/robot_sad"
+                    app:lottie_speed="0.75" />
 
                 <TextView
                     android:id="@+id/tvNotFound"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:fontFamily="@font/poppins_regular"
-                    android:text="Feels empty here."
+                    android:layout_marginTop="5dp"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:text="No saved notes yet"
                     android:textColor="@color/nts_text"
                     android:textSize="14sp" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/tvEmptyNotesSubtitle"
+                    android:layout_width="280dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
+                    android:layout_marginTop="4dp"
                     android:fontFamily="@font/poppins_regular"
-                    android:text="+ Add one?"
+                    android:gravity="center"
+                    android:text="Scans stay in History until you tap Save."
                     android:textColor="@color/nts_blue"
-                    android:textSize="11sp" />
+                    android:textSize="10.5sp" />
+
             </LinearLayout>
 
             <TextView
@@ -284,5 +290,73 @@
         app:borderWidth="1dp"
         app:elevation="4dp"
         app:tint="@color/nts_text" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/notesSelectionBar"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="88dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/nts_surface"
+        app:cardCornerRadius="22dp"
+        app:cardElevation="8dp"
+        app:strokeColor="@color/nts_blue_line"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="10dp">
+
+            <TextView
+                android:id="@+id/tvNotesSelectedCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/poppins_semibold"
+                android:text="1 selected"
+                android:textColor="@color/nts_text"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/btnNotesSelectAll"
+                android:layout_width="wrap_content"
+                android:layout_height="42dp"
+                android:gravity="center"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="Select all"
+                android:textColor="@color/nts_blue"
+                android:fontFamily="@font/poppins_medium"
+                android:textSize="9.5sp" />
+
+            <TextView
+                android:id="@+id/btnNotesDeleteSelected"
+                android:layout_width="78dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_delete_button"
+                android:gravity="center"
+                android:text="Delete"
+                android:textColor="@android:color/white"
+                android:fontFamily="@font/poppins_semibold"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/btnNotesCancelSelection"
+                android:layout_width="36dp"
+                android:layout_height="42dp"
+                android:gravity="center"
+                android:text="×"
+                android:textColor="@color/nts_text_secondary"
+                android:textSize="20sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

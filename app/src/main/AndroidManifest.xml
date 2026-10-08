@@ -12,6 +12,7 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
     <application
         android:allowBackup="true"
@@ -53,6 +54,11 @@
         <activity
             android:name=".activities.LegalDocumentActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".activities.GalleryPickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Note2Snap" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

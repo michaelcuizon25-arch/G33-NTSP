@@ -2,6 +2,7 @@ package com.example.note2snap.activities
 
 import android.os.Bundle
 import android.view.View
+import android.view.HapticFeedbackConstants
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -91,24 +92,47 @@ class MainActivity : AppCompatActivity() {
             findViewById(R.id.textSettings)
     }
 
+    private fun hapticTap(
+        view: View
+    ) {
+        view.performHapticFeedback(
+            HapticFeedbackConstants.KEYBOARD_TAP
+        )
+    }
+
     private fun setupClickListeners() {
         navHome.setOnClickListener {
+            hapticTap(
+                navHome
+            )
             selectTab(R.id.navHome)
         }
 
         navNotes.setOnClickListener {
+            hapticTap(
+                navNotes
+            )
             selectTab(R.id.navNotes)
         }
 
         navHistory.setOnClickListener {
+            hapticTap(
+                navHistory
+            )
             selectTab(R.id.navHistory)
         }
 
         navSettings.setOnClickListener {
+            hapticTap(
+                navSettings
+            )
             selectTab(R.id.navSettings)
         }
 
         scanFab.setOnClickListener {
+            hapticTap(
+                scanFab
+            )
             openScan()
         }
     }

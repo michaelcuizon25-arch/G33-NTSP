@@ -59,8 +59,24 @@ class HomeFragment : Fragment() {
     private var tvStatWeek: TextView? = null
     private var tvStatStreak: TextView? = null
     private var tvStatStreakEmoji: TextView? = null
+    private var streakRobot: LottieAnimationView? = null
+    private var streakRobotCard: com.google.android.material.card.MaterialCardView? = null
+    private var tvStreakLevel: TextView? = null
+    private var tvStreakStage: TextView? = null
+    private var tvStreakNext: TextView? = null
+    private var streakProgress: android.widget.ProgressBar? = null
+    private var tvStreakProgressLabel: TextView? = null
+    private var tvSeeAllRecent: TextView? = null
+    private var cardStreakEvolution: View? = null
+    private var currentStreakRobotRes: Int = 0
     private var tvEmptyRecent: TextView? = null
     private var rvRecentNotes: RecyclerView? = null
+    private var cardContinue: View? = null
+    private var tvContinueTitle: TextView? = null
+    private var tvContinueMeta: TextView? = null
+    private var cardSmartSuggestion: View? = null
+    private var tvSmartMessage: TextView? = null
+    private var tvSmartAction: TextView? = null
     private var snapHomeRobot: LottieAnimationView? = null
     private var snapHomeTip: TextView? = null
     private var snapHomeBob: ObjectAnimator? = null
@@ -85,26 +101,65 @@ class HomeFragment : Fragment() {
         tvStatWeek = view.findViewById(R.id.tvStatWeek)
         tvStatStreak = view.findViewById(R.id.tvStatStreak)
         tvStatStreakEmoji = view.findViewById(R.id.tvStatStreakEmoji)
+        streakRobot = view.findViewById(R.id.streakRobot)
+        streakRobotCard = view.findViewById(R.id.streakRobotCard)
+        tvStreakLevel = view.findViewById(R.id.tvStreakLevel)
+        tvStreakStage = view.findViewById(R.id.tvStreakStage)
+        tvStreakNext = view.findViewById(R.id.tvStreakNext)
+        streakProgress = view.findViewById(R.id.streakProgress)
+        tvStreakProgressLabel = view.findViewById(R.id.tvStreakProgressLabel)
+        tvSeeAllRecent = view.findViewById(R.id.tvSeeAllRecent)
+        cardStreakEvolution = view.findViewById(R.id.cardStreakEvolution)
         tvEmptyRecent = view.findViewById(R.id.tvEmptyRecent)
         rvRecentNotes = view.findViewById(R.id.rvRecentNotes)
 
-        val cardScan = view.findViewById<CardView>(R.id.cardScan)
-        homeScanCard = cardScan
-        val cardNotes = view.findViewById<CardView>(R.id.cardNotes)
-        val cardFolders = view.findViewById<CardView>(R.id.cardFolders)
+        cardContinue = view.findViewById(R.id.cardContinue)
+        tvContinueTitle = view.findViewById(R.id.tvContinueTitle)
+        tvContinueMeta = view.findViewById(R.id.tvContinueMeta)
+        cardSmartSuggestion = view.findViewById(R.id.cardSmartSuggestion)
+        tvSmartMessage = view.findViewById(R.id.tvSmartMessage)
+        tvSmartAction = view.findViewById(R.id.tvSmartAction)
 
         updateHeaderAndDate()
 
-        cardScan?.setOnClickListener {
-            (activity as? MainActivity)?.openScan()
+        cardContinue?.setOnClickListener {
+            latestHistory
+                .maxByOrNull { item -> item.timestamp }
+                ?.let { item ->
+                    openRecentScan(item)
+                }
         }
 
-        cardNotes?.setOnClickListener {
-            (activity as? MainActivity)?.selectTab(R.id.nav_notes)
+        tvSeeAllRecent?.setOnClickListener {
+            (activity as? MainActivity)
+                ?.selectTab(
+                    R.id.nav_history
+                )
         }
 
-        cardFolders?.setOnClickListener {
-            (activity as? MainActivity)?.selectTab(R.id.nav_notes)
+        cardSmartSuggestion?.setOnClickListener {
+            val savedPaths =
+                latestNotes
+                    .mapNotNull { note ->
+                        note.imagePath
+                            .takeIf { path ->
+                                path.isNotBlank()
+                            }
+                    }
+                    .toSet()
+
+            latestHistory
+                .sortedByDescending { item -> item.timestamp }
+                .firstOrNull { item ->
+                    item.imagePath !in savedPaths
+                }
+                ?.let { item ->
+                    openRecentScan(item)
+                }
+        }
+
+        cardStreakEvolution?.setOnClickListener {
+            showSnapEvolutionSheet()
         }
 
         recentScanAdapter = RecentScanAdapter(
@@ -123,18 +178,6 @@ class HomeFragment : Fragment() {
         observeSavedNotes()
         observeRecentScans()
 
-        view.post {
-            // Always render Snap on Home, independent of tutorial/preferences.
-            ensureSnapHomeBanner(
-                anchor = cardScan
-            )
-
-            startHomeGuideIfNeeded(
-                cardScan = cardScan,
-                cardNotes = cardNotes,
-                cardFolders = cardFolders
-            )
-        }
         return view
     }
 
@@ -370,7 +413,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.START or
-                            Gravity.CENTER_VERTICAL
+                        Gravity.CENTER_VERTICAL
 
                 leftMargin =
                     dpHome(
@@ -421,7 +464,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.END or
-                            Gravity.BOTTOM
+                        Gravity.BOTTOM
 
                 rightMargin =
                     dpHome(
@@ -468,7 +511,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.END or
-                            Gravity.TOP
+                        Gravity.TOP
 
                 rightMargin =
                     dpHome(
@@ -531,7 +574,7 @@ class HomeFragment : Fragment() {
             if (
                 parent is LinearLayout &&
                 parent.orientation ==
-                LinearLayout.VERTICAL
+                    LinearLayout.VERTICAL
             ) {
                 return Pair(
                     parent,
@@ -635,11 +678,11 @@ class HomeFragment : Fragment() {
         val next =
             messages[
                 (
-                        currentIndex +
-                                1
-                        ).mod(
-                        messages.size
-                    )
+                    currentIndex +
+                        1
+                    ).mod(
+                    messages.size
+                )
             ]
 
         snapHomeTip
@@ -672,11 +715,11 @@ class HomeFragment : Fragment() {
         value: Int
     ): Int {
         return (
-                value *
-                        resources
-                            .displayMetrics
-                            .density
-                ).toInt()
+            value *
+                resources
+                    .displayMetrics
+                    .density
+            ).toInt()
     }
 
     private fun startHomeGuideIfNeeded(
@@ -742,6 +785,100 @@ class HomeFragment : Fragment() {
             }
     }
 
+    private fun refreshHomeDashboard() {
+        val latest =
+            latestHistory
+                .maxByOrNull { item ->
+                    item.timestamp
+                }
+
+        if (latest == null) {
+            cardContinue?.visibility =
+                View.VISIBLE
+
+            tvContinueTitle?.text =
+                "Nothing to continue yet"
+
+            tvContinueMeta?.text =
+                "Your latest scan will appear here."
+
+            cardContinue?.isEnabled =
+                false
+        } else {
+            cardContinue?.visibility =
+                View.VISIBLE
+
+            cardContinue?.isEnabled =
+                true
+
+            tvContinueTitle?.text =
+                latest.title
+                    .ifBlank {
+                        "Recent scan"
+                    }
+
+            val timeText =
+                SimpleDateFormat(
+                    "MMM d • h:mm a",
+                    Locale.getDefault()
+                ).format(
+                    latest.timestamp
+                )
+
+            tvContinueMeta?.text =
+                "Last opened $timeText"
+        }
+
+        val savedPaths =
+            latestNotes
+                .mapNotNull { note ->
+                    note.imagePath
+                        .takeIf { path ->
+                            path.isNotBlank()
+                        }
+                }
+                .toSet()
+
+        val unsavedCount =
+            latestHistory
+                .count { item ->
+                    item.imagePath.isNotBlank() &&
+                        item.imagePath !in savedPaths
+                }
+
+        if (unsavedCount > 0) {
+            cardSmartSuggestion?.visibility =
+                View.VISIBLE
+
+            tvSmartMessage?.text =
+                if (unsavedCount == 1) {
+                    "You have 1 scan waiting in History."
+                } else {
+                    "You have $unsavedCount scans waiting in History."
+                }
+
+            tvSmartAction?.text =
+                "Review now"
+        } else {
+            cardSmartSuggestion?.visibility =
+                View.VISIBLE
+
+            tvSmartMessage?.text =
+                if (latestNotes.isEmpty()) {
+                    "Your workspace is quiet. Your first saved note will show up here."
+                } else {
+                    "Everything is organized. Nice work."
+                }
+
+            tvSmartAction?.text =
+                if (latestNotes.isEmpty()) {
+                    "Ready when you are"
+                } else {
+                    "All caught up"
+                }
+        }
+    }
+
     private fun observeSavedNotes() {
         val safeContext = context ?: return
         val dao = AppDatabase.getDatabase(safeContext).appDao()
@@ -758,11 +895,9 @@ class HomeFragment : Fragment() {
 
                 tvStatWeek?.text = savedThisWeek.toString()
 
-                val badge = getEvolvedNoteBadge(totalNotesCount)
-                tvStatStreakEmoji?.text = badge.first
-                tvStatStreak?.text = badge.second
-
+                refreshStudyStreak()
                 refreshRecentCards()
+                refreshHomeDashboard()
             }
         }
     }
@@ -778,13 +913,10 @@ class HomeFragment : Fragment() {
                 val sevenDaysAgo = System.currentTimeMillis() - 7L * 24L * 60L * 60L * 1000L
                 val scansThisWeek = latestHistory.count { it.timestamp >= sevenDaysAgo }
 
-                tvGreetingSubtitle?.text = if (scansThisWeek > 0) {
-                    "You scanned $scansThisWeek this week!"
-                } else {
-                    "Ready to scan your notes today?"
-                }
-
+                updateGreetingSubtitle(scansThisWeek)
+                refreshStudyStreak()
                 refreshRecentCards()
+                refreshHomeDashboard()
             }
     }
 
@@ -1072,37 +1204,647 @@ class HomeFragment : Fragment() {
     private fun updateHeaderAndDate() {
         val calendar = Calendar.getInstance()
 
-        tvDate?.text = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(calendar.time)
+        tvDate?.text =
+            SimpleDateFormat(
+                "EEEE, MMMM d",
+                Locale.getDefault()
+            ).format(calendar.time)
 
-        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val hour =
+            calendar.get(
+                Calendar.HOUR_OF_DAY
+            )
 
-        tvGreeting?.text = when (hour) {
-            in 5..11 -> "Good morning! Ready to study?"
-            in 12..17 -> "Good afternoon! Ready to study?"
-            in 18..21 -> "Good evening! Ready to study?"
-            else -> "Late night study session?"
-        }
+        tvGreeting?.text =
+            when (hour) {
+                in 5..11 -> "Good morning!"
+                in 12..17 -> "Good afternoon!"
+                in 18..21 -> "Good evening!"
+                else -> "Still up?"
+            }
+
+        val sevenDaysAgo =
+            System.currentTimeMillis() -
+                7L * 24L * 60L * 60L * 1000L
+
+        val scansThisWeek =
+            latestHistory.count {
+                item ->
+                item.timestamp >= sevenDaysAgo
+            }
+
+        updateGreetingSubtitle(
+            scansThisWeek
+        )
     }
 
-    private fun getEvolvedNoteBadge(noteCount: Int): Pair<String, String> {
-        return when (noteCount) {
-            0 -> "📄" to "0 Notes"              // Blank Page (Starting fresh)
-            in 1..2 -> "✏️" to "$noteCount Notes"  // Pencil (First jottings)
-            in 3..5 -> "📖" to "$noteCount Notes"  // Open Book (Active reading & review)
-            in 6..10 -> "📚" to "$noteCount Notes" // Books / Stack (Building library)
-            in 11..25 -> "🧠" to "$noteCount Notes"// Brain (Knowledge retention)
-            in 26..50 -> "🎓" to "$noteCount Notes"// Scholar Cap (Study master)
-            else -> "🏛️" to "$noteCount Notes"     // Library Vault (Grand archive)
+    private fun updateGreetingSubtitle(
+        scansThisWeek: Int
+    ) {
+        tvGreetingSubtitle?.text =
+            when {
+                scansThisWeek > 1 ->
+                    "You’ve scanned $scansThisWeek notes this week. Keep it going."
+                scansThisWeek == 1 ->
+                    "You’ve scanned 1 note this week. Keep it going."
+                latestNotes.isNotEmpty() ->
+                    "Your notes are organized and ready when you are."
+                else ->
+                    "Your workspace is ready when inspiration hits."
+            }
+    }
+
+    private fun calculateStudyStreak(): Int {
+        val activityDays =
+            (
+                latestNotes.map {
+                    note ->
+                    startOfDay(
+                        note.timestamp
+                    )
+                } +
+                latestHistory.map {
+                    scan ->
+                    startOfDay(
+                        scan.timestamp
+                    )
+                }
+            )
+                .toSet()
+
+        if (activityDays.isEmpty()) {
+            return 0
         }
+
+        val today =
+            startOfDay(
+                System.currentTimeMillis()
+            )
+
+        val oneDay =
+            24L * 60L * 60L * 1000L
+
+        var cursor =
+            if (
+                today in activityDays
+            ) {
+                today
+            } else {
+                today - oneDay
+            }
+
+        var streak =
+            0
+
+        while (
+            cursor in activityDays
+        ) {
+            streak++
+            cursor -= oneDay
+        }
+
+        return streak
+    }
+
+    private fun refreshStudyStreak() {
+        val streak =
+            calculateStudyStreak()
+
+        tvStatStreak?.text =
+            if (
+                streak == 1
+            ) {
+                "1 day"
+            } else {
+                "$streak days"
+            }
+
+        val level: Int
+        val stage: String
+        val nextText: String
+        val scale: Float
+        val alpha: Float
+        val speed: Float
+        val bgColor: Int
+        val evolutionStrokeColor: Int
+
+        when {
+            streak >= 14 -> {
+                level = 5
+                stage = "Master Snap"
+                nextText = "Max evolution reached"
+                scale = 1.13f
+                alpha = 1f
+                speed = 1.0f
+                bgColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_yellow
+                    )
+                evolutionStrokeColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_blue
+                    )
+            }
+
+            streak >= 7 -> {
+                level = 4
+                stage = "Scholar Snap"
+                nextText = "${14 - streak} days to Master"
+                scale = 1.08f
+                alpha = 1f
+                speed = 0.92f
+                bgColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_surface_blue_soft
+                    )
+                evolutionStrokeColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_blue
+                    )
+            }
+
+            streak >= 3 -> {
+                level = 3
+                stage = "Focused Snap"
+                nextText = "${7 - streak} days to Scholar"
+                scale = 1.04f
+                alpha = 0.95f
+                speed = 0.86f
+                bgColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_surface_blue_soft
+                    )
+                evolutionStrokeColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_blue_line
+                    )
+            }
+
+            streak >= 1 -> {
+                level = 2
+                stage = "Rookie Snap"
+                nextText = "${3 - streak} days to Focused"
+                scale = 1f
+                alpha = 0.88f
+                speed = 0.78f
+                bgColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_surface
+                    )
+                evolutionStrokeColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_outline
+                    )
+            }
+
+            else -> {
+                level = 1
+                stage = "Newbie Snap"
+                nextText = "Study today to start evolving"
+                scale = 0.92f
+                alpha = 0.55f
+                speed = 0.62f
+                bgColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_surface
+                    )
+                evolutionStrokeColor =
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_outline
+                    )
+            }
+        }
+
+        val robotRes =
+            when (level) {
+                1 -> R.raw.robot_newbie
+                2 -> R.raw.robot_rookie
+                3 -> R.raw.robot_focused
+                4 -> R.raw.robot_scholar
+                else -> R.raw.robot_master
+            }
+
+        if (currentStreakRobotRes != robotRes) {
+            currentStreakRobotRes = robotRes
+
+            streakRobot?.apply {
+                cancelAnimation()
+                setAnimation(robotRes)
+                repeatCount =
+                    com.airbnb.lottie.LottieDrawable.INFINITE
+                playAnimation()
+            }
+        }
+
+        val nextThreshold =
+            when (level) {
+                1 -> 1
+                2 -> 3
+                3 -> 7
+                4 -> 14
+                else -> 14
+            }
+
+        val progressPercent =
+            if (level >= 5) {
+                100
+            } else {
+                (
+                    streak
+                        .coerceAtMost(nextThreshold) *
+                        100f /
+                        nextThreshold
+                    )
+                    .toInt()
+                    .coerceIn(
+                        0,
+                        100
+                    )
+            }
+
+        streakProgress?.progress =
+            progressPercent
+
+        tvStreakProgressLabel?.text =
+            if (level >= 5) {
+                "MAX"
+            } else {
+                "$streak / $nextThreshold days"
+            }
+
+        tvStreakLevel?.text =
+            "LV. $level"
+
+        tvStreakStage?.text =
+            stage
+
+        tvStreakNext?.text =
+            nextText
+
+        streakRobot?.apply {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+            setSpeed(speed)
+
+            if (!isAnimating) {
+                repeatCount =
+                    com.airbnb.lottie.LottieDrawable.INFINITE
+                playAnimation()
+            }
+        }
+
+        streakRobotCard?.apply {
+            setCardBackgroundColor(
+                bgColor
+            )
+
+            strokeColor =
+                evolutionStrokeColor
+
+            strokeWidth =
+                if (level >= 4) {
+                    dpHome(2)
+                } else {
+                    dpHome(1)
+                }
+        }
+
+        tvStatStreakEmoji?.visibility =
+            View.GONE
+    }
+
+    private fun showSnapEvolutionSheet() {
+        if (!isAdded) {
+            return
+        }
+
+        val dialog =
+            BottomSheetDialog(
+                requireContext()
+            )
+
+        val sheet =
+            layoutInflater.inflate(
+                R.layout.bottom_sheet_snap_evolution,
+                null,
+                false
+            )
+
+        val streak =
+            calculateStudyStreak()
+
+        val level =
+            when {
+                streak >= 14 -> 5
+                streak >= 7 -> 4
+                streak >= 3 -> 3
+                streak >= 1 -> 2
+                else -> 1
+            }
+
+        val stage =
+            when (level) {
+                1 -> "Newbie Snap"
+                2 -> "Rookie Snap"
+                3 -> "Focused Snap"
+                4 -> "Scholar Snap"
+                else -> "Master Snap"
+            }
+
+        val robotRes =
+            when (level) {
+                1 -> R.raw.robot_newbie
+                2 -> R.raw.robot_rookie
+                3 -> R.raw.robot_focused
+                4 -> R.raw.robot_scholar
+                else -> R.raw.robot_master
+            }
+
+        val nextThreshold =
+            when (level) {
+                1 -> 1
+                2 -> 3
+                3 -> 7
+                4 -> 14
+                else -> 14
+            }
+
+        val daysLeft =
+            if (level >= 5) {
+                0
+            } else {
+                (
+                    nextThreshold -
+                        streak
+                    )
+                    .coerceAtLeast(
+                        0
+                    )
+            }
+
+        val nextStage =
+            when (level) {
+                1 -> "Rookie Snap"
+                2 -> "Focused Snap"
+                3 -> "Scholar Snap"
+                4 -> "Master Snap"
+                else -> "Max level"
+            }
+
+        val robot =
+            sheet.findViewById<LottieAnimationView>(
+                R.id.evolutionCurrentRobot
+            )
+
+        robot.setAnimation(
+            robotRes
+        )
+
+        robot.repeatCount =
+            com.airbnb.lottie.LottieDrawable.INFINITE
+
+        robot.playAnimation()
+
+        sheet.findViewById<TextView>(
+            R.id.tvEvolutionCurrentLevel
+        ).text =
+            "LV. $level"
+
+        sheet.findViewById<TextView>(
+            R.id.tvEvolutionCurrentStage
+        ).text =
+            stage
+
+        sheet.findViewById<TextView>(
+            R.id.tvEvolutionCurrentStreak
+        ).text =
+            if (
+                streak == 1
+            ) {
+                "1 day streak"
+            } else {
+                "$streak day streak"
+            }
+
+        val progress =
+            sheet.findViewById<android.widget.ProgressBar>(
+                R.id.evolutionProgress
+            )
+
+        val progressLabel =
+            sheet.findViewById<TextView>(
+                R.id.tvEvolutionProgressLabel
+            )
+
+        val unlockText =
+            sheet.findViewById<TextView>(
+                R.id.tvEvolutionUnlockText
+            )
+
+        if (level >= 5) {
+            progress.progress =
+                100
+
+            progressLabel.text =
+                "MAX"
+
+            unlockText.text =
+                "You unlocked every Snap evolution ✦"
+        } else {
+            progress.progress =
+                (
+                    streak *
+                        100f /
+                        nextThreshold
+                    )
+                    .toInt()
+                    .coerceIn(
+                        0,
+                        100
+                    )
+
+            progressLabel.text =
+                "$streak / $nextThreshold days"
+
+            unlockText.text =
+                if (daysLeft == 1) {
+                    "1 more active day to unlock $nextStage"
+                } else {
+                    "$daysLeft more active days to unlock $nextStage"
+                }
+        }
+
+        val stages =
+            listOf(
+                EvolutionStageUi(
+                    robotViewId =
+                        R.id.robotEvolutionNewbie,
+                    lockViewId =
+                        R.id.tvEvolutionNewbieStatus,
+                    level =
+                        1,
+                    title =
+                        "Newbie",
+                    robotRes =
+                        R.raw.robot_newbie
+                ),
+                EvolutionStageUi(
+                    robotViewId =
+                        R.id.robotEvolutionRookie,
+                    lockViewId =
+                        R.id.tvEvolutionRookieStatus,
+                    level =
+                        2,
+                    title =
+                        "Rookie",
+                    robotRes =
+                        R.raw.robot_rookie
+                ),
+                EvolutionStageUi(
+                    robotViewId =
+                        R.id.robotEvolutionFocused,
+                    lockViewId =
+                        R.id.tvEvolutionFocusedStatus,
+                    level =
+                        3,
+                    title =
+                        "Focused",
+                    robotRes =
+                        R.raw.robot_focused
+                ),
+                EvolutionStageUi(
+                    robotViewId =
+                        R.id.robotEvolutionScholar,
+                    lockViewId =
+                        R.id.tvEvolutionScholarStatus,
+                    level =
+                        4,
+                    title =
+                        "Scholar",
+                    robotRes =
+                        R.raw.robot_scholar
+                ),
+                EvolutionStageUi(
+                    robotViewId =
+                        R.id.robotEvolutionMaster,
+                    lockViewId =
+                        R.id.tvEvolutionMasterStatus,
+                    level =
+                        5,
+                    title =
+                        "Master",
+                    robotRes =
+                        R.raw.robot_master
+                )
+            )
+
+        stages.forEach {
+                item ->
+
+            val stageRobot =
+                sheet.findViewById<LottieAnimationView>(
+                    item.robotViewId
+                )
+
+            stageRobot.setAnimation(
+                item.robotRes
+            )
+
+            stageRobot.repeatCount =
+                com.airbnb.lottie.LottieDrawable.INFINITE
+
+            stageRobot.speed =
+                if (
+                    item.level <= level
+                ) {
+                    0.72f
+                } else {
+                    0.55f
+                }
+
+            stageRobot.alpha =
+                if (
+                    item.level <= level
+                ) {
+                    1f
+                } else {
+                    0.28f
+                }
+
+            if (
+                item.level <= level
+            ) {
+                stageRobot.playAnimation()
+            } else {
+                stageRobot.progress =
+                    0.05f
+            }
+
+            sheet.findViewById<TextView>(
+                item.lockViewId
+            ).text =
+                when {
+                    item.level < level ->
+                        "Unlocked"
+                    item.level == level ->
+                        "Current"
+                    else ->
+                        "Locked"
+                }
+        }
+
+        sheet.findViewById<View>(
+            R.id.btnCloseEvolution
+        ).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.setContentView(
+            sheet
+        )
+
+        dialog.show()
+    }
+
+    private data class EvolutionStageUi(
+        val robotViewId: Int,
+        val lockViewId: Int,
+        val level: Int,
+        val title: String,
+        val robotRes: Int
+    )
+
+    private fun startOfDay(
+
+        timestamp: Long
+    ): Long {
+        return Calendar
+            .getInstance()
+            .apply {
+                timeInMillis = timestamp
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            .timeInMillis
     }
     override fun onResume() {
         super.onResume()
-
-        view?.post {
-            ensureSnapHomeBanner(
-                anchor = homeScanCard
-            )
-        }
+        updateHeaderAndDate()
+        refreshStudyStreak()
+        refreshHomeDashboard()
     }
 
     override fun onDestroyView() {

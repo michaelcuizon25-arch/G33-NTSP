@@ -206,7 +206,7 @@ object ImageQualityValidator {
         }
 
         // 1. Severe low light check
-        if (average < 52.0 || darkRatio > 0.58) {
+        if (average < 38.0 || darkRatio > 0.72) {
             return invalid(
                 ImageQualityIssue.TOO_DARK,
                 "Lighting is too low",
@@ -218,11 +218,21 @@ object ImageQualityValidator {
         }
 
         // 2. Severe overall overexposure check (evaluated before blur!)
-        if (average > 238.0 || brightRatio > 0.48) {
+        val severelyOverexposed =
+            (
+                average > 250.0 &&
+                contrast < 10.0
+            ) ||
+            (
+                brightRatio > 0.88 &&
+                inkRatio < 0.004
+            )
+
+        if (severelyOverexposed) {
             return invalid(
                 ImageQualityIssue.TOO_BRIGHT,
                 "Image is too bright",
-                "Reduce direct light or change your camera angle before scanning again.",
+                "Most of the board is washed out by light. Reduce direct light or change your camera angle, then try again.",
                 average,
                 contrast,
                 edgeStrength
@@ -230,7 +240,10 @@ object ImageQualityValidator {
         }
 
         // 3. Localized specular glare check
-        if (strongestGlareCell > 0.35 && brightRatio < 0.45) {
+        if (
+            strongestGlareCell > 0.72 &&
+            brightRatio < 0.70
+        ) {
             return invalid(
                 ImageQualityIssue.GLARE,
                 "Strong glare detected",
@@ -242,7 +255,10 @@ object ImageQualityValidator {
         }
 
         // 4. Missing board or unreadable content check
-        if (contrast < 11.0 || inkRatio < 0.0025) {
+        if (
+            contrast < 6.0 &&
+            inkRatio < 0.0012
+        ) {
             return invalid(
                 ImageQualityIssue.BOARD_NOT_CLEAR,
                 "Whiteboard is not clear",
@@ -254,7 +270,7 @@ object ImageQualityValidator {
         }
 
         // 5. Masked Blur & Dirty Lens check
-        if (edgeStrength < 4.2) {
+        if (edgeStrength < 2.6) {
             val isSmudgedLens = contrast in 12.0..28.0
             val message = if (isSmudgedLens) {
                 "Clean your camera lens, hold your phone steady, and capture the board again."
@@ -362,22 +378,22 @@ enum class LiveCameraHint(
     BLURRY(
         title = "Image looks blurry",
         message = "Hold steady, move slightly back, and tap the board to focus.",
-        framesRequired = 6
+        framesRequired = 8
     ),
     TOO_DARK(
         title = "Lighting is too low",
         message = "Move to a brighter area or turn on the flash.",
-        framesRequired = 4
+        framesRequired = 6
     ),
     TOO_BRIGHT(
         title = "Image is too bright",
         message = "Reduce direct light or change your camera angle.",
-        framesRequired = 4
+        framesRequired = 6
     ),
     GLARE(
         title = "Strong glare detected",
         message = "Change your angle or reduce direct light on the board.",
-        framesRequired = 5
+        framesRequired = 7
     )
 }
 
@@ -658,17 +674,17 @@ class LiveCameraQualityAnalyzer(
 
         // Mirrors ImageQualityValidator thresholds so live hints and the
         // capture-time gate agree with each other.
-        private const val DARK_AVERAGE = 52.0
-        private const val DARK_RATIO = 0.58
-        private const val BRIGHT_AVERAGE = 238.0
-        private const val BRIGHT_RATIO = 0.48
-        private const val BLUR_EDGE_STRENGTH = 4.2
-        private const val MIN_CONTRAST_TO_JUDGE = 10.0
+        private const val DARK_AVERAGE = 42.0
+        private const val DARK_RATIO = 0.68
+        private const val BRIGHT_AVERAGE = 248.0
+        private const val BRIGHT_RATIO = 0.78
+        private const val BLUR_EDGE_STRENGTH = 3.0
+        private const val MIN_CONTRAST_TO_JUDGE = 7.0
         private const val LENS_CONTRAST_MIN = 10.0
         private const val LENS_CONTRAST_MAX = 28.0
 
         // Live-only: stricter glare so a bright clean whiteboard doesn't trigger it.
-        private const val GLARE_CELL_RATIO = 0.45
+        private const val GLARE_CELL_RATIO = 0.62
         private const val GLARE_MAX_GLOBAL_BRIGHT = 0.25
 
         // Mean per-cell luma change between frames above which we consider

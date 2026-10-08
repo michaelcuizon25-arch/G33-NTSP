@@ -1,6 +1,7 @@
 package com.example.note2snap.activities
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -19,6 +20,7 @@ import android.text.TextPaint
 import android.text.TextUtils
 import android.util.Base64
 import android.view.View
+import android.view.HapticFeedbackConstants
 import android.view.inputmethod.InputMethodManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -28,6 +30,7 @@ import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -59,6 +62,7 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -96,6 +100,10 @@ class PdfViewerActivity : AppCompatActivity() {
     private var currentPage = 1
     private var totalPages = 1
     private var isTextExpanded = false
+
+    private var hasUnsavedChanges =
+        false
+
 
     private data class HighlightRange(
         val start: Int,
@@ -259,8 +267,8 @@ class PdfViewerActivity : AppCompatActivity() {
                 maybeShowOcrReviewWarning()
             }
 
-            // New unsaved scan: create/sync its database record once.
-            saveNoteToDatabase()
+            // Fresh scans stay in History only.
+            // They become Notes only after the user explicitly taps Save.
 
         } else {
             fetchNoteFromDatabase()
@@ -870,6 +878,210 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
+    private fun hapticViewer(
+        view: View?
+    ) {
+        view?.performHapticFeedback(
+            HapticFeedbackConstants.KEYBOARD_TAP
+        )
+    }
+
+    private fun finishViewerWithAnimation() {
+        finish()
+
+        @Suppress("DEPRECATION")
+        overridePendingTransition(
+            R.anim.screen_fade_in,
+            R.anim.screen_slide_out
+        )
+    }
+
+    private fun setupPolishedBackHandling() {
+        onBackPressedDispatcher.addCallback(
+            this,
+            object :
+                OnBackPressedCallback(
+                    true
+                ) {
+                override fun handleOnBackPressed() {
+                    handleViewerBack()
+                }
+            }
+        )
+    }
+
+    private fun handleViewerBack() {
+        if (
+            !hasUnsavedChanges &&
+            !isEditMode
+        ) {
+            finishViewerWithAnimation()
+            return
+        }
+
+        AlertDialog
+            .Builder(
+                this
+            )
+            .setTitle(
+                "Save changes?"
+            )
+            .setMessage(
+                "You have edits or annotations that may not be saved to this note yet."
+            )
+            .setNegativeButton(
+                "Keep editing",
+                null
+            )
+            .setNeutralButton(
+                "Leave"
+            ) {
+                    dialog,
+                    _ ->
+
+                dialog.dismiss()
+                finishViewerWithAnimation()
+            }
+            .setPositiveButton(
+                "Save & leave"
+            ) {
+                    dialog,
+                    _ ->
+
+                dialog.dismiss()
+
+                if (
+                    isEditMode
+                ) {
+                    leaveTextEditModeForDrawing()
+                } else {
+                    if (
+                        currentNoteId !=
+                        -1
+                    ) {
+                        saveNoteToDatabase()
+                    } else {
+                        showViewerNotice(
+                            "Title updated",
+                            "Tap Save to add this scan to Notes"
+                        )
+                    }
+                }
+
+                hasUnsavedChanges =
+                    false
+
+                findViewById<View>(
+                    android.R.id.content
+                )?.postDelayed(
+                    {
+                        finishViewerWithAnimation()
+                    },
+                    220L
+                )
+            }
+            .show()
+    }
+
+    private fun updateToolSelectionUi() {
+        val activeColor =
+            ContextCompat.getColor(
+                this,
+                R.color.nts_surface_blue_soft
+            )
+
+        val outlineColor =
+            ContextCompat.getColor(
+                this,
+                R.color.nts_blue
+            )
+
+        val ids =
+            listOf(
+                R.id.btnToolPen to
+                    (
+                        activeTool ==
+                            ToolMode.PEN
+                        ),
+                R.id.btnToolHighlighter to
+                    (
+                        activeTool ==
+                            ToolMode.HIGHLIGHTER
+                        ),
+                R.id.btnToolEraser to
+                    (
+                        activeTool ==
+                            ToolMode.ERASER
+                        )
+            )
+
+        ids.forEach {
+                pair ->
+
+            val control =
+                findViewById<View>(
+                    pair.first
+                )
+                    ?: return@forEach
+
+            val selected =
+                pair.second
+
+            control.background =
+                GradientDrawable().apply {
+                    cornerRadius =
+                        dp(
+                            12
+                        ).toFloat()
+
+                    setColor(
+                        if (
+                            selected
+                        ) {
+                            activeColor
+                        } else {
+                            Color.TRANSPARENT
+                        }
+                    )
+
+                    if (
+                        selected
+                    ) {
+                        setStroke(
+                            dp(
+                                1
+                            ),
+                            outlineColor
+                        )
+                    }
+                }
+
+            control.animate()
+                .scaleX(
+                    if (
+                        selected
+                    ) {
+                        1.05f
+                    } else {
+                        1f
+                    }
+                )
+                .scaleY(
+                    if (
+                        selected
+                    ) {
+                        1.05f
+                    } else {
+                        1f
+                    }
+                )
+                .setDuration(
+                    140L
+                )
+                .start()
+        }
+    }
+
     private fun setupHeaderAndMetadata() {
         val tvTitle = findViewById<TextView>(R.id.tvPdfTitle)
         tvTitle?.text = currentTitle
@@ -881,7 +1093,14 @@ class PdfViewerActivity : AppCompatActivity() {
         val currentDate = SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()).format(Date())
         findViewById<TextView>(R.id.tvPdfDate)?.text = currentDate
 
-        findViewById<View>(R.id.btnPdfBack)?.setOnClickListener { finish() }
+        findViewById<View>(
+            R.id.btnPdfBack
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
+            handleViewerBack()
+        }
 
         findViewById<View>(R.id.btnPdfMoreOptions)?.setOnClickListener { view ->
             showOptionsMenu(view)
@@ -895,7 +1114,28 @@ class PdfViewerActivity : AppCompatActivity() {
         val etInlineEditor = findViewById<EditText>(R.id.etInlineEditor)
         val btnToolText = findViewById<ImageButton>(R.id.btnToolText)
 
-        val updatedText = etInlineEditor?.text?.toString() ?: ""
+        val updatedText =
+            etInlineEditor
+                ?.text
+                ?.toString()
+                ?: ""
+
+        val normalizedUpdatedText =
+            sanitizeOcrText(
+                updatedText.replace(
+                    "\n",
+                    "<br/>"
+                )
+            )
+
+        if (
+            normalizedUpdatedText !=
+            currentRawContent
+        ) {
+            hasUnsavedChanges =
+                true
+        }
+
         currentRawContent =
             sanitizeOcrText(
                 updatedText.replace(
@@ -915,8 +1155,16 @@ class PdfViewerActivity : AppCompatActivity() {
         btnToolText?.setColorFilter(ContextCompat.getColor(this, R.color.nts_blue))
         isEditMode = false
 
-        renderContent(currentRawContent)
-        saveNoteToDatabase()
+        renderContent(
+            currentRawContent
+        )
+
+        if (
+            currentNoteId !=
+            -1
+        ) {
+            saveNoteToDatabase()
+        }
     }
 
     private fun setupToolRibbon() {
@@ -934,6 +1182,9 @@ class PdfViewerActivity : AppCompatActivity() {
         // history immediately before adding it.
         drawingView?.setHighlighterStrokeListener { startX, startY, endX, endY, color ->
             pushMarkupUndoState()
+
+            hasUnsavedChanges =
+                true
 
             snapHighlighterToText(
                 startX = startX,
@@ -953,7 +1204,12 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         drawingView?.setMarkupChangedListener {
-            if (!restoringMarkupState) {
+            if (
+                !restoringMarkupState
+            ) {
+                hasUnsavedChanges =
+                    true
+
                 saveMarkupData()
             }
         }
@@ -964,23 +1220,48 @@ class PdfViewerActivity : AppCompatActivity() {
             showAddBlockSheet()
         }
 
-        findViewById<View>(R.id.btnToolPen)?.setOnClickListener {
-            if (activeTool == ToolMode.PEN) {
+        findViewById<View>(
+            R.id.btnToolPen
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
+
+            if (
+                activeTool ==
+                ToolMode.PEN
+            ) {
                 activeTool = ToolMode.NONE
                 drawingView?.setTool(ToolMode.NONE)
-                showToolToast("Pen Off")
+                showToolToast(
+                    "Pen Off"
+                )
             } else {
                 leaveTextEditModeForDrawing()
 
                 activeTool = ToolMode.PEN
                 drawingView?.bringToFront()
                 drawingView?.setTool(ToolMode.PEN)
-                showColorPickerDialog(isHighlighter = false)
+                showColorPickerDialog(
+                    isHighlighter =
+                        false
+                )
             }
+
+            updateToolSelectionUi()
         }
 
-        findViewById<View>(R.id.btnToolHighlighter)?.setOnClickListener {
-            if (activeTool == ToolMode.HIGHLIGHTER) {
+        findViewById<View>(
+            R.id.btnToolHighlighter
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
+
+            if (
+                activeTool ==
+                ToolMode.HIGHLIGHTER
+            ) {
                 activeTool = ToolMode.NONE
                 drawingView?.setTool(ToolMode.NONE)
                 showToolToast("Highlighter Off")
@@ -990,12 +1271,26 @@ class PdfViewerActivity : AppCompatActivity() {
                 activeTool = ToolMode.HIGHLIGHTER
                 drawingView?.bringToFront()
                 drawingView?.setTool(ToolMode.HIGHLIGHTER)
-                showColorPickerDialog(isHighlighter = true)
+                showColorPickerDialog(
+                    isHighlighter =
+                        true
+                )
             }
+
+            updateToolSelectionUi()
         }
 
-        findViewById<View>(R.id.btnToolEraser)?.setOnClickListener {
-            if (activeTool == ToolMode.ERASER) {
+        findViewById<View>(
+            R.id.btnToolEraser
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
+
+            if (
+                activeTool ==
+                ToolMode.ERASER
+            ) {
                 activeTool = ToolMode.NONE
                 drawingView?.setTool(ToolMode.NONE)
                 showToolToast("Eraser Off")
@@ -1005,17 +1300,33 @@ class PdfViewerActivity : AppCompatActivity() {
                 activeTool = ToolMode.ERASER
                 drawingView?.bringToFront()
                 drawingView?.setTool(ToolMode.ERASER)
-                showToolToast("Eraser Active")
+                showToolToast(
+                    "Eraser Active"
+                )
             }
+
+            updateToolSelectionUi()
         }
 
-        findViewById<View>(R.id.btnToolUndo)?.setOnClickListener {
+        findViewById<View>(
+            R.id.btnToolUndo
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
             undoMarkup()
         }
 
-        findViewById<View>(R.id.btnToolRedo)?.setOnClickListener {
+        findViewById<View>(
+            R.id.btnToolRedo
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
             redoMarkup()
         }
+
+        updateToolSelectionUi()
     }
 
     private fun copyStroke(
@@ -2272,45 +2583,674 @@ class PdfViewerActivity : AppCompatActivity() {
         )
     }
 
-    private fun setupBottomActions() {
-        findViewById<View>(R.id.btnActionSaveNotes)?.setOnClickListener {
-            if (isEditMode) {
-                toggleInlineEditMode()
-            } else {
-                saveNoteToDatabase()
-            }
-        }
 
-        findViewById<View>(R.id.btnActionDownload)?.setOnClickListener {
-            if (isEditMode) {
-                toggleInlineEditMode()
-            }
+    private fun showExportPdfSheet() {
+        val dialog =
+            BottomSheetDialog(
+                this
+            )
 
-            syncCurrentPageContentFromRaw()
-            saveMarkupData()
+        val sheet =
+            LinearLayout(
+                this
+            ).apply {
+                orientation =
+                    LinearLayout.VERTICAL
 
-            // PDF export is rebuilt from ALL batch pages as a reviewer,
-            // instead of rasterizing only the currently visible page.
-            pendingPdfSnapshot =
-                null
-
-            // Capture the saved highlight + pen layer for every batch page.
-            pendingAnnotationSnapshots =
-                buildAllAnnotationSnapshots()
-
-            val sanitizedFileName =
-                currentTitle.replace(
-                    "[^a-zA-Z0-9._-]".toRegex(),
-                    "_"
+                setPadding(
+                    dp(
+                        18
+                    ),
+                    dp(
+                        12
+                    ),
+                    dp(
+                        18
+                    ),
+                    dp(
+                        24
+                    )
                 )
 
-            createPdfLauncher.launch(
-                "$sanitizedFileName.pdf"
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_background
+                        ),
+                        28f
+                    )
+            }
+
+        sheet.addView(
+            View(
+                this
+            ).apply {
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_blue_line
+                        ),
+                        99f
+                    )
+            },
+            LinearLayout.LayoutParams(
+                dp(
+                    42
+                ),
+                dp(
+                    4
+                )
+            ).apply {
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+
+                bottomMargin =
+                    dp(
+                        16
+                    )
+            }
+        )
+
+        val iconWrap =
+            LinearLayout(
+                this
+            ).apply {
+                gravity =
+                    Gravity.CENTER
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_blue_soft
+                        ),
+                        18f
+                    )
+            }
+
+        iconWrap.addView(
+            ImageView(
+                this
+            ).apply {
+                setImageResource(
+                    R.drawable.ic_onboard_pdf
+                )
+
+                contentDescription =
+                    "PDF"
+
+                setPadding(
+                    dp(
+                        12
+                    ),
+                    dp(
+                        12
+                    ),
+                    dp(
+                        12
+                    ),
+                    dp(
+                        12
+                    )
+                )
+            },
+            LinearLayout.LayoutParams(
+                dp(
+                    54
+                ),
+                dp(
+                    54
+                )
             )
+        )
+
+        sheet.addView(
+            iconWrap,
+            LinearLayout.LayoutParams(
+                dp(
+                    58
+                ),
+                dp(
+                    58
+                )
+            ).apply {
+                bottomMargin =
+                    dp(
+                        12
+                    )
+            }
+        )
+
+        sheet.addView(
+            TextView(
+                this
+            ).apply {
+                text =
+                    "Export reviewer PDF"
+
+                textSize =
+                    22f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.apple_garamond_bold
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text
+                    )
+                )
+            }
+        )
+
+        sheet.addView(
+            TextView(
+                this
+            ).apply {
+                text =
+                    "Two columns • highlights • pen notes • diagrams"
+
+                textSize =
+                    10.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    0,
+                    dp(
+                        3
+                    ),
+                    0,
+                    dp(
+                        14
+                    )
+                )
+            }
+        )
+
+        val fileName =
+            EditText(
+                this
+            ).apply {
+                setText(
+                    currentTitle
+                )
+
+                selectAll()
+
+                hint =
+                    "PDF file name"
+
+                setSingleLine(
+                    true
+                )
+
+                textSize =
+                    11f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text
+                    )
+                )
+
+                setHintTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(
+                        14
+                    ),
+                    0,
+                    dp(
+                        14
+                    ),
+                    0
+                )
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_surface
+                        ),
+                        16f,
+                        colorHex(
+                            R.color.nts_blue_line
+                        )
+                    )
+            }
+
+        sheet.addView(
+            fileName,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams
+                    .MATCH_PARENT,
+                dp(
+                    50
+                )
+            )
+        )
+
+        sheet.addView(
+            TextView(
+                this
+            ).apply {
+                text =
+                    "You’ll choose where to save the PDF next."
+
+                textSize =
+                    9f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(
+                        3
+                    ),
+                    dp(
+                        8
+                    ),
+                    0,
+                    dp(
+                        14
+                    )
+                )
+            }
+        )
+
+        val action =
+            TextView(
+                this
+            ).apply {
+                text =
+                    "Choose destination"
+
+                gravity =
+                    Gravity.CENTER
+
+                textSize =
+                    11f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_semibold
+                    )
+
+                setTextColor(
+                    Color.WHITE
+                )
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_blue
+                        ),
+                        16f
+                    )
+
+                isClickable =
+                    true
+
+                isFocusable =
+                    true
+
+                setOnClickListener {
+                    if (
+                        isEditMode
+                    ) {
+                        toggleInlineEditMode()
+                    }
+
+                    syncCurrentPageContentFromRaw()
+                    saveMarkupData()
+
+                    val name =
+                        fileName.text
+                            ?.toString()
+                            .orEmpty()
+
+                    dialog.dismiss()
+
+                    val safeName =
+                        name
+                            .trim()
+                            .removeSuffix(
+                                ".pdf"
+                            )
+                            .replace(
+                                "[^a-zA-Z0-9._ -]".toRegex(),
+                                "_"
+                            )
+                            .ifBlank {
+                                "Note2Snap_Reviewer"
+                            }
+
+                    pendingPdfSnapshot =
+                        null
+
+                    pendingAnnotationSnapshots =
+                        buildAllAnnotationSnapshots()
+
+                    createPdfLauncher.launch(
+                        "$safeName.pdf"
+                    )
+                }
+            }
+
+        sheet.addView(
+            action,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams
+                    .MATCH_PARENT,
+                dp(
+                    48
+                )
+            )
+        )
+
+        dialog.setContentView(
+            sheet
+        )
+
+        dialog.show()
+    }
+
+    private fun prepareAndLaunchPdfExport() {
+        if (
+            isEditMode
+        ) {
+            toggleInlineEditMode()
         }
 
-        findViewById<View>(R.id.btnActionShare)?.setOnClickListener {
-            shareDocument()
+        syncCurrentPageContentFromRaw()
+        saveMarkupData()
+
+        pendingPdfSnapshot =
+            null
+
+        pendingAnnotationSnapshots =
+            buildAllAnnotationSnapshots()
+
+        val sanitizedFileName =
+            currentTitle.replace(
+                "[^a-zA-Z0-9._-]".toRegex(),
+                "_"
+            )
+
+        createPdfLauncher.launch(
+            "$sanitizedFileName.pdf"
+        )
+    }
+
+    private fun showShareSheet() {
+        val dialog =
+            BottomSheetDialog(
+                this
+            )
+
+        val sheet =
+            LinearLayout(
+                this
+            ).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+
+                setPadding(
+                    dp(18),
+                    dp(12),
+                    dp(18),
+                    dp(24)
+                )
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_background
+                        ),
+                        28f
+                    )
+            }
+
+        sheet.addView(
+            View(
+                this
+            ).apply {
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_blue_line
+                        ),
+                        99f
+                    )
+            },
+            LinearLayout.LayoutParams(
+                dp(42),
+                dp(4)
+            ).apply {
+                gravity =
+                    Gravity.CENTER_HORIZONTAL
+
+                bottomMargin =
+                    dp(16)
+            }
+        )
+
+        sheet.addView(
+            TextView(
+                this
+            ).apply {
+                text =
+                    "Share note"
+
+                textSize =
+                    22f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.apple_garamond_bold
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text
+                    )
+                )
+            }
+        )
+
+        sheet.addView(
+            TextView(
+                this
+            ).apply {
+                text =
+                    "Share your editable Note2Snap document through any compatible app."
+
+                textSize =
+                    10.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@PdfViewerActivity,
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    0,
+                    dp(4),
+                    0,
+                    dp(16)
+                )
+            }
+        )
+
+        val action =
+            TextView(
+                this
+            ).apply {
+                text =
+                    "Show sharing options"
+
+                gravity =
+                    Gravity.CENTER
+
+                textSize =
+                    11f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        this@PdfViewerActivity,
+                        R.font.poppins_semibold
+                    )
+
+                setTextColor(
+                    Color.WHITE
+                )
+
+                background =
+                    roundedBackground(
+                        colorHex(
+                            R.color.nts_blue
+                        ),
+                        16f
+                    )
+
+                isClickable =
+                    true
+
+                isFocusable =
+                    true
+
+                setOnClickListener {
+                    dialog.dismiss()
+
+                    if (
+                        isEditMode
+                    ) {
+                        toggleInlineEditMode()
+                    }
+
+                    syncCurrentPageContentFromRaw()
+                    saveMarkupData()
+
+                    showViewerNotice(
+                        "Preparing share",
+                        currentTitle
+                    )
+
+                    DocxExporter.shareAsDocx(
+                        context =
+                            this@PdfViewerActivity,
+                        title =
+                            currentTitle,
+                        content =
+                            cleanHtmlAndMarkdown(
+                                if (
+                                    isBatchDocument()
+                                ) {
+                                    combinedBatchContent()
+                                } else {
+                                    currentRawContent
+                                }
+                            )
+                    )
+                }
+            }
+
+        sheet.addView(
+            action,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(48)
+            )
+        )
+
+        dialog.setContentView(
+            sheet
+        )
+
+        dialog.show()
+    }
+
+    private fun setupBottomActions() {
+        findViewById<View>(
+            R.id.btnActionSaveNotes
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
+
+            if (
+                isEditMode
+            ) {
+                toggleInlineEditMode()
+            }
+
+            saveNoteToDatabase()
+        }
+
+        findViewById<View>(
+            R.id.btnActionDownload
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
+
+            showExportPdfSheet()
+        }
+
+        findViewById<View>(
+            R.id.btnActionShare
+        )?.setOnClickListener {
+            hapticViewer(
+                it
+            )
+
+            showShareSheet()
         }
     }
 
@@ -2676,6 +3616,253 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateSourceThumbnailStrip() {
+        val scroll =
+            findViewById<View>(
+                R.id.sourceThumbnailScroll
+            )
+
+        val strip =
+            findViewById<LinearLayout>(
+                R.id.sourceThumbnailStrip
+            )
+                ?: return
+
+        strip.removeAllViews()
+
+        if (
+            !isBatchDocument() ||
+            currentImagePaths.size <=
+            1
+        ) {
+            scroll?.visibility =
+                View.GONE
+
+            return
+        }
+
+        scroll?.visibility =
+            View.VISIBLE
+
+        currentImagePaths
+            .forEachIndexed {
+                    index,
+                    path ->
+
+                val selected =
+                    index ==
+                    currentBatchPageIndex
+
+                val card =
+                    MaterialCardView(
+                        this
+                    ).apply {
+                        radius =
+                            dpUi(
+                                10
+                            ).toFloat()
+
+                        cardElevation =
+                            0f
+
+                        strokeWidth =
+                            dpUi(
+                                if (
+                                    selected
+                                ) {
+                                    2
+                                } else {
+                                    1
+                                }
+                            )
+
+                        strokeColor =
+                            ContextCompat.getColor(
+                                this@PdfViewerActivity,
+                                if (
+                                    selected
+                                ) {
+                                    R.color.nts_blue
+                                } else {
+                                    R.color.nts_blue_line
+                                }
+                            )
+
+                        setCardBackgroundColor(
+                            ContextCompat.getColor(
+                                this@PdfViewerActivity,
+                                R.color.nts_surface_blue_soft
+                            )
+                        )
+
+                        isClickable =
+                            true
+
+                        isFocusable =
+                            true
+
+                        alpha =
+                            if (
+                                selected
+                            ) {
+                                1f
+                            } else {
+                                0.78f
+                            }
+
+                        scaleX =
+                            if (
+                                selected
+                            ) {
+                                1.04f
+                            } else {
+                                1f
+                            }
+
+                        scaleY =
+                            scaleX
+
+                        setOnClickListener {
+                            showBatchPage(
+                                index
+                            )
+                        }
+                    }
+
+                val image =
+                    ImageView(
+                        this
+                    ).apply {
+                        scaleType =
+                            ImageView.ScaleType.CENTER_CROP
+
+                        contentDescription =
+                            "Source page ${index + 1}"
+
+                        val file =
+                            File(
+                                path
+                            )
+
+                        if (
+                            file.exists()
+                        ) {
+                            setImageBitmap(
+                                BitmapFactory.decodeFile(
+                                    file.absolutePath
+                                )
+                            )
+                        } else {
+                            setImageResource(
+                                R.drawable.ic_note_custom
+                            )
+                        }
+                    }
+
+                card.addView(
+                    image
+                )
+
+                strip.addView(
+                    card,
+                    LinearLayout.LayoutParams(
+                        dpUi(
+                            70
+                        ),
+                        dpUi(
+                            48
+                        )
+                    ).apply {
+                        marginEnd =
+                            dpUi(
+                                8
+                            )
+                    }
+                )
+            }
+
+        (
+            scroll as?
+                android.widget.HorizontalScrollView
+            )?.post {
+            val selectedView =
+                strip.getChildAt(
+                    currentBatchPageIndex
+                )
+                    ?: return@post
+
+            scroll.smoothScrollTo(
+                (
+                    selectedView.left -
+                        dpUi(
+                            16
+                        )
+                    ).coerceAtLeast(
+                    0
+                ),
+                0
+            )
+        }
+    }
+
+    private fun dpUi(
+        value: Int
+    ): Int =
+        (
+            value *
+            resources
+                .displayMetrics
+                .density
+            ).toInt()
+
+    private fun showViewerNotice(
+        title: String,
+        message: String = ""
+    ) {
+        com.example.note2snap.utils
+            .Note2SnapNotice
+            .show(
+                anchor =
+                    findViewById(
+                        android.R.id.content
+                    ),
+                title =
+                    title,
+                message =
+                    message,
+                symbol =
+                    when {
+                        title.contains(
+                            "delete",
+                            true
+                        ) ->
+                            "×"
+
+                        title.contains(
+                            "pen",
+                            true
+                        ) ||
+                        title.contains(
+                            "highlight",
+                            true
+                        ) ->
+                            "✦"
+
+                        else ->
+                            "✓"
+                    }
+            )
+    }
+
+    private fun showViewerSnackbar(
+        message: String
+    ) {
+        showViewerNotice(
+            title =
+                message
+        )
+    }
+
     private fun renderContent(
         rawContent: String
     ) {
@@ -2778,6 +3965,8 @@ class PdfViewerActivity : AppCompatActivity() {
             cardScannedImage?.visibility =
                 View.GONE
         }
+
+        updateSourceThumbnailStrip()
 
         var detectedSubHeader:
             String? =
@@ -3128,11 +4317,10 @@ class PdfViewerActivity : AppCompatActivity() {
             btnToolText?.setColorFilter("#16A34A".toColorInt())
             isEditMode = true
 
-            Toast.makeText(
-                this,
-                "Editing Mode Active",
-                Toast.LENGTH_SHORT
-            ).show()
+            showViewerNotice(
+                "Text editing",
+                "On"
+            )
 
         } else {
             val updatedText = etInlineEditor?.text
@@ -3176,8 +4364,16 @@ class PdfViewerActivity : AppCompatActivity() {
             isEditMode = false
             isTextExpanded = false
 
-            renderContent(currentRawContent)
-            saveNoteToDatabase()
+            renderContent(
+                currentRawContent
+            )
+
+            if (
+                currentNoteId !=
+                -1
+            ) {
+                saveNoteToDatabase()
+            }
         }
     }
 
@@ -3718,6 +4914,17 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun showMoveToFolderDialog() {
+        if (
+            currentNoteId ==
+            -1
+        ) {
+            showViewerNotice(
+                "Save this scan first",
+                "Folders organize saved Notes"
+            )
+            return
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(this@PdfViewerActivity).appDao()
             val folders = db.getAllFolders().first()
@@ -3782,7 +4989,10 @@ class PdfViewerActivity : AppCompatActivity() {
             }
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@PdfViewerActivity, "Moved to $folderName", Toast.LENGTH_SHORT).show()
+                showViewerNotice(
+                            "Note moved",
+                            folderName
+                        )
             }
         }
     }
@@ -3800,9 +5010,28 @@ class PdfViewerActivity : AppCompatActivity() {
             .setPositiveButton("Save") { d, _ ->
                 val newTitle = input.text.toString().trim()
                 if (newTitle.isNotEmpty()) {
-                    currentTitle = newTitle
-                    findViewById<TextView>(R.id.tvPdfTitle)?.text = newTitle
-                    saveNoteToDatabase()
+                    currentTitle =
+                        newTitle
+
+                    hasUnsavedChanges =
+                        true
+
+                    findViewById<TextView>(
+                        R.id.tvPdfTitle
+                    )?.text =
+                        newTitle
+
+                    if (
+                        currentNoteId !=
+                        -1
+                    ) {
+                        saveNoteToDatabase()
+                    } else {
+                        showViewerNotice(
+                            "Title updated",
+                            "Tap Save to add this scan to Notes"
+                        )
+                    }
                 }
                 d.dismiss()
             }
@@ -4057,11 +5286,12 @@ class PdfViewerActivity : AppCompatActivity() {
             ) {
                 saveMarkupData()
 
-                Toast.makeText(
-                    this@PdfViewerActivity,
-                    "Note saved!",
-                    Toast.LENGTH_SHORT
-                ).show()
+                hasUnsavedChanges =
+                    false
+
+                showViewerSnackbar(
+                    "Saved to Notes ✓"
+                )
             }
         }
     }
@@ -5983,11 +7213,10 @@ class PdfViewerActivity : AppCompatActivity() {
                 withContext(
                     Dispatchers.Main
                 ) {
-                    Toast.makeText(
-                        this@PdfViewerActivity,
-                        "Reviewer PDF saved!",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    showViewerNotice(
+                        "PDF exported",
+                        "Reviewer saved successfully"
+                    )
                 }
 
             } catch (
@@ -5998,11 +7227,10 @@ class PdfViewerActivity : AppCompatActivity() {
                 withContext(
                     Dispatchers.Main
                 ) {
-                    Toast.makeText(
-                        this@PdfViewerActivity,
-                        "Failed to save PDF.",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    showViewerNotice(
+                        "Export failed",
+                        "Please try again"
+                    )
                 }
             }
         }
@@ -6041,7 +7269,28 @@ class PdfViewerActivity : AppCompatActivity() {
             .build()
     }
 
-    private fun showToolToast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    private fun showToolToast(
+        message: String
+    ) {
+        val parts =
+            message.split(
+                ":",
+                limit =
+                    2
+            )
+
+        if (
+            parts.size ==
+            2
+        ) {
+            showViewerNotice(
+                parts[0].trim(),
+                parts[1].trim()
+            )
+        } else {
+            showViewerNotice(
+                message
+            )
+        }
     }
 }

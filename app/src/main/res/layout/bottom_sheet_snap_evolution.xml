@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/nts_background"
+    android:fillViewport="true"
+    android:overScrollMode="never">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="30dp">
+
+        <View
+            android:layout_width="44dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:background="@color/nts_blue_line" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/apple_garamond_bold"
+                    android:text="Snap Evolution"
+                    android:textColor="@color/nts_text"
+                    android:textSize="26sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:fontFamily="@font/poppins_regular"
+                    android:text="Keep your study streak alive to unlock new looks."
+                    android:textColor="@color/nts_text_secondary"
+                    android:textSize="9.5sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnCloseEvolution"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:gravity="center"
+                android:text="×"
+                android:textColor="@color/nts_text_secondary"
+                android:textSize="22sp" />
+        </LinearLayout>
+
+        <!-- CURRENT SNAP -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="178dp"
+            android:layout_marginTop="17dp"
+            app:cardBackgroundColor="@color/nts_surface_blue_soft"
+            app:cardCornerRadius="26dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/nts_blue_line"
+            app:strokeWidth="1dp">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="14dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="126dp"
+                        android:layout_height="126dp"
+                        app:cardBackgroundColor="@color/nts_surface"
+                        app:cardCornerRadius="32dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/nts_blue_line"
+                        app:strokeWidth="1dp">
+
+                        <com.airbnb.lottie.LottieAnimationView
+                            android:id="@+id/evolutionCurrentRobot"
+                            android:layout_width="116dp"
+                            android:layout_height="116dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="Current Snap evolution"
+                            app:lottie_loop="true" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvEvolutionCurrentLevel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="24dp"
+                            android:gravity="center"
+                            android:fontFamily="@font/poppins_semibold"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:text="LV. 1"
+                            android:textColor="@color/nts_blue"
+                            android:textSize="8sp" />
+
+                        <TextView
+                            android:id="@+id/tvEvolutionCurrentStage"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:fontFamily="@font/apple_garamond_bold"
+                            android:text="Newbie Snap"
+                            android:textColor="@color/nts_text"
+                            android:textSize="23sp" />
+
+                        <TextView
+                            android:id="@+id/tvEvolutionCurrentStreak"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="0 day streak"
+                            android:textColor="@color/nts_text_secondary"
+                            android:textSize="9sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- PROGRESS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:id="@+id/evolutionProgress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="8dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:progressBackgroundTint="@color/nts_blue_line"
+                android:progressTint="@color/nts_blue" />
+
+            <TextView
+                android:id="@+id/tvEvolutionProgressLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="@font/poppins_semibold"
+                android:text="0 / 1 day"
+                android:textColor="@color/nts_blue"
+                android:textSize="8.5sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvEvolutionUnlockText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/poppins_regular"
+            android:text="1 more active day to unlock Rookie Snap"
+            android:textColor="@color/nts_text_secondary"
+            android:textSize="9sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="21dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:text="Evolution path"
+            android:textColor="@color/nts_text"
+            android:textSize="11.5sp" />
+
+        <!-- EVOLUTION ROADMAP -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="9dp"
+            android:clipToPadding="false"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingEnd="8dp">
+
+                <LinearLayout
+                    android:layout_width="104dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="86dp"
+                        android:layout_height="86dp"
+                        app:cardBackgroundColor="@color/nts_surface"
+                        app:cardCornerRadius="22dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/nts_blue_line"
+                        app:strokeWidth="1dp">
+
+                        <com.airbnb.lottie.LottieAnimationView
+                            android:id="@+id/robotEvolutionNewbie"
+                            android:layout_width="80dp"
+                            android:layout_height="80dp"
+                            android:layout_gravity="center"
+                            app:lottie_loop="true" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:text="Newbie"
+                        android:textColor="@color/nts_text"
+                        android:textSize="9sp" />
+
+                    <TextView
+                        android:id="@+id/tvEvolutionNewbieStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:fontFamily="@font/poppins_regular"
+                        android:text="Current"
+                        android:textColor="@color/nts_blue"
+                        android:textSize="7.5sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="104dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="86dp"
+                        android:layout_height="86dp"
+                        app:cardBackgroundColor="@color/nts_surface"
+                        app:cardCornerRadius="22dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/nts_blue_line"
+                        app:strokeWidth="1dp">
+
+                        <com.airbnb.lottie.LottieAnimationView
+                            android:id="@+id/robotEvolutionRookie"
+                            android:layout_width="80dp"
+                            android:layout_height="80dp"
+                            android:layout_gravity="center"
+                            app:lottie_loop="true" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:text="Rookie"
+                        android:textColor="@color/nts_text"
+                        android:textSize="9sp" />
+
+                    <TextView
+                        android:id="@+id/tvEvolutionRookieStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:fontFamily="@font/poppins_regular"
+                        android:text="Locked"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="7.5sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="104dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="86dp"
+                        android:layout_height="86dp"
+                        app:cardBackgroundColor="@color/nts_surface"
+                        app:cardCornerRadius="22dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/nts_blue_line"
+                        app:strokeWidth="1dp">
+
+                        <com.airbnb.lottie.LottieAnimationView
+                            android:id="@+id/robotEvolutionFocused"
+                            android:layout_width="80dp"
+                            android:layout_height="80dp"
+                            android:layout_gravity="center"
+                            app:lottie_loop="true" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:text="Focused"
+                        android:textColor="@color/nts_text"
+                        android:textSize="9sp" />
+
+                    <TextView
+                        android:id="@+id/tvEvolutionFocusedStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:fontFamily="@font/poppins_regular"
+                        android:text="Locked"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="7.5sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="104dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="86dp"
+                        android:layout_height="86dp"
+                        app:cardBackgroundColor="@color/nts_surface"
+                        app:cardCornerRadius="22dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/nts_blue_line"
+                        app:strokeWidth="1dp">
+
+                        <com.airbnb.lottie.LottieAnimationView
+                            android:id="@+id/robotEvolutionScholar"
+                            android:layout_width="80dp"
+                            android:layout_height="80dp"
+                            android:layout_gravity="center"
+                            app:lottie_loop="true" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:text="Scholar"
+                        android:textColor="@color/nts_text"
+                        android:textSize="9sp" />
+
+                    <TextView
+                        android:id="@+id/tvEvolutionScholarStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:fontFamily="@font/poppins_regular"
+                        android:text="Locked"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="7.5sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="104dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="86dp"
+                        android:layout_height="86dp"
+                        app:cardBackgroundColor="@color/nts_surface"
+                        app:cardCornerRadius="22dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/nts_blue_line"
+                        app:strokeWidth="1dp">
+
+                        <com.airbnb.lottie.LottieAnimationView
+                            android:id="@+id/robotEvolutionMaster"
+                            android:layout_width="80dp"
+                            android:layout_height="80dp"
+                            android:layout_gravity="center"
+                            app:lottie_loop="true" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:text="Master"
+                        android:textColor="@color/nts_text"
+                        android:textSize="9sp" />
+
+                    <TextView
+                        android:id="@+id/tvEvolutionMasterStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:fontFamily="@font/poppins_regular"
+                        android:text="Locked"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="7.5sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:cardBackgroundColor="@color/nts_surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/nts_outline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_semibold"
+                    android:text="How evolution works"
+                    android:textColor="@color/nts_text"
+                    android:textSize="9.5sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/poppins_regular"
+                    android:text="Scan or save at least once on consecutive days to keep your streak alive. Multiple scans on the same day still count as one active day."
+                    android:textColor="@color/nts_text_secondary"
+                    android:textSize="8.5sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
