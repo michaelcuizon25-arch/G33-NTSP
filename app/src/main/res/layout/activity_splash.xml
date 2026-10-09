@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/nts_background">
 
-    <!-- Tiny brand, intentionally not a giant centered logo -->
     <TextView
         android:id="@+id/tvSplashBrand"
         android:layout_width="wrap_content"
@@ -14,190 +13,202 @@
         android:layout_marginStart="26dp"
         android:layout_marginTop="28dp"
         android:fontFamily="@font/apple_garamond_bold"
+        android:includeFontPadding="false"
         android:text="Note2Snap"
         android:textColor="@color/nts_text"
-        android:textSize="23sp"
+        android:textSize="24sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-
-    <!-- Whiteboard scene -->
-    <FrameLayout
-        android:id="@+id/whiteboardScene"
-        android:layout_width="300dp"
-        android:layout_height="205dp"
-        android:background="@drawable/bg_splash_whiteboard"
-        android:clipChildren="false"
-        android:clipToPadding="false"
-        android:elevation="2dp"
-        android:padding="20dp"
+    <LinearLayout
+        android:id="@+id/splashScene"
+        android:layout_width="330dp"
+        android:layout_height="190dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.40">
+        app:layout_constraintVertical_bias="0.43">
 
-        <!-- fake whiteboard content -->
-        <LinearLayout
-            android:id="@+id/whiteboardContent"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/whiteboardCard"
+            android:layout_width="226dp"
+            android:layout_height="160dp"
+            app:cardBackgroundColor="@color/nts_surface"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/nts_blue_line"
+            app:strokeWidth="1dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/poppins_semibold"
-                android:text="LESSON"
-                android:textColor="@color/nts_text"
-                android:textSize="10sp" />
-
-            <View
-                android:layout_width="168dp"
-                android:layout_height="3dp"
-                android:layout_marginTop="13dp"
-                android:background="@color/nts_blue" />
-
-            <View
-                android:layout_width="220dp"
-                android:layout_height="3dp"
-                android:layout_marginTop="10dp"
-                android:background="@color/nts_blue_line" />
-
-            <View
-                android:layout_width="194dp"
-                android:layout_height="3dp"
-                android:layout_marginTop="9dp"
-                android:background="@color/nts_blue_line" />
-
-            <LinearLayout
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal">
+                android:layout_height="match_parent"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:id="@+id/rawBoardContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:includeFontPadding="false"
+                        android:text="DATA STRUCTURES"
+                        android:textColor="@color/nts_text"
+                        android:textSize="9sp" />
+
+                    <View
+                        android:layout_width="138dp"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="13dp"
+                        android:background="@color/nts_blue" />
+
+                    <View
+                        android:layout_width="178dp"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="9dp"
+                        android:background="@color/nts_blue_line" />
+
+                    <View
+                        android:layout_width="155dp"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@color/nts_blue_line" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <View
+                            android:layout_width="50dp"
+                            android:layout_height="38dp"
+                            android:background="@color/nts_surface_blue_soft" />
+
+                        <View
+                            android:layout_width="26dp"
+                            android:layout_height="2dp"
+                            android:layout_marginStart="9dp"
+                            android:layout_marginEnd="9dp"
+                            android:background="@color/nts_blue_line" />
+
+                        <View
+                            android:layout_width="50dp"
+                            android:layout_height="38dp"
+                            android:background="@color/nts_yellow" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
 
                 <View
-                    android:layout_width="64dp"
-                    android:layout_height="44dp"
-                    android:background="@color/nts_yellow" />
-
-                <View
-                    android:layout_width="26dp"
-                    android:layout_height="2dp"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginStart="8dp"
+                    android:id="@+id/scanBeam"
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp"
+                    android:layout_gravity="top"
+                    android:alpha="0.8"
                     android:background="@color/nts_blue" />
 
-                <View
-                    android:layout_width="64dp"
-                    android:layout_height="44dp"
-                    android:layout_marginStart="8dp"
-                    android:background="@color/nts_surface_blue_soft" />
-            </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/structuredNote"
+                    android:layout_width="128dp"
+                    android:layout_height="108dp"
+                    android:layout_gravity="center|end"
+                    android:alpha="0"
+                    android:background="@color/nts_surface"
+                    android:elevation="3dp"
+                    android:orientation="vertical"
+                    android:padding="11dp">
 
-        </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_semibold"
+                        android:text="Structured note"
+                        android:textColor="@color/nts_blue"
+                        android:textSize="7.5sp" />
 
-        <!-- Scanning beam -->
-        <View
-            android:id="@+id/scanBeam"
-            android:layout_width="match_parent"
-            android:layout_height="5dp"
-            android:layout_gravity="top"
-            android:background="@drawable/bg_splash_scan_beam"
-            android:elevation="6dp" />
+                    <View
+                        android:layout_width="82dp"
+                        android:layout_height="3dp"
+                        android:layout_marginTop="10dp"
+                        android:background="@color/nts_text" />
 
-        <!-- Structured note result; fades in -->
-        <LinearLayout
-            android:id="@+id/structuredNotePreview"
-            android:layout_width="148dp"
-            android:layout_height="132dp"
-            android:layout_gravity="center|end"
-            android:alpha="0"
-            android:background="@drawable/bg_splash_note_chip"
-            android:orientation="vertical"
-            android:padding="13dp">
+                    <View
+                        android:layout_width="102dp"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@color/nts_blue_line" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/poppins_semibold"
-                android:text="Structured note"
-                android:textColor="@color/nts_blue"
-                android:textSize="8sp" />
+                    <View
+                        android:layout_width="74dp"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="7dp"
+                        android:background="@color/nts_blue_line" />
 
-            <View
-                android:layout_width="98dp"
-                android:layout_height="4dp"
-                android:layout_marginTop="12dp"
-                android:background="@color/nts_text" />
+                    <View
+                        android:layout_width="92dp"
+                        android:layout_height="2dp"
+                        android:layout_marginTop="7dp"
+                        android:background="@color/nts_blue_line" />
 
-            <View
-                android:layout_width="110dp"
-                android:layout_height="3dp"
-                android:layout_marginTop="8dp"
-                android:background="@color/nts_blue_line" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:fontFamily="@font/poppins_medium"
+                        android:text="Ready to review"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="6.5sp" />
 
-            <View
-                android:layout_width="84dp"
-                android:layout_height="3dp"
-                android:layout_marginTop="7dp"
-                android:background="@color/nts_blue_line" />
+                </LinearLayout>
 
-            <View
-                android:layout_width="102dp"
-                android:layout_height="3dp"
-                android:layout_marginTop="7dp"
-                android:background="@color/nts_blue_line" />
+            </FrameLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:fontFamily="@font/poppins_medium"
-                android:text="Ready to review"
-                android:textColor="@color/nts_text_secondary"
-                android:textSize="7sp" />
+        </com.google.android.material.card.MaterialCardView>
 
-        </LinearLayout>
-
-        <!-- Snap peeks from the board corner -->
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/splashRobot"
-            android:layout_width="92dp"
-            android:layout_height="92dp"
-            android:layout_gravity="bottom|end"
-            android:layout_marginEnd="-24dp"
-            android:layout_marginBottom="-36dp"
+            android:layout_width="104dp"
+            android:layout_height="104dp"
             android:contentDescription="Snap mascot"
             app:lottie_autoPlay="true"
             app:lottie_loop="true"
             app:lottie_rawRes="@raw/robot_mascot"
-            app:lottie_speed="0.70" />
+            app:lottie_speed="0.72" />
 
-    </FrameLayout>
+    </LinearLayout>
 
     <TextView
         android:id="@+id/tvSplashHeadline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="20dp"
         android:fontFamily="@font/apple_garamond_bold"
-        android:text="From board to note."
+        android:includeFontPadding="false"
+        android:text="From whiteboard to notes."
         android:textColor="@color/nts_text"
-        android:textSize="26sp"
+        android:textSize="25sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/whiteboardScene" />
+        app:layout_constraintTop_toBottomOf="@id/splashScene" />
 
     <TextView
-        android:id="@+id/tvSplashStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="5dp"
         android:fontFamily="@font/poppins_regular"
-        android:text="Capturing the important parts."
+        android:includeFontPadding="false"
+        android:text="Scan once. Keep the useful part."
         android:textColor="@color/nts_text_secondary"
-        android:textSize="9.5sp"
+        android:textSize="9sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvSplashHeadline" />

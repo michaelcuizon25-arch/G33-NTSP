@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/nts_background"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:overScrollMode="never">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,385 +15,330 @@
         android:paddingStart="28dp"
         android:paddingTop="30dp"
         android:paddingEnd="28dp"
-        android:paddingBottom="120dp">
+        android:paddingBottom="180dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="@font/apple_garamond_italic"
+            android:includeFontPadding="false"
             android:text="Settings"
             android:textColor="@color/nts_text"
             android:textSize="32sp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:text="General"
+            android:textColor="@color/nts_text"
+            android:textSize="13sp" />
+
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardAppearance"
             android:layout_width="match_parent"
-            android:layout_height="82dp"
-            android:layout_marginTop="20dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="@color/nts_surface"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="1dp"
-            app:strokeColor="@color/nts_blue_line"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="9dp"
+            app:cardBackgroundColor="@color/nts_surface_cream"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/nts_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:paddingStart="16dp"
-                android:paddingEnd="14dp">
+                android:paddingEnd="16dp">
 
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    app:cardBackgroundColor="@color/nts_surface_blue_soft"
-                    app:cardCornerRadius="13dp"
-                    app:cardElevation="0dp">
+                <LinearLayout
+                    android:id="@+id/cardAppearance"
+                    android:layout_width="match_parent"
+                    android:layout_height="72dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
                     <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_gravity="center"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
                         android:contentDescription="Appearance"
                         android:src="@drawable/ic_settings_appearance_soft"
-                        app:tint="@color/nts_blue" />
-                </com.google.android.material.card.MaterialCardView>
+                        app:tint="@color/nts_text" />
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="15dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="Appearance"
+                            android:textColor="@color/nts_text"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/tvAppearanceValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="System default"
+                            android:textColor="@color/nts_text_secondary"
+                            android:textSize="9.5sp" />
+                    </LinearLayout>
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_semibold"
-                        android:text="Appearance"
-                        android:textColor="@color/nts_text"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/tvAppearanceValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="@font/poppins_regular"
-                        android:text="System default"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:gravity="center"
+                        android:text="›"
                         android:textColor="@color/nts_text_secondary"
-                        android:textSize="10.5sp" />
+                        android:textSize="22sp" />
                 </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_regular"
-                    android:text="›"
-                    android:textColor="@color/nts_text_secondary"
-                    android:textSize="22sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/nts_outline"
+                    android:alpha="0.65" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardStorage"
-            android:layout_width="match_parent"
-            android:layout_height="82dp"
-            android:layout_marginTop="10dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="@color/nts_surface"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="1dp"
-            app:strokeColor="@color/nts_blue_line"
-            app:strokeWidth="1dp">
+                <LinearLayout
+                    android:id="@+id/cardStorage"
+                    android:layout_width="match_parent"
+                    android:layout_height="72dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="14dp">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    app:cardBackgroundColor="@color/nts_surface_blue_soft"
-                    app:cardCornerRadius="13dp"
-                    app:cardElevation="0dp">
                     <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_gravity="center"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
                         android:contentDescription="Storage"
                         android:src="@drawable/ic_settings_storage_soft"
-                        app:tint="@color/nts_blue" />
-                </com.google.android.material.card.MaterialCardView>
+                        app:tint="@color/nts_text" />
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_medium"
-                        android:text="Storage"
-                        android:textColor="@color/nts_text"
-                        android:textSize="14sp" />
+                        android:layout_marginStart="15dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/poppins_medium"
+                            android:text="Storage"
+                            android:textColor="@color/nts_text"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily="@font/poppins_regular"
+                            android:text="Saved notes, scans, and local files"
+                            android:textColor="@color/nts_text_secondary"
+                            android:textSize="9.5sp" />
+                    </LinearLayout>
+
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="@font/poppins_regular"
-                        android:text="View and manage saved app content"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:gravity="center"
+                        android:text="›"
                         android:textColor="@color/nts_text_secondary"
-                        android:textSize="10.5sp" />
+                        android:textSize="22sp" />
                 </LinearLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_regular"
-                    android:text="›"
-                    android:textColor="@color/nts_text_secondary"
-                    android:textSize="22sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardAbout"
-            android:layout_width="match_parent"
-            android:layout_height="82dp"
-            android:layout_marginTop="10dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="@color/nts_surface"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="1dp"
-            app:strokeColor="@color/nts_blue_line"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="14dp">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    app:cardBackgroundColor="@color/nts_surface_blue_soft"
-                    app:cardCornerRadius="13dp"
-                    app:cardElevation="0dp">
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_gravity="center"
-                        android:contentDescription="About"
-                        android:src="@drawable/ic_settings_about_soft"
-                        app:tint="@color/nts_blue" />
-                </com.google.android.material.card.MaterialCardView>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_medium"
-                        android:text="About"
-                        android:textColor="@color/nts_text"
-                        android:textSize="14sp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="@font/poppins_regular"
-                        android:text="About Note2Snap and app information"
-                        android:textColor="@color/nts_text_secondary"
-                        android:textSize="10.5sp" />
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_regular"
-                    android:text="›"
-                    android:textColor="@color/nts_text_secondary"
-                    android:textSize="22sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="25dp"
             android:fontFamily="@font/poppins_semibold"
-            android:text="Legal &amp; Privacy"
+            android:text="Note2Snap"
             android:textColor="@color/nts_text"
-            android:textSize="14sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:fontFamily="@font/poppins_regular"
-            android:text="Review the rules for using Note2Snap and how your information is handled."
-            android:textColor="@color/nts_text_secondary"
-            android:textSize="10.5sp" />
+            android:textSize="13sp" />
 
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardTerms"
             android:layout_width="match_parent"
-            android:layout_height="82dp"
-            android:layout_marginTop="16dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="@color/nts_surface"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="1dp"
-            app:strokeColor="@color/nts_blue_line"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="9dp"
+            app:cardBackgroundColor="@color/nts_surface_cream"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/nts_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
+                android:id="@+id/cardAbout"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="72dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="16dp"
-                android:paddingEnd="14dp">
+                android:paddingEnd="16dp">
 
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    app:cardBackgroundColor="@color/nts_surface_blue_soft"
-                    app:cardCornerRadius="13dp"
-                    app:cardElevation="0dp">
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_gravity="center"
-                        android:contentDescription="Terms of Use"
-                        android:src="@drawable/ic_settings_terms_soft"
-                        app:tint="@color/nts_blue" />
-                </com.google.android.material.card.MaterialCardView>
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="About"
+                    android:src="@drawable/ic_settings_about_soft"
+                    app:tint="@color/nts_text" />
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
+                    android:layout_marginStart="15dp"
                     android:layout_weight="1"
                     android:orientation="vertical">
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_medium"
+                        android:text="About Note2Snap"
+                        android:textColor="@color/nts_text"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:fontFamily="@font/poppins_regular"
+                        android:text="App info and version"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="9.5sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:gravity="center"
+                    android:text="›"
+                    android:textColor="@color/nts_text_secondary"
+                    android:textSize="22sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="25dp"
+            android:fontFamily="@font/poppins_semibold"
+            android:text="Legal &amp; privacy"
+            android:textColor="@color/nts_text"
+            android:textSize="13sp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="9dp"
+            app:cardBackgroundColor="@color/nts_surface_cream"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/nts_outline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <LinearLayout
+                    android:id="@+id/cardTerms"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:contentDescription="Terms"
+                        android:src="@drawable/ic_settings_terms_soft"
+                        app:tint="@color/nts_text" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="15dp"
+                        android:layout_weight="1"
                         android:fontFamily="@font/poppins_medium"
                         android:text="Terms of Use"
                         android:textColor="@color/nts_text"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
+
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="@font/poppins_regular"
-                        android:text="Rules and responsibilities when using Note2Snap"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:gravity="center"
+                        android:text="›"
                         android:textColor="@color/nts_text_secondary"
-                        android:textSize="10.5sp" />
+                        android:textSize="22sp" />
                 </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_regular"
-                    android:text="›"
-                    android:textColor="@color/nts_text_secondary"
-                    android:textSize="22sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardPrivacy"
-            android:layout_width="match_parent"
-            android:layout_height="82dp"
-            android:layout_marginTop="10dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="@color/nts_surface"
-            app:cardCornerRadius="18dp"
-            app:cardElevation="1dp"
-            app:strokeColor="@color/nts_blue_line"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="14dp">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    app:cardBackgroundColor="@color/nts_surface_blue_soft"
-                    app:cardCornerRadius="13dp"
-                    app:cardElevation="0dp">
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_gravity="center"
-                        android:contentDescription="Privacy Notice"
-                        android:src="@drawable/ic_settings_privacy_soft"
-                        app:tint="@color/nts_blue" />
-                </com.google.android.material.card.MaterialCardView>
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/nts_outline"
+                    android:alpha="0.65" />
 
                 <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:id="@+id/cardPrivacy"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:contentDescription="Privacy"
+                        android:src="@drawable/ic_settings_privacy_soft"
+                        app:tint="@color/nts_text" />
+
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="15dp"
+                        android:layout_weight="1"
                         android:fontFamily="@font/poppins_medium"
                         android:text="Privacy Notice"
                         android:textColor="@color/nts_text"
-                        android:textSize="14sp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="@font/poppins_regular"
-                        android:text="How your notes and classroom information are handled"
-                        android:textColor="@color/nts_text_secondary"
-                        android:textSize="10.5sp" />
-                </LinearLayout>
+                        android:textSize="13sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_regular"
-                    android:text="›"
-                    android:textColor="@color/nts_text_secondary"
-                    android:textSize="22sp" />
+                    <TextView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:gravity="center"
+                        android:text="›"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="22sp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

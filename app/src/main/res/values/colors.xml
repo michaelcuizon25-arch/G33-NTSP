@@ -60,4 +60,5 @@
     <color name="switch_track">#6F8FEA</color>
     <color name="switch_thumb">#FFFFFF</color>
 
+    <color name="nav_surface_frosted">#EFFFFFFF</color>
 </resources>

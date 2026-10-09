@@ -1,5 +1,8 @@
 package com.example.note2snap.activities
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -12,8 +15,6 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -42,6 +43,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import org.json.JSONArray
 
 @SuppressLint("SetTextI18n")
 class HomeFragment : Fragment() {
@@ -61,6 +63,7 @@ class HomeFragment : Fragment() {
     private var tvStatStreakEmoji: TextView? = null
     private var streakRobot: LottieAnimationView? = null
     private var streakRobotCard: com.google.android.material.card.MaterialCardView? = null
+    private var streakMotionAnimator: AnimatorSet? = null
     private var tvStreakLevel: TextView? = null
     private var tvStreakStage: TextView? = null
     private var tvStreakNext: TextView? = null
@@ -1004,7 +1007,7 @@ class HomeFragment : Fragment() {
                         currentCtx,
                         title = if (existingNote == null) "Open scan" else "Open note",
                         subtitle = "View this captured note",
-                        icon = "↗"
+                        iconRes = R.drawable.ic_option_open
                     ) {
                         dialog.dismiss()
                         openRecentScan(scan)
@@ -1016,7 +1019,7 @@ class HomeFragment : Fragment() {
                         currentCtx,
                         title = if (existingNote == null) "Save to Notes" else if (existingNote.isStarred) "Unfavorite" else "Favorite",
                         subtitle = if (existingNote == null) "Keep this scan in Notes" else if (existingNote.isStarred) "Remove from favorites" else "Keep this note easy to find",
-                        icon = if (existingNote == null) "+" else "★"
+                        iconRes = R.drawable.ic_option_star_soft
                     ) {
                         dialog.dismiss()
                         if (existingNote == null) {
@@ -1034,7 +1037,7 @@ class HomeFragment : Fragment() {
                         currentCtx,
                         title = "Delete from History",
                         subtitle = "Remove this item from recent scans",
-                        icon = "×",
+                        iconRes = R.drawable.ic_option_delete,
                         destructive = true
                     ) {
                         dialog.dismiss()
@@ -1096,7 +1099,7 @@ class HomeFragment : Fragment() {
         ctx: Context,
         title: String,
         subtitle: String,
-        icon: String,
+        iconRes: Int,
         destructive: Boolean = false,
         action: () -> Unit
     ): View {
@@ -1107,18 +1110,47 @@ class HomeFragment : Fragment() {
             isClickable = true
             isFocusable = true
 
-            addView(
-                TextView(ctx).apply {
-                    text = icon
-                    textSize = 18f
+            val iconBox =
+                LinearLayout(ctx).apply {
                     gravity = Gravity.CENTER
-                    setTextColor(
-                        if (destructive) "#D94B62".toColorInt()
-                        else ContextCompat.getColor(ctx, R.color.nts_blue)
-                    )
-                    background = roundedBackground(ctx, colorHex(ctx, R.color.nts_surface_blue_soft), 14f)
-                },
-                LinearLayout.LayoutParams(dp(ctx, 42), dp(ctx, 42))
+                    background =
+                        roundedBackground(
+                            ctx,
+                            colorHex(ctx, R.color.nts_surface_blue_soft),
+                            14f
+                        )
+                }
+
+            val iconView =
+                ImageView(ctx).apply {
+                    setImageResource(iconRes)
+                    imageTintList =
+                        android.content.res.ColorStateList.valueOf(
+                            if (destructive) {
+                                "#D94B62".toColorInt()
+                            } else {
+                                ContextCompat.getColor(
+                                    ctx,
+                                    R.color.nts_blue
+                                )
+                            }
+                        )
+                }
+
+            iconBox.addView(
+                iconView,
+                LinearLayout.LayoutParams(
+                    dp(ctx, 22),
+                    dp(ctx, 22)
+                )
+            )
+
+            addView(
+                iconBox,
+                LinearLayout.LayoutParams(
+                    dp(ctx, 42),
+                    dp(ctx, 42)
+                )
             )
 
             val labels = LinearLayout(ctx).apply {
@@ -1179,23 +1211,103 @@ class HomeFragment : Fragment() {
 
     private fun openRecentScan(scan: ScanHistory) {
         val safeContext = context ?: return
-        lifecycleScope.launch(Dispatchers.IO) {
-            val dao = AppDatabase.getDatabase(safeContext).appDao()
 
-            val existingNote = if (scan.imagePath.isNotBlank()) {
-                dao.getNoteByPath(scan.imagePath)
-            } else null
+        lifecycleScope.launch(Dispatchers.IO) {
+            val dao =
+                AppDatabase
+                    .getDatabase(safeContext)
+                    .appDao()
+
+            val existingNote =
+                if (scan.imagePath.isNotBlank()) {
+                    dao.getNoteByPath(scan.imagePath)
+                } else {
+                    null
+                }
+
+            val sourcePaths =
+                runCatching {
+                    val array =
+                        JSONArray(
+                            scan.sourceImagePathsJson
+                        )
+
+                    List(array.length()) { index ->
+                        array.optString(index)
+                    }.filter { it.isNotBlank() }
+                }.getOrDefault(
+                    listOfNotNull(
+                        scan.imagePath.takeIf {
+                            it.isNotBlank()
+                        }
+                    )
+                )
+
+            val pageContents =
+                runCatching {
+                    val array =
+                        JSONArray(
+                            scan.pageContentsJson
+                        )
+
+                    List(array.length()) { index ->
+                        array.optString(index)
+                    }
+                }.getOrDefault(
+                    emptyList()
+                )
 
             withContext(Dispatchers.Main) {
-                val currentCtx = context ?: return@withContext
-                val intent = Intent(currentCtx, PdfViewerActivity::class.java).apply {
-                    putExtra("NOTE_ID", existingNote?.id ?: -1)
-                    putExtra("TITLE", scan.title)
-                    if (existingNote != null) {
-                        putExtra("CONTENT", existingNote.content)
+                val currentCtx =
+                    context ?: return@withContext
+
+                val intent =
+                    Intent(
+                        currentCtx,
+                        PdfViewerActivity::class.java
+                    ).apply {
+                        putExtra(
+                            "NOTE_ID",
+                            existingNote?.id ?: -1
+                        )
+
+                        putExtra(
+                            "TITLE",
+                            scan.title
+                        )
+
+                        putExtra(
+                            "IMAGE_PATH",
+                            scan.imagePath
+                        )
+
+                        if (existingNote != null) {
+                            putExtra(
+                                "CONTENT",
+                                existingNote.content
+                            )
+                        } else {
+                            pageContents
+                                .firstOrNull()
+                                ?.let {
+                                    putExtra(
+                                        "CONTENT",
+                                        it
+                                    )
+                                }
+
+                            putStringArrayListExtra(
+                                "IMAGE_PATHS",
+                                ArrayList(sourcePaths)
+                            )
+
+                            putStringArrayListExtra(
+                                "PAGE_CONTENTS",
+                                ArrayList(pageContents)
+                            )
+                        }
                     }
-                    putExtra("IMAGE_PATH", scan.imagePath)
-                }
+
                 startActivity(intent)
             }
         }
@@ -1504,6 +1616,8 @@ class HomeFragment : Fragment() {
             }
         }
 
+        applyStreakMotion(level)
+
         streakRobotCard?.apply {
             setCardBackgroundColor(
                 bgColor
@@ -1522,6 +1636,133 @@ class HomeFragment : Fragment() {
 
         tvStatStreakEmoji?.visibility =
             View.GONE
+    }
+
+    private fun applyStreakMotion(
+        level: Int
+    ) {
+        val robot =
+            streakRobot ?: return
+
+        streakMotionAnimator?.cancel()
+        streakMotionAnimator = null
+
+        robot.translationX = 0f
+        robot.translationY = 0f
+        robot.rotation = 0f
+
+        val density =
+            resources.displayMetrics.density
+
+        fun loopingFloat(
+            property: String,
+            vararg values: Float,
+            duration: Long
+        ): ObjectAnimator {
+            return ObjectAnimator.ofFloat(
+                robot,
+                property,
+                *values
+            ).apply {
+                this.duration = duration
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+            }
+        }
+
+        val animator =
+            when (level) {
+                1 -> {
+                    // Newbie: gentle little bounce.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationY",
+                                0f,
+                                -4f * density,
+                                duration = 900L
+                            )
+                        )
+                    }
+                }
+
+                2 -> {
+                    // Rookie: playful wave / side tilt.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "rotation",
+                                -4f,
+                                5f,
+                                duration = 520L
+                            ),
+                            loopingFloat(
+                                "translationX",
+                                -2f * density,
+                                3f * density,
+                                duration = 520L
+                            )
+                        )
+                    }
+                }
+
+                3 -> {
+                    // Focused: short left-right working motion.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationX",
+                                -4f * density,
+                                4f * density,
+                                duration = 390L
+                            ),
+                            loopingFloat(
+                                "rotation",
+                                -1.5f,
+                                1.5f,
+                                duration = 390L
+                            )
+                        )
+                    }
+                }
+
+                4 -> {
+                    // Scholar: calm confident nod-like bob.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationY",
+                                2f * density,
+                                -3f * density,
+                                duration = 650L
+                            )
+                        )
+                    }
+                }
+
+                else -> {
+                    // Master: slow floating victory motion.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationY",
+                                0f,
+                                -6f * density,
+                                duration = 820L
+                            ),
+                            loopingFloat(
+                                "rotation",
+                                -1.5f,
+                                1.5f,
+                                duration = 820L
+                            )
+                        )
+                    }
+                }
+            }
+
+        streakMotionAnimator = animator
+        animator.start()
     }
 
     private fun showSnapEvolutionSheet() {
@@ -1848,6 +2089,9 @@ class HomeFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        streakMotionAnimator?.cancel()
+        streakMotionAnimator = null
+
         snapHomeBob?.cancel()
         snapHomeBob = null
 

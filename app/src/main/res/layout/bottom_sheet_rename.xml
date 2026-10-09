@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+    android:background="@color/nts_background" android:paddingStart="20dp" android:paddingTop="10dp" android:paddingEnd="20dp" android:paddingBottom="26dp">
+    <View android:layout_width="42dp" android:layout_height="4dp" android:layout_gravity="center_horizontal" android:background="@drawable/bg_sheet_handle"/>
+    <TextView android:id="@+id/tvRenameSheetTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:fontFamily="@font/apple_garamond_bold" android:text="Rename" android:textColor="@color/nts_text" android:textSize="22sp"/>
+    <TextView android:id="@+id/tvRenameSheetSubtitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:fontFamily="@font/poppins_regular" android:text="Give it a clear name." android:textColor="@color/nts_text_secondary" android:textSize="9.5sp"/>
+    <com.google.android.material.textfield.TextInputLayout android:id="@+id/renameInputLayout" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" app:boxBackgroundColor="@color/nts_surface" app:boxBackgroundMode="outline" app:boxCornerRadiusBottomEnd="16dp" app:boxCornerRadiusBottomStart="16dp" app:boxCornerRadiusTopEnd="16dp" app:boxCornerRadiusTopStart="16dp" app:boxStrokeColor="@color/nts_blue" app:hintEnabled="false">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/etRenameValue" android:layout_width="match_parent" android:layout_height="52dp" android:fontFamily="@font/poppins_regular" android:singleLine="true" android:textColor="@color/nts_text" android:textSize="11.5sp"/>
+    </com.google.android.material.textfield.TextInputLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:gravity="end" android:orientation="horizontal">
+        <TextView android:id="@+id/btnRenameCancel" android:layout_width="wrap_content" android:layout_height="44dp" android:gravity="center" android:fontFamily="@font/poppins_medium" android:paddingStart="18dp" android:paddingEnd="18dp" android:text="Cancel" android:textColor="@color/nts_text_secondary" android:textSize="10.5sp"/>
+        <TextView android:id="@+id/btnRenameSave" android:layout_width="88dp" android:layout_height="44dp" android:layout_marginStart="6dp" android:background="@drawable/bg_primary_soft_button" android:gravity="center" android:fontFamily="@font/poppins_semibold" android:text="Save" android:textColor="@color/nts_text" android:textSize="10.5sp"/>
+    </LinearLayout>
+</LinearLayout>

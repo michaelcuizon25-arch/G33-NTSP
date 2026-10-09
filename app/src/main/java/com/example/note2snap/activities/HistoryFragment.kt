@@ -286,16 +286,32 @@ class HistoryFragment : Fragment() {
         val root =
             view ?: return
 
-        root.findViewById<View>(
-            R.id.historySelectionBar
-        )?.visibility =
-            if (
-                count > 0
-            ) {
-                View.VISIBLE
-            } else {
-                View.GONE
+        val selectionBar =
+            root.findViewById<View>(
+                R.id.historySelectionBar
+            )
+
+        if (
+            count > 0
+        ) {
+            selectionBar?.apply {
+                visibility =
+                    View.VISIBLE
+
+                elevation =
+                    dp(16)
+                        .toFloat()
+
+                translationZ =
+                    dp(16)
+                        .toFloat()
+
+                bringToFront()
             }
+        } else {
+            selectionBar?.visibility =
+                View.GONE
+        }
 
         root.findViewById<TextView>(
             R.id.tvHistorySelectedCount

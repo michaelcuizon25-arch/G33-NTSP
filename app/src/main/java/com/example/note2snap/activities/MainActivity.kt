@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textSettings: TextView
 
     private lateinit var bottomNavContainer: View
+    private lateinit var bottomNavFade: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Apply the Appearance setting before inflating any UI.
@@ -51,6 +52,9 @@ class MainActivity : AppCompatActivity() {
     private fun initViews() {
         bottomNavContainer =
             findViewById(R.id.bottomNavContainer)
+
+        bottomNavFade =
+            findViewById(R.id.bottomNavFade)
 
         navHome =
             findViewById(R.id.navHome)
@@ -141,6 +145,9 @@ class MainActivity : AppCompatActivity() {
         bottomNavContainer.visibility =
             View.VISIBLE
 
+        bottomNavFade.visibility =
+            View.VISIBLE
+
         scanFab.visibility =
             View.VISIBLE
 
@@ -179,6 +186,9 @@ class MainActivity : AppCompatActivity() {
 
     fun openScan() {
         bottomNavContainer.visibility =
+            View.GONE
+
+        bottomNavFade.visibility =
             View.GONE
 
         scanFab.visibility =
@@ -285,8 +295,37 @@ class MainActivity : AppCompatActivity() {
             R.drawable.bg_nav_item_inactive
         )
 
-        icon.setColorFilter(color)
-        text.setTextColor(color)
+        icon.clearColorFilter()
+        androidx.core.widget.ImageViewCompat.setImageTintList(
+            icon,
+            null
+        )
+
+        icon.setImageResource(
+            when (icon.id) {
+                R.id.iconHome ->
+                    R.drawable.ic_nav_home_outline
+
+                R.id.iconNotes ->
+                    R.drawable.ic_nav_notes_outline
+
+                R.id.iconHistory ->
+                    R.drawable.ic_nav_history_outline
+
+                else ->
+                    R.drawable.ic_nav_settings_outline
+            }
+        )
+
+        text.setTextColor(
+            color
+        )
+
+        text.typeface =
+            androidx.core.content.res.ResourcesCompat.getFont(
+                this,
+                R.font.poppins_regular
+            )
     }
 
     private fun setTabActive(
@@ -299,7 +338,39 @@ class MainActivity : AppCompatActivity() {
             R.drawable.bg_nav_item_active
         )
 
-        icon.setColorFilter(color)
-        text.setTextColor(color)
+        icon.clearColorFilter()
+        androidx.core.widget.ImageViewCompat.setImageTintList(
+            icon,
+            null
+        )
+
+        icon.setImageResource(
+            when (icon.id) {
+                R.id.iconHome ->
+                    R.drawable.ic_nav_home_filled
+
+                R.id.iconNotes ->
+                    R.drawable.ic_nav_notes_filled
+
+                R.id.iconHistory ->
+                    R.drawable.ic_nav_history_filled
+
+                else ->
+                    R.drawable.ic_nav_settings_filled
+            }
+        )
+
+        text.setTextColor(
+            ContextCompat.getColor(
+                this,
+                R.color.nts_blue
+            )
+        )
+
+        text.typeface =
+            androidx.core.content.res.ResourcesCompat.getFont(
+                this,
+                R.font.poppins_semibold
+            )
     }
 }

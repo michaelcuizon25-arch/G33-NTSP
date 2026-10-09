@@ -1,6 +1,5 @@
 package com.example.note2snap.adapter
 
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
@@ -10,10 +9,10 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.graphics.toColorInt
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
-import androidx.core.widget.ImageViewCompat
+import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
@@ -25,41 +24,57 @@ class FolderAdapter(
     private var folderList: List<Folder>,
     private val onItemClick: (Folder) -> Unit,
     private val onEditClick: (Folder) -> Unit,
+    private val onArchiveClick: (Folder) -> Unit,
     private val onDeleteClick: (Folder) -> Unit
 ) : RecyclerView.Adapter<FolderAdapter.FolderViewHolder>() {
 
     private var folderNoteCounts:
         Map<Int, Int> =
-        emptyMap()
+            emptyMap()
+
+    private var archivedFolderIds:
+        Set<Int> =
+            emptySet()
 
     class FolderViewHolder(
         view: View
     ) : RecyclerView.ViewHolder(view) {
 
-        val cardFolder: MaterialCardView =
-            view.findViewById(
-                R.id.cardFolder
-            )
+        val cardFolder:
+            MaterialCardView =
+                view.findViewById(
+                    R.id.cardFolder
+                )
 
-        val ivFolderIcon: ImageView =
-            view.findViewById(
-                R.id.ivFolderIcon
-            )
+        val folderTab:
+            MaterialCardView =
+                view.findViewById(
+                    R.id.folderTab
+                )
 
-        val tvFolderName: TextView =
-            view.findViewById(
-                R.id.tvFolderName
-            )
+        val tvFolderName:
+            TextView =
+                view.findViewById(
+                    R.id.tvFolderName
+                )
 
-        val tvFolderMeta: TextView =
-            view.findViewById(
-                R.id.tvFolderMeta
-            )
+        val tvFolderCount:
+            TextView =
+                view.findViewById(
+                    R.id.tvFolderCount
+                )
 
-        val btnFolderMore: ImageView =
-            view.findViewById(
-                R.id.btnFolderMore
-            )
+        val tvArchivedBadge:
+            TextView =
+                view.findViewById(
+                    R.id.tvArchivedBadge
+                )
+
+        val btnFolderMore:
+            ImageView =
+                view.findViewById(
+                    R.id.btnFolderMore
+                )
     }
 
     override fun onCreateViewHolder(
@@ -67,16 +82,17 @@ class FolderAdapter(
         viewType: Int
     ): FolderViewHolder {
 
-        val view =
+        return FolderViewHolder(
             LayoutInflater
-                .from(parent.context)
+                .from(
+                    parent.context
+                )
                 .inflate(
                     R.layout.item_folder,
                     parent,
                     false
                 )
-
-        return FolderViewHolder(view)
+        )
     }
 
     override fun onBindViewHolder(
@@ -87,90 +103,116 @@ class FolderAdapter(
         val folder =
             folderList[position]
 
+        val context =
+            holder.itemView.context
+
+        val folderColor =
+            runCatching {
+                folder.colorHex.toColorInt()
+            }.getOrDefault(
+                "#AFC4F6".toColorInt()
+            )
+
+        val surface =
+            ContextCompat.getColor(
+                context,
+                R.color.nts_surface
+            )
+
+        holder.cardFolder.setCardBackgroundColor(
+            ColorUtils.blendARGB(
+                surface,
+                folderColor,
+                0.34f
+            )
+        )
+
+        holder.folderTab.setCardBackgroundColor(
+            ColorUtils.blendARGB(
+                surface,
+                folderColor,
+                0.50f
+            )
+        )
+
+        val stroke =
+            ColorUtils.blendARGB(
+                ContextCompat.getColor(
+                    context,
+                    R.color.nts_outline
+                ),
+                folderColor,
+                0.10f
+            )
+
+        holder.cardFolder.strokeColor =
+            stroke
+
+        holder.folderTab.strokeColor =
+            stroke
+
         holder.tvFolderName.text =
             folder.name
 
-        val noteCount =
+        val count =
             folderNoteCounts[
                 folder.id
             ] ?: 0
 
-        holder.tvFolderMeta.text =
+        holder.tvFolderCount.text =
             if (
-                noteCount ==
-                1
+                count == 1
             ) {
                 "1 note"
             } else {
-                "$noteCount notes"
+                "$count notes"
             }
 
-        val folderColor =
-            try {
-                folder.colorHex.toColorInt()
-            } catch (_: Exception) {
-                "#AFC4F6".toColorInt()
+        val isArchived =
+            folder.id in
+                archivedFolderIds
+
+        holder.tvArchivedBadge.visibility =
+            if (
+                isArchived
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
             }
 
-        holder.ivFolderIcon
-            .setImageResource(
-                R.drawable.ic_folder_cute
-            )
+        holder.cardFolder.alpha =
+            if (
+                isArchived
+            ) {
+                0.82f
+            } else {
+                1f
+            }
 
-        ImageViewCompat
-            .setImageTintList(
-                holder.ivFolderIcon,
-                ColorStateList.valueOf(
-                    folderColor
+        val openFolder =
+            View.OnClickListener {
+                onItemClick(
+                    folder
                 )
-            )
-
-        val isDarkMode =
-            (holder.itemView.resources.configuration.uiMode and
-                    android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                    android.content.res.Configuration.UI_MODE_NIGHT_YES
-
-        val neutralSurface =
-            ContextCompat.getColor(
-                holder.itemView.context,
-                if (isDarkMode) {
-                    R.color.nts_surface
-                } else {
-                    R.color.nts_surface_blue_soft
-                }
-            )
-
-        val cardColor =
-            androidx.core.graphics.ColorUtils.blendARGB(
-                neutralSurface,
-                folderColor,
-                if (isDarkMode) 0.28f else 0.18f
-            )
-
-        holder.cardFolder.setCardBackgroundColor(
-            cardColor
-        )
-
-        holder.cardFolder.strokeColor =
-            androidx.core.graphics.ColorUtils.blendARGB(
-                ContextCompat.getColor(
-                    holder.itemView.context,
-                    R.color.nts_outline
-                ),
-                folderColor,
-                if (isDarkMode) 0.45f else 0.30f
-            )
-
-        holder.itemView
-            .setOnClickListener {
-                onItemClick(folder)
             }
+
+        holder.cardFolder
+            .setOnClickListener(
+                openFolder
+            )
+
+        holder.folderTab
+            .setOnClickListener(
+                openFolder
+            )
 
         holder.btnFolderMore
             .setOnClickListener {
                 showFolderOptions(
                     holder.itemView,
-                    folder
+                    folder,
+                    isArchived
                 )
             }
     }
@@ -182,7 +224,16 @@ class FolderAdapter(
         counts: Map<Int, Int>
     ) {
         folderNoteCounts =
-            counts
+            counts.toMap()
+
+        notifyDataSetChanged()
+    }
+
+    fun updateArchivedFolderIds(
+        ids: Set<Int>
+    ) {
+        archivedFolderIds =
+            ids.toSet()
 
         notifyDataSetChanged()
     }
@@ -196,12 +247,13 @@ class FolderAdapter(
 
         val diff =
             DiffUtil.calculateDiff(
-                object : DiffUtil.Callback() {
+                object :
+                    DiffUtil.Callback() {
 
-                    override fun getOldListSize() =
+                    override fun getOldListSize(): Int =
                         oldFolders.size
 
-                    override fun getNewListSize() =
+                    override fun getNewListSize(): Int =
                         newFolders.size
 
                     override fun areItemsTheSame(
@@ -212,9 +264,9 @@ class FolderAdapter(
                         return oldFolders[
                             oldItemPosition
                         ].id ==
-                                newFolders[
-                                    newItemPosition
-                                ].id
+                            newFolders[
+                                newItemPosition
+                            ].id
                     }
 
                     override fun areContentsTheSame(
@@ -225,9 +277,9 @@ class FolderAdapter(
                         return oldFolders[
                             oldItemPosition
                         ] ==
-                                newFolders[
-                                    newItemPosition
-                                ]
+                            newFolders[
+                                newItemPosition
+                            ]
                     }
                 }
             )
@@ -235,22 +287,29 @@ class FolderAdapter(
         folderList =
             newFolders.toList()
 
-        diff.dispatchUpdatesTo(this)
+        diff.dispatchUpdatesTo(
+            this
+        )
     }
 
     private fun showFolderOptions(
         anchor: View,
-        folder: Folder
+        folder: Folder,
+        isArchived: Boolean
     ) {
 
         val context =
             anchor.context
 
         val dialog =
-            BottomSheetDialog(context)
+            BottomSheetDialog(
+                context
+            )
 
         val sheet =
-            LinearLayout(context).apply {
+            LinearLayout(
+                context
+            ).apply {
 
                 orientation =
                     LinearLayout.VERTICAL
@@ -264,18 +323,26 @@ class FolderAdapter(
 
                 background =
                     roundedBackground(
-                        colorHex(context, R.color.nts_background),
+                        colorHex(
+                            context,
+                            R.color.nts_background
+                        ),
                         28f,
                         anchor
                     )
             }
 
         sheet.addView(
-            View(context).apply {
+            View(
+                context
+            ).apply {
 
                 background =
                     roundedBackground(
-                        colorHex(context, R.color.nts_blue_line),
+                        colorHex(
+                            context,
+                            R.color.nts_blue_line
+                        ),
                         99f,
                         anchor
                     )
@@ -294,7 +361,9 @@ class FolderAdapter(
         )
 
         sheet.addView(
-            TextView(context).apply {
+            TextView(
+                context
+            ).apply {
 
                 text =
                     "Folder options"
@@ -318,13 +387,15 @@ class FolderAdapter(
         )
 
         sheet.addView(
-            TextView(context).apply {
+            TextView(
+                context
+            ).apply {
 
                 text =
                     folder.name
 
                 textSize =
-                    11f
+                    10.5f
 
                 typeface =
                     ResourcesCompat.getFont(
@@ -349,53 +420,94 @@ class FolderAdapter(
         )
 
         val card =
-            LinearLayout(context).apply {
+            LinearLayout(
+                context
+            ).apply {
 
                 orientation =
                     LinearLayout.VERTICAL
 
                 background =
                     roundedBackground(
-                        colorHex(context, R.color.nts_surface),
+                        colorHex(
+                            context,
+                            R.color.nts_surface
+                        ),
                         20f,
                         anchor,
-                        colorHex(context, R.color.nts_blue_line)
+                        colorHex(
+                            context,
+                            R.color.nts_blue_line
+                        )
                     )
             }
 
         card.addView(
             optionRow(
-                anchor =
-                    anchor,
-                iconRes =
-                    R.drawable.ic_option_edit,
-                title =
-                    "Rename folder",
-                destructive =
-                    false
+                anchor,
+                R.drawable.ic_option_edit,
+                "Rename folder",
+                "Change the folder name",
+                false
             ) {
                 dialog.dismiss()
-                onEditClick(folder)
+                onEditClick(
+                    folder
+                )
             }
         )
 
         card.addView(
             optionRow(
-                anchor =
-                    anchor,
-                iconRes =
-                    R.drawable.ic_option_delete,
-                title =
-                    "Delete folder",
-                destructive =
-                    true
+                anchor,
+                if (
+                    isArchived
+                ) {
+                    R.drawable.ic_restore
+                } else {
+                    R.drawable.ic_archive
+                },
+                if (
+                    isArchived
+                ) {
+                    "Restore folder"
+                } else {
+                    "Archive folder"
+                },
+                if (
+                    isArchived
+                ) {
+                    "Return it to your active folders"
+                } else {
+                    "Hide it without deleting notes"
+                },
+                false
             ) {
                 dialog.dismiss()
-                onDeleteClick(folder)
+                onArchiveClick(
+                    folder
+                )
             }
         )
 
-        sheet.addView(card)
+        card.addView(
+            optionRow(
+                anchor,
+                R.drawable.ic_option_delete,
+                "Delete folder",
+                "Remove the folder permanently",
+                true
+            ) {
+                dialog.dismiss()
+                onDeleteClick(
+                    folder
+                )
+            }
+        )
+
+        sheet.addView(
+            card
+        )
 
         dialog.setContentView(
             sheet
@@ -408,6 +520,7 @@ class FolderAdapter(
         anchor: View,
         iconRes: Int,
         title: String,
+        subtitle: String,
         destructive: Boolean,
         action: () -> Unit
     ): View {
@@ -415,14 +528,10 @@ class FolderAdapter(
         val context =
             anchor.context
 
-        val subtitle =
-            if (destructive) {
-                "Permanently remove this folder"
-            } else {
-                "Change the folder name"
-            }
+        return LinearLayout(
+            context
+        ).apply {
 
-        return LinearLayout(context).apply {
             orientation =
                 LinearLayout.HORIZONTAL
 
@@ -430,55 +539,45 @@ class FolderAdapter(
                 Gravity.CENTER_VERTICAL
 
             setPadding(
-                dp(anchor, 10),
-                dp(anchor, 10),
-                dp(anchor, 10),
-                dp(anchor, 10)
-            )
-
-            isClickable = true
-            isFocusable = true
-
-            val iconBox =
-                LinearLayout(context).apply {
-                    gravity = Gravity.CENTER
-                    background =
-                        roundedBackground(
-                            colorHex(
-                                context,
-                                R.color.nts_surface_blue_soft
-                            ),
-                            14f,
-                            anchor
-                        )
-                }
-
-            val icon =
-                ImageView(context).apply {
-                    setImageResource(
-                        iconRes
-                    )
-                    imageTintList = null
-                }
-
-            iconBox.addView(
-                icon,
-                LinearLayout.LayoutParams(
-                    dp(anchor, 24),
-                    dp(anchor, 24)
-                )
+                dp(anchor, 12),
+                dp(anchor, 11),
+                dp(anchor, 12),
+                dp(anchor, 11)
             )
 
             addView(
-                iconBox,
+                ImageView(
+                    context
+                ).apply {
+
+                    setImageResource(
+                        iconRes
+                    )
+
+                    setColorFilter(
+                        ContextCompat.getColor(
+                            context,
+                            if (
+                                destructive
+                            ) {
+                                android.R.color.holo_red_dark
+                            } else {
+                                R.color.nts_blue
+                            }
+                        )
+                    )
+                },
                 LinearLayout.LayoutParams(
-                    dp(anchor, 42),
-                    dp(anchor, 42)
+                    dp(anchor, 22),
+                    dp(anchor, 22)
                 )
             )
 
             val labels =
-                LinearLayout(context).apply {
+                LinearLayout(
+                    context
+                ).apply {
+
                     orientation =
                         LinearLayout.VERTICAL
 
@@ -491,9 +590,16 @@ class FolderAdapter(
                 }
 
             labels.addView(
-                TextView(context).apply {
-                    text = title
-                    textSize = 12.5f
+                TextView(
+                    context
+                ).apply {
+
+                    text =
+                        title
+
+                    textSize =
+                        12f
+
                     typeface =
                         ResourcesCompat.getFont(
                             context,
@@ -501,22 +607,31 @@ class FolderAdapter(
                         )
 
                     setTextColor(
-                        if (destructive) {
-                            "#D94B62".toColorInt()
-                        } else {
-                            ContextCompat.getColor(
-                                context,
+                        ContextCompat.getColor(
+                            context,
+                            if (
+                                destructive
+                            ) {
+                                android.R.color.holo_red_dark
+                            } else {
                                 R.color.nts_text
-                            )
-                        }
+                            }
+                        )
                     )
                 }
             )
 
             labels.addView(
-                TextView(context).apply {
-                    text = subtitle
-                    textSize = 9.5f
+                TextView(
+                    context
+                ).apply {
+
+                    text =
+                        subtitle
+
+                    textSize =
+                        9f
+
                     typeface =
                         ResourcesCompat.getFont(
                             context,
@@ -541,16 +656,36 @@ class FolderAdapter(
                 )
             )
 
+            isClickable =
+                true
+
+            isFocusable =
+                true
+
             setOnClickListener {
                 action()
             }
         }
     }
 
+    private fun dp(
+        anchor: View,
+        value: Int
+    ): Int {
+
+        return (
+            value *
+                anchor.resources
+                    .displayMetrics
+                    .density
+            ).toInt()
+    }
+
     private fun colorHex(
         context: android.content.Context,
         colorRes: Int
     ): String {
+
         val color =
             ContextCompat.getColor(
                 context,
@@ -561,19 +696,6 @@ class FolderAdapter(
             "#%06X",
             0xFFFFFF and color
         )
-    }
-
-    private fun dp(
-        anchor: View,
-        value: Int
-    ): Int {
-
-        return (
-                value *
-                        anchor.resources
-                            .displayMetrics
-                            .density
-                ).toInt()
     }
 
     private fun roundedBackground(
@@ -590,19 +712,27 @@ class FolderAdapter(
 
             cornerRadius =
                 radiusDp *
-                        anchor.resources
-                            .displayMetrics
-                            .density
+                    anchor.resources
+                        .displayMetrics
+                        .density
 
             setColor(
-                fillColor.toColorInt()
+                Color.parseColor(
+                    fillColor
+                )
             )
 
-            if (strokeColor != null) {
-
+            if (
+                strokeColor != null
+            ) {
                 setStroke(
-                    dp(anchor, 1),
-                    strokeColor.toColorInt()
+                    dp(
+                        anchor,
+                        1
+                    ),
+                    Color.parseColor(
+                        strokeColor
+                    )
                 )
             }
         }

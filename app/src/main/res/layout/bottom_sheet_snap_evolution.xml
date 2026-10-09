@@ -40,7 +40,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/apple_garamond_bold"
-                    android:text="Snap Evolution"
+                    android:text="Snap&apos;s streak!"
                     android:textColor="@color/nts_text"
                     android:textSize="26sp" />
 
@@ -49,7 +49,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:fontFamily="@font/poppins_regular"
-                    android:text="Keep your study streak alive to unlock new looks."
+                    android:text="Your streak unlocks each Snap form."
                     android:textColor="@color/nts_text_secondary"
                     android:textSize="9.5sp" />
             </LinearLayout>
@@ -69,7 +69,7 @@
             android:layout_width="match_parent"
             android:layout_height="178dp"
             android:layout_marginTop="17dp"
-            app:cardBackgroundColor="@color/nts_surface_blue_soft"
+            app:cardBackgroundColor="@color/nts_yellow"
             app:cardCornerRadius="26dp"
             app:cardElevation="0dp"
             app:strokeColor="@color/nts_blue_line"
@@ -78,6 +78,17 @@
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginEnd="16dp"
+                    android:alpha="0.45"
+                    android:text="✦"
+                    android:textColor="@color/nts_blue"
+                    android:textSize="17sp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"

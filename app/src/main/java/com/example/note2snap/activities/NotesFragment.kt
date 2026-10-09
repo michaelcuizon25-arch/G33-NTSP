@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 enum class SortType { NAME, TIME, SIZE, TYPE }
-enum class FilterType { ALL, NOTES, FOLDERS }
+enum class FilterType { ALL, NOTES, FOLDERS, ARCHIVED }
 
 class NotesFragment : Fragment() {
 
@@ -68,86 +68,11 @@ class NotesFragment : Fragment() {
     private var chipAll: TextView? = null
     private var chipNotes: TextView? = null
     private var chipFolders: TextView? = null
+    private var chipArchived: TextView? = null
 
     private var currentSort = SortType.NAME
     private var currentFilter = FilterType.ALL
     private var searchQuery = ""
-
-
-    private fun startSadRobotMotion(
-        robot: View
-    ) {
-        robot.animate()
-            .cancel()
-
-        val distance =
-            4f *
-                    resources
-                        .displayMetrics
-                        .density
-
-        fun moveDown() {
-            if (
-                !isAdded ||
-                robot.windowToken ==
-                null
-            ) {
-                return
-            }
-
-            robot.animate()
-                .translationY(
-                    distance
-                )
-                .rotation(
-                    -1.2f
-                )
-                .scaleX(
-                    0.995f
-                )
-                .scaleY(
-                    0.995f
-                )
-                .setDuration(
-                    1100L
-                )
-                .setInterpolator(
-                    android.view.animation
-                        .AccelerateDecelerateInterpolator()
-                )
-                .withEndAction {
-                    robot.animate()
-                        .translationY(
-                            0f
-                        )
-                        .rotation(
-                            1.2f
-                        )
-                        .scaleX(
-                            1.005f
-                        )
-                        .scaleY(
-                            1.005f
-                        )
-                        .setDuration(
-                            1100L
-                        )
-                        .setInterpolator(
-                            android.view.animation
-                                .AccelerateDecelerateInterpolator()
-                        )
-                        .withEndAction {
-                            moveDown()
-                        }
-                        .start()
-                }
-                .start()
-        }
-
-        robot.post {
-            moveDown()
-        }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -163,6 +88,7 @@ class NotesFragment : Fragment() {
         chipAll = view.findViewById(R.id.chipAll)
         chipNotes = view.findViewById(R.id.chipNotes)
         chipFolders = view.findViewById(R.id.chipFolders)
+        chipArchived = view.findViewById(R.id.chipArchived)
 
         val fabAdd = view.findViewById<FloatingActionButton>(R.id.fabAddNotes)
         val etSearch = view.findViewById<EditText>(R.id.etSearchNotes)
@@ -179,7 +105,6 @@ class NotesFragment : Fragment() {
             view.findViewById(
                 R.id.tvEmptyNotesSubtitle
             )
-
         btnSort = view.findViewById(R.id.btnSort)
         btnViewMode = view.findViewById(R.id.btnViewMode)
 
@@ -258,10 +183,18 @@ class NotesFragment : Fragment() {
             folderList = emptyList(),
             onItemClick = { folder -> handleFolderClick(folder) },
             onEditClick = { folder -> showEditFolderDialog(folder) },
+            onArchiveClick = { folder -> toggleFolderArchive(folder) },
             onDeleteClick = { folder -> showDeleteFolderDialog(folder) }
         )
-        rvFolders?.layoutManager = LinearLayoutManager(context)
-        rvFolders?.adapter = folderAdapter
+
+        rvFolders?.layoutManager =
+            GridLayoutManager(
+                context,
+                2
+            )
+
+        rvFolders?.adapter =
+            folderAdapter
 
         fabAdd?.setOnClickListener { showBottomSheetMenu() }
 
@@ -275,6 +208,13 @@ class NotesFragment : Fragment() {
             }
             override fun afterTextChanged(s: Editable?) {}
         })
+
+        btnSort?.setImageResource(
+            R.drawable.ic_sort_sliders
+        )
+        btnViewMode?.setImageResource(
+            R.drawable.ic_view_list_clean
+        )
 
         btnSort?.setOnClickListener { showSortBottomSheet() }
         btnViewMode?.setOnClickListener { showViewModeBottomSheet() }
@@ -375,7 +315,13 @@ class NotesFragment : Fragment() {
             }
         )
 
-        masterFolderList.forEach { folder ->
+        masterFolderList
+            .filter {
+                folder ->
+                folder.id !in getArchivedFolderIds()
+            }
+            .forEach {
+                folder ->
             listCard.addView(
                 createMoveFolderRow(
                     title = folder.name,
@@ -661,6 +607,14 @@ class NotesFragment : Fragment() {
             updateFilterTabUI()
             applySearchAndSort()
         }
+
+        chipArchived?.setOnClickListener {
+            currentFilter =
+                FilterType.ARCHIVED
+
+            updateFilterTabUI()
+            applySearchAndSort()
+        }
     }
 
     private fun updateFilterTabUI() {
@@ -681,6 +635,27 @@ class NotesFragment : Fragment() {
 
         chipFolders?.background = if (currentFilter == FilterType.FOLDERS) activeBg else inactiveBg
         chipFolders?.setTextColor(if (currentFilter == FilterType.FOLDERS) activeTextColor else inactiveTextColor)
+
+        chipArchived?.background =
+            if (
+                currentFilter ==
+                    FilterType.ARCHIVED
+            ) {
+                activeBg
+            } else {
+                inactiveBg
+            }
+
+        chipArchived?.setTextColor(
+            if (
+                currentFilter ==
+                    FilterType.ARCHIVED
+            ) {
+                activeTextColor
+            } else {
+                inactiveTextColor
+            }
+        )
     }
 
     private fun observeDatabaseData() {
@@ -705,11 +680,39 @@ class NotesFragment : Fragment() {
 
     private fun applySearchAndSort() {
         // 1. FILTER & SORT FOLDERS
-        var filteredFolders = if (searchQuery.isEmpty()) {
-            masterFolderList
-        } else {
-            masterFolderList.filter { it.name.contains(searchQuery, ignoreCase = true) }
-        }
+        val archivedFolderIds =
+            getArchivedFolderIds()
+
+        val folderSource =
+            if (
+                currentFilter ==
+                    FilterType.ARCHIVED
+            ) {
+                masterFolderList.filter {
+                    folder ->
+                    folder.id in archivedFolderIds
+                }
+            } else {
+                masterFolderList.filter {
+                    folder ->
+                    folder.id !in archivedFolderIds
+                }
+            }
+
+        var filteredFolders =
+            if (
+                searchQuery.isEmpty()
+            ) {
+                folderSource
+            } else {
+                folderSource.filter {
+                    folder ->
+                    folder.name.contains(
+                        searchQuery,
+                        ignoreCase = true
+                    )
+                }
+            }
 
         filteredFolders = when (currentSort) {
             SortType.NAME -> filteredFolders.sortedBy { it.name.lowercase() }
@@ -724,7 +727,7 @@ class NotesFragment : Fragment() {
         val folderCounts =
             masterNotesList
                 .mapNotNull {
-                        note ->
+                    note ->
                     note.folderId
                 }
                 .groupingBy {
@@ -734,6 +737,10 @@ class NotesFragment : Fragment() {
 
         folderAdapter.updateFolderNoteCounts(
             folderCounts
+        )
+
+        folderAdapter.updateArchivedFolderIds(
+            archivedFolderIds
         )
 
         folderAdapter.updateFolders(
@@ -781,23 +788,27 @@ class NotesFragment : Fragment() {
         // 3. TOGGLE VISIBILITY
         val showFoldersSection =
             (
-                    currentFilter ==
-                            FilterType.ALL ||
-                            currentFilter ==
-                            FilterType.FOLDERS
-                    ) &&
-                    currentFilteredFolders
-                        .isNotEmpty()
+                currentFilter ==
+                    FilterType.ALL ||
+                currentFilter ==
+                    FilterType.FOLDERS ||
+                currentFilter ==
+                    FilterType.ARCHIVED
+            ) &&
+            currentFilteredFolders
+                .isNotEmpty()
 
         val showNotesSection =
             (
-                    currentFilter ==
-                            FilterType.ALL ||
-                            currentFilter ==
-                            FilterType.NOTES
-                    ) &&
-                    currentFilteredNotes
-                        .isNotEmpty()
+                currentFilter ==
+                    FilterType.ALL ||
+                currentFilter ==
+                    FilterType.NOTES
+            ) &&
+            currentFilter !=
+                FilterType.ARCHIVED &&
+            currentFilteredNotes
+                .isNotEmpty()
 
         rvFolders?.visibility =
             if (
@@ -815,6 +826,16 @@ class NotesFragment : Fragment() {
                 View.VISIBLE
             } else {
                 View.GONE
+            }
+
+        tvFoldersLabel?.text =
+            if (
+                currentFilter ==
+                    FilterType.ARCHIVED
+            ) {
+                "Archived folders"
+            } else {
+                "Folders"
             }
 
         rvNotes.visibility =
@@ -837,23 +858,23 @@ class NotesFragment : Fragment() {
 
         val visibleItemCount =
             (
-                    if (
-                        showFoldersSection
-                    ) {
-                        currentFilteredFolders.size
-                    } else {
-                        0
-                    }
-                    ) +
-                    (
-                            if (
-                                showNotesSection
-                            ) {
-                                currentFilteredNotes.size
-                            } else {
-                                0
-                            }
-                            )
+                if (
+                    showFoldersSection
+                ) {
+                    currentFilteredFolders.size
+                } else {
+                    0
+                }
+            ) +
+            (
+                if (
+                    showNotesSection
+                ) {
+                    currentFilteredNotes.size
+                } else {
+                    0
+                }
+            )
 
         val hasAnySavedNote =
             masterNotesList
@@ -865,19 +886,27 @@ class NotesFragment : Fragment() {
 
         val showNoNotesRobot =
             !isSearching &&
-                    !hasAnySavedNote &&
-                    currentFilter !=
-                    FilterType.FOLDERS
+            !hasAnySavedNote &&
+            currentFilter !=
+                FilterType.FOLDERS
 
         val showSearchEmpty =
             isSearching &&
-                    visibleItemCount ==
-                    0
+            visibleItemCount ==
+                0
+
+        val showArchivedEmpty =
+            !isSearching &&
+            currentFilter ==
+                FilterType.ARCHIVED &&
+            currentFilteredFolders
+                .isEmpty()
 
         emptyStateContainer?.visibility =
             if (
                 showNoNotesRobot ||
-                showSearchEmpty
+                showSearchEmpty ||
+                showArchivedEmpty
             ) {
                 View.VISIBLE
             } else {
@@ -892,6 +921,15 @@ class NotesFragment : Fragment() {
 
             tvEmptyNotesSubtitle?.text =
                 "Scans stay in History until you tap Save."
+
+        } else if (
+            showArchivedEmpty
+        ) {
+            tvNotFound?.text =
+                "No archived folders"
+
+            tvEmptyNotesSubtitle?.text =
+                "Archived folders stay here until you restore them."
 
         } else if (
             showSearchEmpty
@@ -963,7 +1001,14 @@ class NotesFragment : Fragment() {
                     title = label,
                     subtitle = subtitle,
                     selected =
-                        currentSort == type
+                        currentSort == type,
+                    iconRes =
+                        when (type) {
+                            SortType.NAME -> R.drawable.ic_sort_name
+                            SortType.TIME -> R.drawable.ic_sort_time
+                            SortType.SIZE -> R.drawable.ic_sort_size
+                            SortType.TYPE -> R.drawable.ic_sort_type
+                        }
                 ) {
                     currentSort = type
                     applySearchAndSort()
@@ -1035,7 +1080,13 @@ class NotesFragment : Fragment() {
                     title = title,
                     subtitle = subtitle,
                     selected =
-                        currentViewMode == mode
+                        currentViewMode == mode,
+                    iconRes =
+                        when (mode) {
+                            NotesAdapter.DisplayMode.LIST -> R.drawable.ic_view_list_clean
+                            NotesAdapter.DisplayMode.GRID -> R.drawable.ic_view_grid_clean
+                            NotesAdapter.DisplayMode.COMPACT -> R.drawable.ic_view_compact_clean
+                        }
                 ) {
                     currentViewMode = mode
                     applyViewMode()
@@ -1085,6 +1136,14 @@ class NotesFragment : Fragment() {
                     )
             }
 
+        btnViewMode?.setImageResource(
+            when (currentViewMode) {
+                NotesAdapter.DisplayMode.LIST -> R.drawable.ic_view_list_clean
+                NotesAdapter.DisplayMode.GRID -> R.drawable.ic_view_grid_clean
+                NotesAdapter.DisplayMode.COMPACT -> R.drawable.ic_view_compact_clean
+            }
+        )
+
         btnViewMode?.contentDescription =
             when (currentViewMode) {
                 NotesAdapter.DisplayMode.LIST ->
@@ -1100,6 +1159,7 @@ class NotesFragment : Fragment() {
         title: String,
         subtitle: String,
         selected: Boolean,
+        iconRes: Int,
         action: () -> Unit
     ): View {
         return LinearLayout(requireContext()).apply {
@@ -1123,26 +1183,76 @@ class NotesFragment : Fragment() {
                     15f
                 )
 
-            addView(
-                TextView(requireContext()).apply {
-                    text =
-                        if (selected) "✓" else "○"
-                    gravity = Gravity.CENTER
-                    textSize = 16f
-                    setTextColor(
+            val iconCard =
+                com.google.android.material.card.MaterialCardView(
+                    requireContext()
+                ).apply {
+                    radius = dp(12).toFloat()
+                    cardElevation = 0f
+                    setCardBackgroundColor(
                         ContextCompat.getColor(
                             requireContext(),
                             if (selected) {
-                                R.color.nts_blue
+                                R.color.nts_surface_blue_soft
                             } else {
-                                R.color.nts_text_secondary
+                                R.color.nts_background
                             }
                         )
                     )
-                },
+                    strokeWidth = dp(1)
+                    strokeColor =
+                        ContextCompat.getColor(
+                            requireContext(),
+                            if (selected) {
+                                R.color.nts_blue_line
+                            } else {
+                                R.color.nts_outline
+                            }
+                        )
+                }
+
+            val rowIcon =
+                ImageView(
+                    requireContext()
+                ).apply {
+                    setImageResource(
+                        iconRes
+                    )
+                    setPadding(
+                        dp(8),
+                        dp(8),
+                        dp(8),
+                        dp(8)
+                    )
+                    androidx.core.widget.ImageViewCompat
+                        .setImageTintList(
+                            this,
+                            android.content.res.ColorStateList.valueOf(
+                                ContextCompat.getColor(
+                                    requireContext(),
+                                    if (selected) {
+                                        R.color.nts_blue
+                                    } else {
+                                        R.color.nts_text_secondary
+                                    }
+                                )
+                            )
+                        )
+                }
+
+            iconCard.addView(
+                rowIcon,
+                ViewGroup.LayoutParams(
+                    dp(38),
+                    dp(38)
+                )
+            )
+
+            addView(
+                iconCard,
                 LinearLayout.LayoutParams(
-                    dp(34),
-                    dp(34)
+                    dp(38),
+                    dp(38)
                 )
             )
 
@@ -1293,6 +1403,82 @@ class NotesFragment : Fragment() {
         }
     }
 
+    private fun getArchivedFolderIds(): Set<Int> {
+        return requireContext()
+            .getSharedPreferences(
+                "Note2SnapFolders",
+                android.content.Context.MODE_PRIVATE
+            )
+            .getStringSet(
+                "ARCHIVED_FOLDER_IDS",
+                emptySet()
+            )
+            .orEmpty()
+            .mapNotNull {
+                value ->
+                value.toIntOrNull()
+            }
+            .toSet()
+    }
+
+    private fun saveArchivedFolderIds(
+        ids: Set<Int>
+    ) {
+        requireContext()
+            .getSharedPreferences(
+                "Note2SnapFolders",
+                android.content.Context.MODE_PRIVATE
+            )
+            .edit()
+            .putStringSet(
+                "ARCHIVED_FOLDER_IDS",
+                ids.map {
+                    it.toString()
+                }.toSet()
+            )
+            .apply()
+    }
+
+    private fun toggleFolderArchive(
+        folder: Folder
+    ) {
+        val archived =
+            getArchivedFolderIds()
+                .toMutableSet()
+
+        val restoring =
+            folder.id in archived
+
+        if (
+            restoring
+        ) {
+            archived.remove(
+                folder.id
+            )
+        } else {
+            archived.add(
+                folder.id
+            )
+        }
+
+        saveArchivedFolderIds(
+            archived
+        )
+
+        applySearchAndSort()
+
+        showNotesNotice(
+            if (
+                restoring
+            ) {
+                "Folder restored"
+            } else {
+                "Folder archived"
+            },
+            folder.name
+        )
+    }
+
     private fun showEditFolderDialog(
         folder: Folder
     ) {
@@ -1302,208 +1488,65 @@ class NotesFragment : Fragment() {
             )
 
         val sheet =
-            createSheetContainer(
-                title = "Rename folder",
-                subtitle = "Choose a new name for ${folder.name}"
+            layoutInflater.inflate(
+                R.layout.bottom_sheet_rename,
+                null,
+                false
             )
+
+        sheet.findViewById<TextView>(
+            R.id.tvRenameSheetTitle
+        ).text =
+            "Rename folder"
+
+        sheet.findViewById<TextView>(
+            R.id.tvRenameSheetSubtitle
+        ).text =
+            "Keep folder names short and easy to scan."
 
         val input =
-            EditText(
-                requireContext()
-            ).apply {
-                setText(folder.name)
-                setSelection(
-                    folder.name.length
-                )
-                textSize = 12f
-                typeface =
-                    ResourcesCompat.getFont(
-                        requireContext(),
-                        R.font.poppins_regular
-                    )
-
-                setTextColor(
-                    ContextCompat.getColor(
-                        requireContext(),
-                        R.color.nts_text
-                    )
-                )
-
-                setHintTextColor(
-                    ContextCompat.getColor(
-                        requireContext(),
-                        R.color.nts_text_secondary
-                    )
-                )
-
-                isSingleLine = true
-
-                background =
-                    roundedBackground(
-                        colorHex(
-                            R.color.nts_surface
-                        ),
-                        16f,
-                        colorHex(
-                            R.color.nts_blue_line
-                        )
-                    )
-
-                setPadding(
-                    dp(14),
-                    dp(12),
-                    dp(14),
-                    dp(12)
-                )
-            }
-
-        sheet.addView(
-            input,
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+            sheet.findViewById<EditText>(
+                R.id.etRenameValue
             )
-        )
 
-        val actions =
-            LinearLayout(
-                requireContext()
-            ).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
-                gravity =
-                    Gravity.END
-                setPadding(
-                    0,
-                    dp(14),
-                    0,
-                    0
-                )
+        input.setText(folder.name)
+        input.setSelection(folder.name.length)
+
+        sheet.findViewById<View>(
+            R.id.btnRenameCancel
+        ).setOnClickListener {
+            dialog.dismiss()
+        }
+
+        sheet.findViewById<View>(
+            R.id.btnRenameSave
+        ).setOnClickListener {
+            val newName =
+                input.text
+                    .toString()
+                    .trim()
+
+            if (newName.isEmpty()) {
+                input.error =
+                    "Enter a folder name"
+                return@setOnClickListener
             }
 
-        val cancel =
-            TextView(
-                requireContext()
-            ).apply {
-                text = "Cancel"
-                textSize = 11.5f
-                typeface =
-                    ResourcesCompat.getFont(
-                        requireContext(),
-                        R.font.poppins_medium
-                    )
-                gravity =
-                    Gravity.CENTER
-
-                setTextColor(
-                    ContextCompat.getColor(
-                        requireContext(),
-                        R.color.nts_text_secondary
-                    )
-                )
-
-                setPadding(
-                    dp(16),
-                    dp(10),
-                    dp(16),
-                    dp(10)
-                )
-
-                setOnClickListener {
-                    dialog.dismiss()
-                }
-            }
-
-        val save =
-            TextView(
-                requireContext()
-            ).apply {
-                text = "Save"
-                textSize = 11.5f
-                typeface =
-                    ResourcesCompat.getFont(
-                        requireContext(),
-                        R.font.poppins_medium
-                    )
-                gravity =
-                    Gravity.CENTER
-
-                setTextColor(
-                    ContextCompat.getColor(
-                        requireContext(),
-                        R.color.nts_text
-                    )
-                )
-
-                background =
-                    roundedBackground(
-                        colorHex(
-                            R.color.nts_yellow
-                        ),
-                        16f,
-                        colorHex(
-                            R.color.nts_outline
-                        )
-                    )
-
-                setPadding(
-                    dp(18),
-                    dp(10),
-                    dp(18),
-                    dp(10)
-                )
-
-                setOnClickListener {
-                    val newName =
-                        input.text
-                            .toString()
-                            .trim()
-
-                    if (newName.isEmpty()) {
-                        Toast.makeText(
-                            context,
-                            "Folder name cannot be empty",
-                            Toast.LENGTH_SHORT
-                        ).show()
-
-                        return@setOnClickListener
-                    }
-
-                    val updatedFolder =
+            lifecycleScope.launch(Dispatchers.IO) {
+                AppDatabase
+                    .getDatabase(requireContext())
+                    .appDao()
+                    .insertFolder(
                         folder.copy(
                             name = newName
                         )
+                    )
 
-                    lifecycleScope.launch(
-                        Dispatchers.IO
-                    ) {
-                        AppDatabase
-                            .getDatabase(
-                                requireContext()
-                            )
-                            .appDao()
-                            .insertFolder(
-                                updatedFolder
-                            )
-
-                        launch(
-                            Dispatchers.Main
-                        ) {
-                            Toast.makeText(
-                                context,
-                                R.string.folder_updated,
-                                Toast.LENGTH_SHORT
-                            ).show()
-
-                            dialog.dismiss()
-                        }
-                    }
+                withContext(Dispatchers.Main) {
+                    dialog.dismiss()
                 }
             }
-
-        actions.addView(cancel)
-        actions.addView(save)
-        sheet.addView(actions)
+        }
 
         dialog.setContentView(sheet)
         dialog.show()
@@ -1647,6 +1690,15 @@ class NotesFragment : Fragment() {
                 View.VISIBLE
             } else {
                 View.GONE
+            }
+
+        root.findViewById<View>(
+            R.id.fabAddNotes
+        )?.visibility =
+            if (count > 0) {
+                View.GONE
+            } else {
+                View.VISIBLE
             }
 
         root.findViewById<TextView>(

@@ -9,7 +9,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.airbnb.lottie.LottieAnimationView
 import com.example.note2snap.R
@@ -31,13 +30,24 @@ class SplashActivity : AppCompatActivity() {
         savedInstanceState: Bundle?
     ) {
         super.onCreate(savedInstanceState)
+
         setContentView(
             R.layout.activity_splash
         )
 
+        val scene =
+            findViewById<View>(
+                R.id.splashScene
+            )
+
         val robot =
             findViewById<LottieAnimationView>(
                 R.id.splashRobot
+            )
+
+        val board =
+            findViewById<View>(
+                R.id.rawBoardContent
             )
 
         val beam =
@@ -45,105 +55,158 @@ class SplashActivity : AppCompatActivity() {
                 R.id.scanBeam
             )
 
-        val boardContent =
+        val note =
             findViewById<View>(
-                R.id.whiteboardContent
+                R.id.structuredNote
             )
 
-        val structuredNote =
-            findViewById<View>(
-                R.id.structuredNotePreview
-            )
+        scene.alpha =
+            0f
 
-        val status =
-            findViewById<TextView>(
-                R.id.tvSplashStatus
+        scene.translationY =
+            8f *
+                    resources
+                        .displayMetrics
+                        .density
+
+        scene.animate()
+            .alpha(
+                1f
             )
+            .translationY(
+                0f
+            )
+            .setDuration(
+                220L
+            )
+            .start()
 
         robot.playAnimation()
 
         beam.post {
+            val boardHeight =
+                findViewById<View>(
+                    R.id.whiteboardCard
+                ).height
+
             val travel =
                 (
-                    findViewById<View>(
-                        R.id.whiteboardScene
-                    ).height -
-                        beam.height -
-                        40
-                    )
+                        boardHeight -
+                                beam.height -
+                                dp(
+                                    36
+                                )
+                        )
                     .toFloat()
                     .coerceAtLeast(
                         0f
                     )
 
-            val scanDown =
+            val scan =
                 ObjectAnimator.ofFloat(
                     beam,
-                    View.TRANSLATION_Y,
+                    "translationY",
                     0f,
                     travel
                 ).apply {
+
                     duration =
-                        650L
+                        560L
 
                     interpolator =
                         AccelerateDecelerateInterpolator()
                 }
 
-            val fadeBoard =
+            val fadeRaw =
                 ObjectAnimator.ofFloat(
-                    boardContent,
-                    View.ALPHA,
+                    board,
+                    "alpha",
                     1f,
-                    0.18f
+                    0.16f
                 ).apply {
+
+                    duration =
+                        220L
+                }
+
+            note.translationX =
+                dp(
+                    20
+                )
+                    .toFloat()
+
+            val revealNote =
+                ObjectAnimator.ofFloat(
+                    note,
+                    "alpha",
+                    0f,
+                    1f
+                ).apply {
+
                     duration =
                         260L
                 }
 
-            val showNote =
+            val slideNote =
                 ObjectAnimator.ofFloat(
-                    structuredNote,
-                    View.ALPHA,
-                    0f,
-                    1f
+                    note,
+                    "translationX",
+                    dp(
+                        20
+                    )
+                        .toFloat(),
+                    0f
                 ).apply {
+
                     duration =
-                        320L
+                        260L
                 }
 
             AnimatorSet().apply {
+
                 play(
-                    scanDown
+                    scan
                 ).before(
-                    fadeBoard
+                    fadeRaw
                 )
 
                 play(
-                    fadeBoard
+                    fadeRaw
                 ).with(
-                    showNote
+                    revealNote
+                )
+
+                play(
+                    revealNote
+                ).with(
+                    slideNote
                 )
 
                 start()
             }
-
-            handler.postDelayed(
-                {
-                    status.text =
-                        "Structured and ready."
-                },
-                780L
-            )
         }
 
         handler.postDelayed(
             openAppRunnable,
-            1450L
+            1320L
         )
     }
 
+    private fun dp(
+        value: Int
+    ): Int {
+
+        return (
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                )
+            .toInt()
+    }
+
     private fun openNextScreen() {
+
         if (
             isFinishing
         ) {
@@ -154,10 +217,11 @@ class SplashActivity : AppCompatActivity() {
             getSharedPreferences(
                 "Note2SnapOnboardingInteractiveV5",
                 Context.MODE_PRIVATE
-            ).getBoolean(
-                "ONBOARDING_INTERACTIVE_V5_DONE",
-                false
             )
+                .getBoolean(
+                    "ONBOARDING_INTERACTIVE_V5_DONE",
+                    false
+                )
 
         val destination =
             if (
@@ -184,6 +248,7 @@ class SplashActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+
         handler.removeCallbacks(
             openAppRunnable
         )

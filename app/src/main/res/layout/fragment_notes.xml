@@ -150,6 +150,20 @@
                         android:textColor="@color/nts_text_secondary"
                         android:textSize="11sp" />
 
+                    <TextView
+                        android:id="@+id/chipArchived"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="7dp"
+                        android:background="@drawable/bg_chip_unselected"
+                        android:fontFamily="@font/poppins_regular"
+                        android:gravity="center"
+                        android:paddingStart="17dp"
+                        android:paddingEnd="17dp"
+                        android:text="Archived"
+                        android:textColor="@color/nts_text_secondary"
+                        android:textSize="11sp" />
+
                 </LinearLayout>
             </HorizontalScrollView>
 
@@ -178,23 +192,23 @@
 
                     <ImageView
                         android:id="@+id/btnSort"
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Sort"
-                        android:padding="6dp"
-                        android:src="@android:drawable/ic_menu_sort_by_size"
+                        android:padding="7dp"
+                        android:src="@drawable/ic_sort_sliders"
                         app:tint="@color/nts_text_secondary" />
 
                     <ImageView
                         android:id="@+id/btnViewMode"
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
-                        android:layout_marginStart="4dp"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="6dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="View mode"
-                        android:padding="6dp"
-                        android:src="@android:drawable/ic_menu_agenda"
+                        android:padding="7dp"
+                        android:src="@drawable/ic_view_grid_clean"
                         app:tint="@color/nts_text_secondary" />
                 </LinearLayout>
             </RelativeLayout>
@@ -283,13 +297,14 @@
         android:layout_height="54dp"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="24dp"
-        android:layout_marginBottom="18dp"
+        android:layout_marginBottom="138dp"
         android:contentDescription="Add Notes"
+        android:visibility="visible"
         android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="@color/nts_yellow"
+        app:backgroundTint="@color/nts_blue"
         app:borderWidth="1dp"
         app:elevation="4dp"
-        app:tint="@color/nts_text" />
+        app:tint="@android:color/white" />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/notesSelectionBar"
@@ -298,7 +313,7 @@
         android:layout_gravity="bottom"
         android:layout_marginStart="18dp"
         android:layout_marginEnd="18dp"
-        android:layout_marginBottom="88dp"
+        android:layout_marginBottom="154dp"
         android:visibility="gone"
         app:cardBackgroundColor="@color/nts_surface"
         app:cardCornerRadius="22dp"
