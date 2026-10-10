@@ -39,10 +39,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="9dp"
-            app:cardBackgroundColor="@color/nts_surface_cream"
-            app:cardCornerRadius="22dp"
+            app:cardBackgroundColor="@color/nts_settings_card"
+            app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
-            app:strokeColor="@color/nts_outline"
+            app:strokeColor="@color/nts_card_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -107,7 +107,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/nts_outline"
+                    android:background="@color/nts_card_outline"
                     android:alpha="0.65" />
 
                 <LinearLayout
@@ -176,10 +176,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="9dp"
-            app:cardBackgroundColor="@color/nts_surface_cream"
-            app:cardCornerRadius="22dp"
+            app:cardBackgroundColor="@color/nts_settings_card"
+            app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
-            app:strokeColor="@color/nts_outline"
+            app:strokeColor="@color/nts_card_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -249,10 +249,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="9dp"
-            app:cardBackgroundColor="@color/nts_surface_cream"
-            app:cardCornerRadius="22dp"
+            app:cardBackgroundColor="@color/nts_settings_card"
+            app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
-            app:strokeColor="@color/nts_outline"
+            app:strokeColor="@color/nts_card_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -301,7 +301,7 @@
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/nts_outline"
+                    android:background="@color/nts_card_outline"
                     android:alpha="0.65" />
 
                 <LinearLayout

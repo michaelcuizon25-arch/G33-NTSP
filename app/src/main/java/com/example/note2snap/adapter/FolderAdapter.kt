@@ -1,6 +1,7 @@
 package com.example.note2snap.adapter
 
 import android.graphics.Color
+import android.content.res.Configuration
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -119,11 +120,27 @@ class FolderAdapter(
                 R.color.nts_surface
             )
 
+        val isNightMode =
+            (
+                context.resources.configuration.uiMode and
+                    Configuration.UI_MODE_NIGHT_MASK
+                ) ==
+                Configuration.UI_MODE_NIGHT_YES
+
+        val bodyMix =
+            if (isNightMode) 0.14f else 0.34f
+
+        val tabMix =
+            if (isNightMode) 0.22f else 0.50f
+
+        val strokeMix =
+            if (isNightMode) 0.22f else 0.10f
+
         holder.cardFolder.setCardBackgroundColor(
             ColorUtils.blendARGB(
                 surface,
                 folderColor,
-                0.34f
+                bodyMix
             )
         )
 
@@ -131,7 +148,7 @@ class FolderAdapter(
             ColorUtils.blendARGB(
                 surface,
                 folderColor,
-                0.50f
+                tabMix
             )
         )
 
@@ -142,7 +159,7 @@ class FolderAdapter(
                     R.color.nts_outline
                 ),
                 folderColor,
-                0.10f
+                strokeMix
             )
 
         holder.cardFolder.strokeColor =

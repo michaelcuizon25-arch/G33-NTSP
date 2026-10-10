@@ -13,25 +13,36 @@
     app:cardBackgroundColor="@color/nts_surface_blue"
     app:cardCornerRadius="14dp"
     app:cardElevation="0dp"
-    app:strokeColor="@color/nts_outline"
+    app:strokeColor="@color/nts_card_outline_soft"
     app:strokeWidth="1dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="68dp"
+        android:layout_height="70dp"
         android:paddingStart="10dp"
         android:paddingEnd="8dp">
 
-        <ImageView
-            android:id="@+id/ivNoteIcon"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/recentThumbCard"
+            android:layout_width="54dp"
+            android:layout_height="44dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:contentDescription="Note preview"
-            android:padding="2dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_note_custom" />
+            app:cardBackgroundColor="@color/nts_surface_blue_soft"
+            app:cardCornerRadius="9dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/nts_blue_line"
+            app:strokeWidth="1dp">
+
+            <ImageView
+                android:id="@+id/ivNoteIcon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="false"
+                android:contentDescription="Note preview"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_note_custom" />
+        </com.google.android.material.card.MaterialCardView>
 
         <LinearLayout
             android:id="@+id/layoutRecentActions"
@@ -43,24 +54,26 @@
 
             <ImageButton
                 android:id="@+id/btnRecentFavorite"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Favorite note"
-                android:padding="4dp"
+                android:padding="5dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/ic_star_outline_custom" />
+                android:src="@drawable/ic_star_outline_custom"
+                android:alpha="0.72" />
 
             <ImageButton
                 android:id="@+id/btnRecentMore"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_marginStart="1dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="More note options"
                 android:padding="6dp"
                 android:src="@drawable/ic_tool_more"
-                app:tint="@color/nts_text" />
+                android:alpha="0.72"
+                app:tint="@color/nts_text_secondary" />
         </LinearLayout>
 
         <LinearLayout
@@ -68,7 +81,7 @@
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:layout_marginStart="10dp"
-            android:layout_toEndOf="@id/ivNoteIcon"
+            android:layout_toEndOf="@id/recentThumbCard"
             android:layout_toStartOf="@id/layoutRecentActions"
             android:orientation="vertical"
             android:paddingEnd="4dp">
@@ -78,23 +91,46 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="@font/poppins_regular"
+                android:fontFamily="@font/poppins_semibold"
                 android:maxLines="1"
                 android:textColor="@color/nts_text"
-                android:textSize="12.5sp"
+                android:textSize="11.5sp"
                 tools:text="OOP Discussion" />
 
-            <TextView
-                android:id="@+id/tvRecentNoteDate"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:ellipsize="end"
-                android:fontFamily="@font/poppins_regular"
-                android:maxLines="1"
-                android:textColor="@color/nts_text_secondary"
-                android:textSize="10sp"
-                tools:text="February 13, 2026 | 10:00 AM" />
+                android:layout_marginTop="3dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvRecentNoteDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_regular"
+                    android:maxLines="1"
+                    android:textColor="@color/nts_text_secondary"
+                    android:textSize="8.5sp"
+                    tools:text="Oct 10, 2026" />
+
+                <TextView
+                    android:id="@+id/tvRecentPageCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="7dp"
+                    android:background="@drawable/bg_page_count_badge"
+                    android:fontFamily="@font/poppins_medium"
+                    android:gravity="center"
+                    android:paddingStart="7dp"
+                    android:paddingEnd="7dp"
+                    android:text="3 pages"
+                    android:textColor="@color/nts_blue"
+                    android:textSize="7sp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </LinearLayout>
 
         </LinearLayout>
     </RelativeLayout>

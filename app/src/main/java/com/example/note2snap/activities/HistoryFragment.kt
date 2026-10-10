@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -60,9 +61,9 @@ class HistoryFragment : Fragment() {
             R.id.btnEmptyHistoryScan
         ).setOnClickListener {
             (
-                    activity as?
-                            MainActivity
-                    )
+                activity as?
+                    MainActivity
+                )
                 ?.openScan()
         }
 
@@ -337,68 +338,267 @@ class HistoryFragment : Fragment() {
             return
         }
 
-        androidx.appcompat.app.AlertDialog
-            .Builder(
+        val dialog =
+            BottomSheetDialog(
                 requireContext()
             )
-            .setTitle(
-                "Delete ${selected.size} history items?"
-            )
-            .setMessage(
-                "This removes only the selected scan history entries. Saved Notes are not deleted."
-            )
-            .setNegativeButton(
-                "Cancel",
-                null
-            )
-            .setPositiveButton(
-                "Delete"
-            ) {
-                    _,
-                    _ ->
 
-                lifecycleScope.launch(
-                    Dispatchers.IO
-                ) {
-                    val dao =
-                        AppDatabase
-                            .getDatabase(
-                                requireContext()
-                            )
-                            .appDao()
-
-                    selected.forEach {
-                            item ->
-                        dao.deleteScanHistory(
-                            item
-                        )
-                    }
-
-                    withContext(
-                        Dispatchers.Main
+        val sheet =
+            createHistorySheet(
+                title =
+                    if (
+                        selected.size == 1
                     ) {
-                        historyAdapter
-                            ?.clearSelection()
+                        "Delete this history item?"
+                    } else {
+                        "Delete ${selected.size} history items?"
+                    },
+                subtitle =
+                    "Saved Notes will not be deleted."
+            )
 
-                        view?.let {
-                                anchorView ->
-                            com.example.note2snap.utils
-                                .Note2SnapNotice
-                                .show(
-                                    anchor =
-                                        anchorView,
-                                    title =
-                                        "History deleted",
-                                    message =
-                                        "${selected.size} removed",
-                                    symbol =
-                                        "×"
+        val warningCard =
+            LinearLayout(
+                requireContext()
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+
+                gravity =
+                    Gravity.CENTER_VERTICAL
+
+                setPadding(
+                    dp(12),
+                    dp(12),
+                    dp(12),
+                    dp(12)
+                )
+
+                background =
+                    roundedBackground(
+                        "#FFF3F4",
+                        18f,
+                        "#F4C7CD"
+                    )
+            }
+
+        warningCard.addView(
+            ImageView(
+                requireContext()
+            ).apply {
+                setImageResource(
+                    R.drawable.ic_option_delete
+                )
+
+                androidx.core.widget.ImageViewCompat
+                    .setImageTintList(
+                        this,
+                        android.content.res.ColorStateList
+                            .valueOf(
+                                Color.parseColor(
+                                    "#C44F5E"
                                 )
+                            )
+                    )
+            },
+            LinearLayout.LayoutParams(
+                dp(24),
+                dp(24)
+            )
+        )
+
+        warningCard.addView(
+            TextView(
+                requireContext()
+            ).apply {
+                text =
+                    "Only the selected scan history ${if (selected.size == 1) "entry" else "entries"} will be removed."
+
+                textSize =
+                    10f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(10),
+                    0,
+                    0,
+                    0
+                )
+            },
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
+        sheet.addView(
+            warningCard
+        )
+
+        val actions =
+            LinearLayout(
+                requireContext()
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+                gravity =
+                    Gravity.END
+                setPadding(
+                    0,
+                    dp(14),
+                    0,
+                    0
+                )
+            }
+
+        val cancel =
+            TextView(
+                requireContext()
+            ).apply {
+                text =
+                    "Cancel"
+
+                textSize =
+                    11.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+
+                gravity =
+                    Gravity.CENTER
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(18),
+                    dp(11),
+                    dp(18),
+                    dp(11)
+                )
+
+                setOnClickListener {
+                    dialog.dismiss()
+                }
+            }
+
+        val delete =
+            TextView(
+                requireContext()
+            ).apply {
+                text =
+                    "Delete"
+
+                textSize =
+                    11.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_semibold
+                    )
+
+                gravity =
+                    Gravity.CENTER
+
+                setTextColor(
+                    Color.WHITE
+                )
+
+                background =
+                    roundedBackground(
+                        "#C94F5D",
+                        16f
+                    )
+
+                setPadding(
+                    dp(20),
+                    dp(11),
+                    dp(20),
+                    dp(11)
+                )
+
+                setOnClickListener {
+                    lifecycleScope.launch(
+                        Dispatchers.IO
+                    ) {
+                        val dao =
+                            AppDatabase
+                                .getDatabase(
+                                    requireContext()
+                                )
+                                .appDao()
+
+                        selected.forEach {
+                                item ->
+                            dao.deleteScanHistory(
+                                item
+                            )
+                        }
+
+                        withContext(
+                            Dispatchers.Main
+                        ) {
+                            historyAdapter
+                                ?.clearSelection()
+
+                            dialog.dismiss()
+
+                            view?.let {
+                                    anchorView ->
+                                com.example.note2snap.utils
+                                    .Note2SnapNotice
+                                    .show(
+                                        anchor =
+                                            anchorView,
+                                        title =
+                                            "History deleted",
+                                        message =
+                                            "${selected.size} removed",
+                                        symbol =
+                                            "×"
+                                    )
+                            }
                         }
                     }
                 }
             }
-            .show()
+
+        actions.addView(
+            cancel
+        )
+        actions.addView(
+            delete
+        )
+
+        sheet.addView(
+            actions
+        )
+
+        dialog.setContentView(
+            sheet
+        )
+        dialog.show()
     }
 
     private fun showOptionsDialog(
@@ -702,10 +902,102 @@ class HistoryFragment : Fragment() {
 
         val sheet =
             createHistorySheet(
-                title = "Delete scan?",
+                title =
+                    "Delete scan?",
                 subtitle =
-                    "This will remove \"${item.title}\" from History."
+                    item.title
             )
+
+        val warningCard =
+            LinearLayout(
+                requireContext()
+            ).apply {
+                orientation =
+                    LinearLayout.HORIZONTAL
+
+                gravity =
+                    Gravity.CENTER_VERTICAL
+
+                setPadding(
+                    dp(12),
+                    dp(12),
+                    dp(12),
+                    dp(12)
+                )
+
+                background =
+                    roundedBackground(
+                        "#FFF3F4",
+                        18f,
+                        "#F4C7CD"
+                    )
+            }
+
+        warningCard.addView(
+            ImageView(
+                requireContext()
+            ).apply {
+                setImageResource(
+                    R.drawable.ic_option_delete
+                )
+
+                androidx.core.widget.ImageViewCompat
+                    .setImageTintList(
+                        this,
+                        android.content.res.ColorStateList
+                            .valueOf(
+                                Color.parseColor(
+                                    "#C44F5E"
+                                )
+                            )
+                    )
+            },
+            LinearLayout.LayoutParams(
+                dp(24),
+                dp(24)
+            )
+        )
+
+        warningCard.addView(
+            TextView(
+                requireContext()
+            ).apply {
+                text =
+                    "This permanently removes this scan from History."
+
+                textSize =
+                    10f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(10),
+                    0,
+                    0,
+                    0
+                )
+            },
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
+        sheet.addView(
+            warningCard
+        )
 
         val actions =
             LinearLayout(
@@ -715,32 +1007,47 @@ class HistoryFragment : Fragment() {
                     LinearLayout.HORIZONTAL
                 gravity =
                     Gravity.END
+                setPadding(
+                    0,
+                    dp(14),
+                    0,
+                    0
+                )
             }
 
         val cancel =
             TextView(
                 requireContext()
             ).apply {
-                text = "Cancel"
-                textSize = 11.5f
+                text =
+                    "Cancel"
+
+                textSize =
+                    11.5f
+
                 typeface =
                     ResourcesCompat.getFont(
                         requireContext(),
                         R.font.poppins_medium
                     )
-                gravity = Gravity.CENTER
+
+                gravity =
+                    Gravity.CENTER
+
                 setTextColor(
                     ContextCompat.getColor(
                         requireContext(),
                         R.color.nts_text_secondary
                     )
                 )
+
                 setPadding(
-                    dp(16),
-                    dp(10),
-                    dp(16),
-                    dp(10)
+                    dp(18),
+                    dp(11),
+                    dp(18),
+                    dp(11)
                 )
+
                 setOnClickListener {
                     dialog.dismiss()
                 }
@@ -750,27 +1057,36 @@ class HistoryFragment : Fragment() {
             TextView(
                 requireContext()
             ).apply {
-                text = "Delete"
-                textSize = 11.5f
+                text =
+                    "Delete"
+
+                textSize =
+                    11.5f
+
                 typeface =
                     ResourcesCompat.getFont(
                         requireContext(),
-                        R.font.poppins_medium
+                        R.font.poppins_semibold
                     )
-                gravity = Gravity.CENTER
+
+                gravity =
+                    Gravity.CENTER
+
                 setTextColor(
                     Color.WHITE
                 )
+
                 background =
                     roundedBackground(
-                        "#D94B62",
+                        "#C94F5D",
                         16f
                     )
+
                 setPadding(
-                    dp(18),
-                    dp(10),
-                    dp(18),
-                    dp(10)
+                    dp(20),
+                    dp(11),
+                    dp(20),
+                    dp(11)
                 )
 
                 setOnClickListener {
@@ -800,23 +1116,42 @@ class HistoryFragment : Fragment() {
                         withContext(
                             Dispatchers.Main
                         ) {
-                            Toast.makeText(
-                                requireContext(),
-                                "History deleted",
-                                Toast.LENGTH_SHORT
-                            ).show()
-
                             dialog.dismiss()
+
+                            view?.let {
+                                    anchorView ->
+                                com.example.note2snap.utils
+                                    .Note2SnapNotice
+                                    .show(
+                                        anchor =
+                                            anchorView,
+                                        title =
+                                            "History deleted",
+                                        message =
+                                            item.title,
+                                        symbol =
+                                            "×"
+                                    )
+                            }
                         }
                     }
                 }
             }
 
-        actions.addView(cancel)
-        actions.addView(delete)
-        sheet.addView(actions)
+        actions.addView(
+            cancel
+        )
+        actions.addView(
+            delete
+        )
 
-        dialog.setContentView(sheet)
+        sheet.addView(
+            actions
+        )
+
+        dialog.setContentView(
+            sheet
+        )
         dialog.show()
     }
 

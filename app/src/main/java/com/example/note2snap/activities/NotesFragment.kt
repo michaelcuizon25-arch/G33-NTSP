@@ -880,20 +880,33 @@ class NotesFragment : Fragment() {
             masterNotesList
                 .isNotEmpty()
 
+        val hasAnyActiveFolder =
+            masterFolderList
+                .any {
+                    it.id !in archivedFolderIds
+                }
+
         val isSearching =
             searchQuery
                 .isNotEmpty()
 
-        val showNoNotesRobot =
-            !isSearching &&
-            !hasAnySavedNote &&
-            currentFilter !=
-                FilterType.FOLDERS
-
         val showSearchEmpty =
             isSearching &&
-            visibleItemCount ==
-                0
+            visibleItemCount == 0
+
+        val showNotesEmpty =
+            !isSearching &&
+            currentFilter ==
+                FilterType.NOTES &&
+            currentFilteredNotes
+                .isEmpty()
+
+        val showFoldersEmpty =
+            !isSearching &&
+            currentFilter ==
+                FilterType.FOLDERS &&
+            currentFilteredFolders
+                .isEmpty()
 
         val showArchivedEmpty =
             !isSearching &&
@@ -902,43 +915,86 @@ class NotesFragment : Fragment() {
             currentFilteredFolders
                 .isEmpty()
 
+        val showAllCompletelyEmpty =
+            !isSearching &&
+            currentFilter ==
+                FilterType.ALL &&
+            !hasAnySavedNote &&
+            !hasAnyActiveFolder
+
+        val showAllNoNotes =
+            !isSearching &&
+            currentFilter ==
+                FilterType.ALL &&
+            currentFilteredNotes
+                .isEmpty() &&
+            hasAnyActiveFolder
+
+        val showEmptyState =
+            showSearchEmpty ||
+            showNotesEmpty ||
+            showFoldersEmpty ||
+            showArchivedEmpty ||
+            showAllCompletelyEmpty ||
+            showAllNoNotes
+
         emptyStateContainer?.visibility =
             if (
-                showNoNotesRobot ||
-                showSearchEmpty ||
-                showArchivedEmpty
+                showEmptyState
             ) {
                 View.VISIBLE
             } else {
                 View.GONE
             }
 
-        if (
-            showNoNotesRobot
-        ) {
-            tvNotFound?.text =
-                "No saved notes yet"
+        when {
+            showSearchEmpty -> {
+                tvNotFound?.text =
+                    "No matches found"
 
-            tvEmptyNotesSubtitle?.text =
-                "Scans stay in History until you tap Save."
+                tvEmptyNotesSubtitle?.text =
+                    "Try another note or folder name."
+            }
 
-        } else if (
-            showArchivedEmpty
-        ) {
-            tvNotFound?.text =
-                "No archived folders"
+            showArchivedEmpty -> {
+                tvNotFound?.text =
+                    "No archived folders"
 
-            tvEmptyNotesSubtitle?.text =
-                "Archived folders stay here until you restore them."
+                tvEmptyNotesSubtitle?.text =
+                    "Archived folders will appear here."
+            }
 
-        } else if (
-            showSearchEmpty
-        ) {
-            tvNotFound?.text =
-                "No matches found"
+            showFoldersEmpty -> {
+                tvNotFound?.text =
+                    "No folders yet"
 
-            tvEmptyNotesSubtitle?.text =
-                "Try another note or folder name."
+                tvEmptyNotesSubtitle?.text =
+                    "Create a folder to group your saved notes."
+            }
+
+            showNotesEmpty -> {
+                tvNotFound?.text =
+                    "No saved notes yet"
+
+                tvEmptyNotesSubtitle?.text =
+                    "Scans stay in History until you tap Save."
+            }
+
+            showAllNoNotes -> {
+                tvNotFound?.text =
+                    "No saved notes yet"
+
+                tvEmptyNotesSubtitle?.text =
+                    "Your folders are ready. Save a scan to add notes here."
+            }
+
+            showAllCompletelyEmpty -> {
+                tvNotFound?.text =
+                    "Nothing here yet"
+
+                tvEmptyNotesSubtitle?.text =
+                    "Scan something or create a folder to get started."
+            }
         }
 
         tvResultCount?.visibility =
@@ -1169,9 +1225,9 @@ class NotesFragment : Fragment() {
                 Gravity.CENTER_VERTICAL
             setPadding(
                 dp(10),
+                dp(8),
                 dp(10),
-                dp(10),
-                dp(10)
+                dp(8)
             )
             background =
                 roundedBackground(
@@ -1187,7 +1243,7 @@ class NotesFragment : Fragment() {
                 com.google.android.material.card.MaterialCardView(
                     requireContext()
                 ).apply {
-                    radius = dp(12).toFloat()
+                    radius = dp(11).toFloat()
                     cardElevation = 0f
                     setCardBackgroundColor(
                         ContextCompat.getColor(
@@ -1203,12 +1259,17 @@ class NotesFragment : Fragment() {
                     strokeColor =
                         ContextCompat.getColor(
                             requireContext(),
-                            if (selected) {
-                                R.color.nts_blue_line
-                            } else {
-                                R.color.nts_outline
-                            }
+                            R.color.nts_blue_line
                         )
+
+                    alpha =
+                        if (
+                            selected
+                        ) {
+                            1f
+                        } else {
+                            0.72f
+                        }
                 }
 
             val rowIcon =
@@ -1714,6 +1775,7 @@ class NotesFragment : Fragment() {
     }
 
     private fun showBulkDeleteNotesDialog() {
+
         val selected =
             notesAdapter.selectedNotes()
 
@@ -1723,57 +1785,271 @@ class NotesFragment : Fragment() {
             return
         }
 
-        androidx.appcompat.app.AlertDialog
-            .Builder(
+        val dialog =
+            BottomSheetDialog(
                 requireContext()
             )
-            .setTitle(
-                "Delete ${selected.size} notes?"
-            )
-            .setMessage(
-                "This removes the selected saved Notes. Their scan history remains available."
-            )
-            .setNegativeButton(
-                "Cancel",
-                null
-            )
-            .setPositiveButton(
-                "Delete"
-            ) {
-                    _,
-                    _ ->
 
-                lifecycleScope.launch(
-                    Dispatchers.IO
-                ) {
-                    val dao =
-                        AppDatabase
-                            .getDatabase(
-                                requireContext()
-                            )
-                            .appDao()
-
-                    selected.forEach {
-                            note ->
-                        dao.deleteNote(
-                            note
-                        )
-                    }
-
-                    withContext(
-                        Dispatchers.Main
+        val sheet =
+            createSheetContainer(
+                title =
+                    if (
+                        selected.size == 1
                     ) {
-                        notesAdapter
-                            .clearSelection()
+                        "Delete this note?"
+                    } else {
+                        "Delete ${selected.size} notes?"
+                    },
 
-                        showNotesNotice(
-                            "Notes deleted",
-                            "${selected.size} removed"
-                        )
+                subtitle =
+                    "Their scan history will stay available."
+            )
+
+        val warningCard =
+            LinearLayout(
+                requireContext()
+            ).apply {
+
+                orientation =
+                    LinearLayout.HORIZONTAL
+
+                gravity =
+                    Gravity.CENTER_VERTICAL
+
+                setPadding(
+                    dp(12),
+                    dp(12),
+                    dp(12),
+                    dp(12)
+                )
+
+                background =
+                    roundedBackground(
+                        "#FFF3F4",
+                        18f,
+                        "#F4C7CD"
+                    )
+            }
+
+        warningCard.addView(
+            ImageView(
+                requireContext()
+            ).apply {
+
+                setImageResource(
+                    R.drawable.ic_option_delete
+                )
+
+                androidx.core.widget.ImageViewCompat
+                    .setImageTintList(
+                        this,
+                        android.content.res.ColorStateList
+                            .valueOf(
+                                Color.parseColor(
+                                    "#C44F5E"
+                                )
+                            )
+                    )
+            },
+            LinearLayout.LayoutParams(
+                dp(24),
+                dp(24)
+            )
+        )
+
+        warningCard.addView(
+            TextView(
+                requireContext()
+            ).apply {
+
+                text =
+                    "This removes only the saved note${if (selected.size > 1) "s" else ""} from Notes."
+
+                textSize =
+                    10f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_regular
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(10),
+                    0,
+                    0,
+                    0
+                )
+            },
+            LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        )
+
+        sheet.addView(
+            warningCard
+        )
+
+        val actions =
+            LinearLayout(
+                requireContext()
+            ).apply {
+
+                orientation =
+                    LinearLayout.HORIZONTAL
+
+                gravity =
+                    Gravity.END
+
+                setPadding(
+                    0,
+                    dp(14),
+                    0,
+                    0
+                )
+            }
+
+        val cancel =
+            TextView(
+                requireContext()
+            ).apply {
+
+                text =
+                    "Cancel"
+
+                gravity =
+                    Gravity.CENTER
+
+                textSize =
+                    11.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_medium
+                    )
+
+                setTextColor(
+                    ContextCompat.getColor(
+                        requireContext(),
+                        R.color.nts_text_secondary
+                    )
+                )
+
+                setPadding(
+                    dp(18),
+                    dp(11),
+                    dp(18),
+                    dp(11)
+                )
+
+                setOnClickListener {
+                    dialog.dismiss()
+                }
+            }
+
+        val delete =
+            TextView(
+                requireContext()
+            ).apply {
+
+                text =
+                    "Delete"
+
+                gravity =
+                    Gravity.CENTER
+
+                textSize =
+                    11.5f
+
+                typeface =
+                    ResourcesCompat.getFont(
+                        requireContext(),
+                        R.font.poppins_semibold
+                    )
+
+                setTextColor(
+                    Color.WHITE
+                )
+
+                background =
+                    roundedBackground(
+                        "#C94F5D",
+                        16f
+                    )
+
+                setPadding(
+                    dp(20),
+                    dp(11),
+                    dp(20),
+                    dp(11)
+                )
+
+                setOnClickListener {
+
+                    lifecycleScope.launch(
+                        Dispatchers.IO
+                    ) {
+
+                        val dao =
+                            AppDatabase
+                                .getDatabase(
+                                    requireContext()
+                                )
+                                .appDao()
+
+                        selected.forEach {
+                                note ->
+
+                            dao.deleteNote(
+                                note
+                            )
+                        }
+
+                        withContext(
+                            Dispatchers.Main
+                        ) {
+
+                            notesAdapter
+                                .clearSelection()
+
+                            dialog.dismiss()
+
+                            showNotesNotice(
+                                "Notes deleted",
+                                "${selected.size} removed"
+                            )
+                        }
                     }
                 }
             }
-            .show()
+
+        actions.addView(
+            cancel
+        )
+
+        actions.addView(
+            delete
+        )
+
+        sheet.addView(
+            actions
+        )
+
+        dialog.setContentView(
+            sheet
+        )
+
+        dialog.show()
     }
 
     private fun deleteNote(note: Note) {

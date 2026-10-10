@@ -84,17 +84,6 @@
                     android:visibility="gone"
                     android:alpha="0.45" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="94dp"
-                    android:layout_marginBottom="16dp"
-                    android:text="•"
-                    android:textColor="@color/nts_blue"
-                    android:textSize="22sp"
-                    android:alpha="0.22" />
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -183,13 +172,13 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
-                android:layout_height="92dp"
+                android:layout_height="84dp"
                 android:layout_marginEnd="6dp"
                 android:layout_weight="1"
                 app:cardBackgroundColor="@color/nts_surface"
                 app:cardCornerRadius="20dp"
                 app:cardElevation="0dp"
-                app:strokeColor="@color/nts_outline"
+                app:strokeColor="@color/nts_card_outline"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
@@ -248,13 +237,13 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
-                android:layout_height="92dp"
+                android:layout_height="84dp"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
-                app:cardBackgroundColor="@color/nts_yellow"
+                app:cardBackgroundColor="@color/nts_accent_card"
                 app:cardCornerRadius="20dp"
                 app:cardElevation="0dp"
-                app:strokeColor="@color/nts_outline"
+                app:strokeColor="@color/nts_card_outline"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
@@ -271,7 +260,7 @@
                         app:cardBackgroundColor="@color/nts_surface"
                         app:cardCornerRadius="14dp"
                         app:cardElevation="0dp"
-                        app:strokeColor="@color/nts_outline"
+                        app:strokeColor="@color/nts_card_outline"
                         app:strokeWidth="1dp">
 
                         <ImageView
@@ -298,7 +287,7 @@
                             android:fontFamily="@font/apple_garamond_bold"
                             android:text="0"
                             android:textColor="@color/nts_text"
-                            android:textSize="21sp" />
+                            android:textSize="20sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -336,10 +325,10 @@
             android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="@color/nts_yellow"
+            app:cardBackgroundColor="@color/nts_streak_card"
             app:cardCornerRadius="22dp"
             app:cardElevation="0dp"
-            app:strokeColor="@color/nts_outline"
+            app:strokeColor="@color/nts_card_outline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -353,10 +342,10 @@
                     android:id="@+id/streakRobotCard"
                     android:layout_width="116dp"
                     android:layout_height="142dp"
-                    app:cardBackgroundColor="@color/nts_surface"
+                    app:cardBackgroundColor="@color/nts_streak_portrait"
                     app:cardCornerRadius="18dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="@color/nts_outline"
+                    app:strokeColor="@color/nts_card_outline"
                     app:strokeWidth="1dp">
 
                     <com.airbnb.lottie.LottieAnimationView
@@ -385,7 +374,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_semibold"
                         android:letterSpacing="0.08"
-                        android:text="STUDY COMPANION"
+                        android:text="SNAP ID • STUDY COMPANION"
                         android:textColor="@color/nts_blue"
                         android:textSize="7.5sp" />
 
@@ -406,7 +395,7 @@
                         android:layout_height="1dp"
                         android:layout_marginTop="8dp"
                         android:layout_marginBottom="8dp"
-                        android:background="@color/nts_outline"
+                        android:background="@color/nts_streak_rule"
                         android:alpha="0.65" />
 
                     <LinearLayout
@@ -478,7 +467,7 @@
                             android:layout_weight="1"
                             android:max="100"
                             android:progress="0"
-                            android:progressBackgroundTint="#55FFFFFF"
+                            android:progressBackgroundTint="@color/nts_streak_progress_track"
                             android:progressTint="@color/nts_blue" />
 
                         <TextView

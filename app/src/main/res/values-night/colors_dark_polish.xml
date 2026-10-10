@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Soft dark-blue accent for Saved this week -->
+    <color name="nts_accent_card">#20293B</color>
+
+    <!-- Snap's Streak dark palette -->
+    <color name="nts_streak_card">#1B2640</color>
+    <color name="nts_streak_portrait">#141C2D</color>
+    <color name="nts_streak_rule">#485876</color>
+    <color name="nts_streak_progress_track">#33495C80</color>
+</resources>

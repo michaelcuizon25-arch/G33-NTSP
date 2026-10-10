@@ -19,6 +19,7 @@ import com.example.note2snap.R
 import com.example.note2snap.model.Note
 import com.example.note2snap.utils.NoteThumbnailLoader
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.card.MaterialCardView
 import org.json.JSONArray
 
 class NotesAdapter(
@@ -31,8 +32,8 @@ class NotesAdapter(
     private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<NotesAdapter.NoteViewHolder>() {
 
-    private val selectedIds =
-        linkedSetOf<Int>()
+    private val selectedNoteIds =
+        mutableSetOf<Int>()
 
     enum class DisplayMode {
         LIST,
@@ -55,16 +56,6 @@ class NotesAdapter(
         val tvDate: TextView =
             view.findViewById(R.id.tvNoteDate)
 
-        val tvPreview: TextView? =
-            view.findViewById(
-                R.id.tvNotePreview
-            )
-
-        val tvPageBadge: TextView? =
-            view.findViewById(
-                R.id.tvNotePageBadge
-            )
-
         val ivThumbnail: ImageView =
             view.findViewById(R.id.ivNoteThumbnail)
 
@@ -73,6 +64,24 @@ class NotesAdapter(
 
         val btnMore: ImageButton =
             view.findViewById(R.id.btnNoteMore)
+
+        val cardNote:
+            MaterialCardView? =
+                view.findViewById(
+                    R.id.cardNote
+                )
+
+        val thumbCard:
+            MaterialCardView? =
+                view.findViewById(
+                    R.id.noteThumbCard
+                )
+
+        val pageCountBadge:
+            TextView? =
+                view.findViewById(
+                    R.id.tvPageCountBadge
+                )
 
         val rowRoot: View? =
             (view as? ViewGroup)?.getChildAt(0)
@@ -124,31 +133,6 @@ class NotesAdapter(
         holder.tvDate.text =
             note.dateEdited
 
-        holder.tvPreview?.text =
-            notePreview(
-                note.content
-            )
-
-        val pageCount =
-            notePageCount(
-                note
-            )
-
-        holder.tvPageBadge?.apply {
-            visibility =
-                if (
-                    pageCount >
-                    1
-                ) {
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
-
-            text =
-                "$pageCount pages"
-        }
-
         holder.tvTitle.typeface =
             ResourcesCompat.getFont(
                 holder.itemView.context,
@@ -166,6 +150,11 @@ class NotesAdapter(
             note
         )
 
+        bindPageCount(
+            holder.pageCountBadge,
+            note
+        )
+
         holder.ivStar.imageTintList = null
         holder.ivStar.clearColorFilter()
 
@@ -179,78 +168,30 @@ class NotesAdapter(
 
         applyDisplayMode(holder)
 
-        val selected =
-            selectedIds.contains(
-                note.id
-            )
-
-        val card =
-            holder.itemView as?
-                com.google.android.material.card.MaterialCardView
-
-        card?.strokeWidth =
-            if (
-                selected
-            ) {
-                3
-            } else {
-                1
-            }
-
-        card?.strokeColor =
-            ContextCompat.getColor(
-                holder.itemView.context,
-                if (
-                    selected
-                ) {
-                    R.color.nts_blue
-                } else {
-                    R.color.nts_outline
-                }
-            )
-
-        card?.setCardBackgroundColor(
-            ContextCompat.getColor(
-                holder.itemView.context,
-                if (
-                    selected
-                ) {
-                    R.color.nts_surface_blue_soft
-                } else {
-                    R.color.nts_surface_blue
-                }
-            )
+        bindSelectionState(
+            holder,
+            note
         )
 
-        val selectionMode =
-            selectedIds.isNotEmpty()
-
-        holder.ivStar.visibility =
-            if (
-                selectionMode
-            ) {
-                View.INVISIBLE
-            } else {
-                View.VISIBLE
-            }
-
-        holder.btnMore.visibility =
-            if (
-                selectionMode
-            ) {
-                View.INVISIBLE
-            } else {
-                View.VISIBLE
-            }
-
         holder.ivStar.setOnClickListener {
-            onToggleStarClick(note)
+            if (
+                selectedNoteIds.isNotEmpty() &&
+                selectionEnabled
+            ) {
+                toggleSelection(
+                    note
+                )
+            } else {
+                onToggleStarClick(
+                    note
+                )
+            }
         }
 
         holder.itemView.setOnClickListener {
             if (
-                selectionEnabled &&
-                selectedIds.isNotEmpty()
+                selectedNoteIds.isNotEmpty() &&
+                selectionEnabled
             ) {
                 toggleSelection(
                     note
@@ -269,6 +210,7 @@ class NotesAdapter(
                 toggleSelection(
                     note
                 )
+
                 true
             } else {
                 false
@@ -276,10 +218,19 @@ class NotesAdapter(
         }
 
         holder.btnMore.setOnClickListener {
-            showNoteOptions(
-                holder.itemView,
-                note
-            )
+            if (
+                selectedNoteIds.isNotEmpty() &&
+                selectionEnabled
+            ) {
+                toggleSelection(
+                    note
+                )
+            } else {
+                showNoteOptions(
+                    holder.itemView,
+                    note
+                )
+            }
         }
     }
 
@@ -330,41 +281,37 @@ class NotesAdapter(
         notes =
             newNotes.toList()
 
+        selectedNoteIds.retainAll(
+            notes.map {
+                it.id
+            }.toSet()
+        )
+
         diffResult.dispatchUpdatesTo(
             this
         )
+
+        onSelectionChanged(
+            selectedNoteIds.size
+        )
     }
 
-    fun isSelectionMode():
-        Boolean =
-        selectedIds.isNotEmpty()
-
-    fun selectedNotes():
-        List<Note> =
-        notes.filter {
-            selectedIds.contains(
-                it.id
-            )
+    fun selectedNotes(): List<Note> {
+        return notes.filter {
+            it.id in selectedNoteIds
         }
+    }
 
-    fun clearSelection() {
+    fun selectAll() {
         if (
-            selectedIds.isEmpty()
+            !selectionEnabled
         ) {
             return
         }
 
-        selectedIds.clear()
-        notifyDataSetChanged()
-        onSelectionChanged(
-            0
-        )
-    }
+        selectedNoteIds.clear()
 
-    fun selectAll() {
-        selectedIds.clear()
-
-        selectedIds.addAll(
+        selectedNoteIds.addAll(
             notes.map {
                 it.id
             }
@@ -373,7 +320,23 @@ class NotesAdapter(
         notifyDataSetChanged()
 
         onSelectionChanged(
-            selectedIds.size
+            selectedNoteIds.size
+        )
+    }
+
+    fun clearSelection() {
+        if (
+            selectedNoteIds.isEmpty()
+        ) {
+            return
+        }
+
+        selectedNoteIds.clear()
+
+        notifyDataSetChanged()
+
+        onSelectionChanged(
+            0
         )
     }
 
@@ -381,24 +344,79 @@ class NotesAdapter(
         note: Note
     ) {
         if (
-            selectedIds.contains(
-                note.id
-            )
+            !selectionEnabled
         ) {
-            selectedIds.remove(
+            return
+        }
+
+        if (
+            note.id in selectedNoteIds
+        ) {
+            selectedNoteIds.remove(
                 note.id
             )
         } else {
-            selectedIds.add(
+            selectedNoteIds.add(
                 note.id
             )
         }
 
-        notifyDataSetChanged()
+        notifyItemChanged(
+            notes.indexOfFirst {
+                it.id == note.id
+            }.coerceAtLeast(
+                0
+            )
+        )
 
         onSelectionChanged(
-            selectedIds.size
+            selectedNoteIds.size
         )
+    }
+
+    private fun bindSelectionState(
+        holder: NoteViewHolder,
+        note: Note
+    ) {
+        val selected =
+            note.id in selectedNoteIds
+
+        holder.cardNote?.apply {
+            strokeWidth =
+                (
+                    if (
+                        selected
+                    ) {
+                        2
+                    } else {
+                        1
+                    } *
+                    resources
+                        .displayMetrics
+                        .density
+                ).toInt()
+
+            strokeColor =
+                ContextCompat.getColor(
+                    context,
+                    if (
+                        selected
+                    ) {
+                        R.color.nts_blue
+                    } else {
+                        R.color.nts_card_outline
+                    }
+                )
+
+            alpha =
+                if (
+                    selected
+                ) {
+                    1f
+                } else {
+                    0.98f
+                }
+        }
     }
 
     fun setDisplayMode(
@@ -422,9 +440,9 @@ class NotesAdapter(
         if (displayMode != DisplayMode.GRID) {
             val rowHeight =
                 when (displayMode) {
-                    DisplayMode.LIST -> dp(82)
+                    DisplayMode.LIST -> dp(68)
                     DisplayMode.GRID -> dp(112)
-                    DisplayMode.COMPACT -> dp(58)
+                    DisplayMode.COMPACT -> dp(54)
                 }
 
             holder.rowRoot?.layoutParams =
@@ -433,18 +451,55 @@ class NotesAdapter(
                 }
         }
 
-        val thumb =
-            when (displayMode) {
-                DisplayMode.LIST -> 40
-                DisplayMode.GRID -> 72
-                DisplayMode.COMPACT -> 32
-            }
+        holder.ivThumbnail.scaleType =
+            ImageView.ScaleType.CENTER_CROP
 
         holder.ivThumbnail.layoutParams =
             holder.ivThumbnail.layoutParams.apply {
-                width = dp(thumb)
-                height = dp(thumb)
+                width =
+                    ViewGroup.LayoutParams.MATCH_PARENT
+
+                height =
+                    ViewGroup.LayoutParams.MATCH_PARENT
             }
+
+        if (
+            displayMode !=
+                DisplayMode.GRID
+        ) {
+            val thumbWidth =
+                if (
+                    displayMode ==
+                        DisplayMode.COMPACT
+                ) {
+                    46
+                } else {
+                    60
+                }
+
+            val thumbHeight =
+                if (
+                    displayMode ==
+                        DisplayMode.COMPACT
+                ) {
+                    38
+                } else {
+                    50
+                }
+
+            holder.thumbCard?.layoutParams =
+                holder.thumbCard?.layoutParams?.apply {
+                    width =
+                        dp(
+                            thumbWidth
+                        )
+
+                    height =
+                        dp(
+                            thumbHeight
+                        )
+                }
+        }
 
         holder.tvTitle.textSize =
             when (displayMode) {
@@ -488,58 +543,63 @@ class NotesAdapter(
             }
     }
 
-    private fun notePageCount(
+    private fun bindPageCount(
+        badge: TextView?,
         note: Note
-    ): Int {
+    ) {
         if (
-            note.sourceImagePathsJson
-                .isBlank()
+            badge == null
         ) {
-            return 1
+            return
         }
 
-        return runCatching {
-            JSONArray(
-                note.sourceImagePathsJson
-            ).length()
-                .coerceAtLeast(
+        val pageCount =
+            runCatching {
+                val sourceCount =
+                    note.sourceImagePathsJson
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            JSONArray(
+                                it
+                            ).length()
+                        }
+                        ?: 0
+
+                val contentCount =
+                    note.pageContentsJson
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            JSONArray(
+                                it
+                            ).length()
+                        }
+                        ?: 0
+
+                maxOf(
+                    sourceCount,
+                    contentCount,
                     1
                 )
-        }.getOrDefault(
-            1
-        )
-    }
+            }.getOrDefault(
+                1
+            )
 
-    private fun notePreview(
-        raw: String
-    ): String {
-        return raw
-            .replace(
-                Regex(
-                    """(?i)<br\s*/?>"""
-                ),
-                " "
-            )
-            .replace(
-                Regex(
-                    """<[^>]+>"""
-                ),
-                " "
-            )
-            .replace(
-                "**",
-                ""
-            )
-            .replace(
-                Regex(
-                    """\s+"""
-                ),
-                " "
-            )
-            .trim()
-            .take(
-                92
-            )
+        if (
+            pageCount > 1
+        ) {
+            badge.visibility =
+                View.VISIBLE
+
+            badge.text =
+                "$pageCount pages"
+        } else {
+            badge.visibility =
+                View.GONE
+        }
     }
 
     private fun bindThumbnail(

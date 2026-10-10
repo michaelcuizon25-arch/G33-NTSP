@@ -21,8 +21,8 @@ class HistoryAdapter(
     private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder>() {
 
-    private val selectedIds =
-        linkedSetOf<Int>()
+    private val selectedKeys =
+        mutableSetOf<String>()
 
     class HistoryViewHolder(
         view: View
@@ -43,15 +43,21 @@ class HistoryAdapter(
                 R.id.tvHistoryDate
             )
 
-        val pageBadge: TextView =
-            view.findViewById(
-                R.id.tvHistoryPageBadge
-            )
-
         val more: ImageButton =
             view.findViewById(
                 R.id.btnHistoryMore
             )
+
+        val pageCount:
+            TextView =
+                view.findViewById(
+                    R.id.tvHistoryPageCount
+                )
+
+        val card:
+            com.google.android.material.card.MaterialCardView? =
+                view as?
+                    com.google.android.material.card.MaterialCardView
     }
 
     override fun onCreateViewHolder(
@@ -84,73 +90,25 @@ class HistoryAdapter(
         holder.date.text =
             item.date
 
-        val pageCount =
-            historyPageCount(
-                item
-            )
-
-        holder.pageBadge.visibility =
-            if (
-                pageCount >
-                1
-            ) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
-
-        holder.pageBadge.text =
-            "$pageCount pages"
+        bindPageCount(
+            holder.pageCount,
+            item
+        )
 
         bindThumbnail(
             holder.thumbnail,
             item.imagePath
         )
 
-        val selected =
-            selectedIds.contains(
-                item.id
-            )
-
-        val card =
-            holder.itemView as?
-                com.google.android.material.card.MaterialCardView
-
-        card?.strokeWidth =
-            if (
-                selected
-            ) {
-                3
-            } else {
-                1
-            }
-
-        card?.strokeColor =
-            androidx.core.content.ContextCompat
-                .getColor(
-                    holder.itemView.context,
-                    if (
-                        selected
-                    ) {
-                        R.color.nts_blue
-                    } else {
-                        R.color.nts_outline
-                    }
-                )
-
-        holder.more.visibility =
-            if (
-                selectedIds.isNotEmpty()
-            ) {
-                View.INVISIBLE
-            } else {
-                View.VISIBLE
-            }
+        bindSelectionState(
+            holder,
+            item
+        )
 
         holder.itemView
             .setOnClickListener {
                 if (
-                    selectedIds.isNotEmpty()
+                    selectedKeys.isNotEmpty()
                 ) {
                     toggleSelection(
                         item
@@ -174,7 +132,7 @@ class HistoryAdapter(
         holder.more
             .setOnClickListener {
                 if (
-                    selectedIds.isNotEmpty()
+                    selectedKeys.isNotEmpty()
                 ) {
                     toggleSelection(
                         item
@@ -189,62 +147,6 @@ class HistoryAdapter(
 
     override fun getItemCount(): Int =
         historyList.size
-
-    fun selectedItems():
-        List<ScanHistory> =
-        historyList.filter {
-            selectedIds.contains(
-                it.id
-            )
-        }
-
-    fun clearSelection() {
-        selectedIds.clear()
-        notifyDataSetChanged()
-        onSelectionChanged(
-            0
-        )
-    }
-
-    fun selectAll() {
-        selectedIds.clear()
-
-        selectedIds.addAll(
-            historyList.map {
-                it.id
-            }
-        )
-
-        notifyDataSetChanged()
-
-        onSelectionChanged(
-            selectedIds.size
-        )
-    }
-
-    private fun toggleSelection(
-        item: ScanHistory
-    ) {
-        if (
-            selectedIds.contains(
-                item.id
-            )
-        ) {
-            selectedIds.remove(
-                item.id
-            )
-        } else {
-            selectedIds.add(
-                item.id
-            )
-        }
-
-        notifyDataSetChanged()
-
-        onSelectionChanged(
-            selectedIds.size
-        )
-    }
 
     fun updateData(
         newHistory: List<ScanHistory>
@@ -301,29 +203,213 @@ class HistoryAdapter(
         historyList =
             newHistory.toList()
 
-        diff.dispatchUpdatesTo(this)
+        val validKeys =
+            historyList.map {
+                selectionKey(
+                    it
+                )
+            }.toSet()
+
+        selectedKeys.retainAll(
+            validKeys
+        )
+
+        diff.dispatchUpdatesTo(
+            this
+        )
+
+        onSelectionChanged(
+            selectedKeys.size
+        )
     }
 
-    private fun historyPageCount(
-        item: ScanHistory
-    ): Int {
+    fun selectedItems(): List<ScanHistory> {
+        return historyList.filter {
+            selectionKey(
+                it
+            ) in selectedKeys
+        }
+    }
+
+    fun selectAll() {
+        selectedKeys.clear()
+
+        selectedKeys.addAll(
+            historyList.map {
+                selectionKey(
+                    it
+                )
+            }
+        )
+
+        notifyDataSetChanged()
+
+        onSelectionChanged(
+            selectedKeys.size
+        )
+    }
+
+    fun clearSelection() {
         if (
-            item.sourceImagePathsJson
-                .isBlank()
+            selectedKeys.isEmpty()
         ) {
-            return 1
+            return
         }
 
-        return runCatching {
-            JSONArray(
-                item.sourceImagePathsJson
-            ).length()
-                .coerceAtLeast(
+        selectedKeys.clear()
+
+        notifyDataSetChanged()
+
+        onSelectionChanged(
+            0
+        )
+    }
+
+    private fun toggleSelection(
+        item: ScanHistory
+    ) {
+        val key =
+            selectionKey(
+                item
+            )
+
+        if (
+            key in selectedKeys
+        ) {
+            selectedKeys.remove(
+                key
+            )
+        } else {
+            selectedKeys.add(
+                key
+            )
+        }
+
+        val index =
+            historyList.indexOfFirst {
+                selectionKey(
+                    it
+                ) ==
+                    key
+            }
+
+        if (
+            index >= 0
+        ) {
+            notifyItemChanged(
+                index
+            )
+        }
+
+        onSelectionChanged(
+            selectedKeys.size
+        )
+    }
+
+    private fun selectionKey(
+        item: ScanHistory
+    ): String {
+        return "${item.imagePath}|${item.timestamp}"
+    }
+
+    private fun bindSelectionState(
+        holder: HistoryViewHolder,
+        item: ScanHistory
+    ) {
+        val selected =
+            selectionKey(
+                item
+            ) in selectedKeys
+
+        holder.card?.apply {
+            strokeWidth =
+                (
+                    if (
+                        selected
+                    ) {
+                        2
+                    } else {
+                        1
+                    } *
+                    resources
+                        .displayMetrics
+                        .density
+                ).toInt()
+
+            strokeColor =
+                androidx.core.content.ContextCompat.getColor(
+                    context,
+                    if (
+                        selected
+                    ) {
+                        R.color.nts_blue
+                    } else {
+                        R.color.nts_card_outline
+                    }
+                )
+
+            alpha =
+                if (
+                    selected
+                ) {
+                    1f
+                } else {
+                    0.98f
+                }
+        }
+    }
+
+    private fun bindPageCount(
+        badge: TextView,
+        item: ScanHistory
+    ) {
+        val pageCount =
+            runCatching {
+                val sourceCount =
+                    item.sourceImagePathsJson
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            JSONArray(
+                                it
+                            ).length()
+                        }
+                        ?: 0
+
+                val contentCount =
+                    item.pageContentsJson
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            JSONArray(
+                                it
+                            ).length()
+                        }
+                        ?: 0
+
+                maxOf(
+                    sourceCount,
+                    contentCount,
                     1
                 )
-        }.getOrDefault(
-            1
-        )
+            }.getOrDefault(
+                1
+            )
+
+        if (
+            pageCount > 1
+        ) {
+            badge.visibility =
+                View.VISIBLE
+
+            badge.text =
+                "$pageCount pages"
+        } else {
+            badge.visibility =
+                View.GONE
+        }
     }
 
     private fun bindThumbnail(

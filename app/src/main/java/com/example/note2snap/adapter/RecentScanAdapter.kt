@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.note2snap.R
 import com.example.note2snap.model.ScanHistory
 import com.example.note2snap.utils.NoteThumbnailLoader
+import org.json.JSONArray
 
 class RecentScanAdapter(
     private val scans: MutableList<ScanHistory>,
@@ -40,6 +41,9 @@ class RecentScanAdapter(
 
         val btnMore: ImageButton =
             itemView.findViewById(R.id.btnRecentMore)
+
+        val tvPageCount: TextView =
+            itemView.findViewById(R.id.tvRecentPageCount)
     }
 
     override fun onCreateViewHolder(
@@ -68,6 +72,21 @@ class RecentScanAdapter(
 
         holder.tvTitle.text = scan.title
         holder.tvDate.text = scan.date
+
+        bindPageCount(
+            holder.tvPageCount,
+            scan
+        )
+
+        holder.ivThumbnail.scaleType =
+            ImageView.ScaleType.CENTER_CROP
+
+        holder.ivThumbnail.setPadding(
+            0,
+            0,
+            0,
+            0
+        )
 
         NoteThumbnailLoader.load(
             imageView = holder.ivThumbnail,
@@ -113,6 +132,59 @@ class RecentScanAdapter(
 
         holder.btnMore.setOnClickListener {
             onMoreClick(scan)
+        }
+    }
+
+    private fun bindPageCount(
+        badge: TextView,
+        scan: ScanHistory
+    ) {
+        val pageCount =
+            runCatching {
+                val sourceCount =
+                    scan.sourceImagePathsJson
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            JSONArray(
+                                it
+                            ).length()
+                        }
+                        ?: 0
+
+                val contentCount =
+                    scan.pageContentsJson
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            JSONArray(
+                                it
+                            ).length()
+                        }
+                        ?: 0
+
+                maxOf(
+                    sourceCount,
+                    contentCount,
+                    1
+                )
+            }.getOrDefault(
+                1
+            )
+
+        if (
+            pageCount > 1
+        ) {
+            badge.visibility =
+                View.VISIBLE
+
+            badge.text =
+                "$pageCount pages"
+        } else {
+            badge.visibility =
+                View.GONE
         }
     }
 

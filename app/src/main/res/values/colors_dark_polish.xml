@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home stat accent -->
+    <color name="nts_accent_card">#EAF0FF</color>
+
+    <!-- Snap's Streak stays the special yellow reward card -->
+    <color name="nts_streak_card">#FFF79A</color>
+    <color name="nts_streak_portrait">#FFFFFF</color>
+    <color name="nts_streak_rule">#8A8A75</color>
+    <color name="nts_streak_progress_track">#66FFFFFF</color>
+</resources>

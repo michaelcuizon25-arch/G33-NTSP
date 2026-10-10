@@ -6,32 +6,44 @@
     android:id="@+id/cardNote"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="3dp"
-    android:layout_marginBottom="3dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="@color/nts_surface_blue"
-    app:cardCornerRadius="12dp"
+    app:cardBackgroundColor="@color/nts_surface"
+    app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
-    app:strokeColor="@color/nts_outline"
+    app:strokeColor="@color/nts_card_outline_soft"
     app:strokeWidth="1dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="78dp"
-        android:paddingStart="9dp"
+        android:layout_height="74dp"
+        android:paddingStart="10dp"
         android:paddingEnd="7dp">
 
-        <ImageView
-            android:id="@+id/ivNoteThumbnail"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/noteThumbCard"
+            android:layout_width="58dp"
+            android:layout_height="48dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:contentDescription="@string/cd_note_thumbnail"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_note_custom" />
+            app:cardBackgroundColor="@color/nts_surface_blue_soft"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/nts_blue_line"
+            app:strokeWidth="1dp">
+
+            <ImageView
+                android:id="@+id/ivNoteThumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="false"
+                android:contentDescription="@string/cd_note_thumbnail"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_note_custom" />
+        </com.google.android.material.card.MaterialCardView>
 
         <LinearLayout
             android:id="@+id/layoutNoteActions"
@@ -43,11 +55,12 @@
 
             <ImageButton
                 android:id="@+id/btnFavorite"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:alpha="0.72"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_favorite"
-                android:padding="4dp"
+                android:padding="5dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_star_outline_custom" />
 
@@ -55,83 +68,69 @@
                 android:id="@+id/btnNoteMore"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
-                android:layout_marginStart="1dp"
+                android:alpha="0.72"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_options"
-                android:padding="5dp"
+                android:padding="6dp"
                 android:src="@drawable/ic_tool_more"
-                app:tint="@color/nts_text" />
+                app:tint="@color/nts_text_secondary" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
-            android:layout_marginStart="9dp"
-            android:layout_toEndOf="@id/ivNoteThumbnail"
+            android:layout_marginStart="11dp"
+            android:layout_toEndOf="@id/noteThumbCard"
             android:layout_toStartOf="@id/layoutNoteActions"
             android:orientation="vertical"
-            android:paddingEnd="4dp">
+            android:paddingEnd="5dp">
 
             <TextView
                 android:id="@+id/tvNoteTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="@font/poppins_regular"
+                android:fontFamily="@font/poppins_semibold"
                 android:maxLines="1"
                 android:textColor="@color/nts_text"
                 android:textSize="11.5sp"
-                tools:text="Scan Sep 24, 2026 21:22" />
-
-            <TextView
-                android:id="@+id/tvNotePreview"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:ellipsize="end"
-                android:fontFamily="@font/poppins_regular"
-                android:maxLines="1"
-                android:textColor="@color/nts_text_secondary"
-                android:textSize="8.5sp"
-                tools:text="Key ideas and structured content from the scanned whiteboard…" />
+                tools:text="Batch Scan" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/tvNoteDate"
-                    android:layout_width="0dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="@font/poppins_regular"
                     android:maxLines="1"
                     android:textColor="@color/nts_text_secondary"
                     android:textSize="8.5sp"
-                    tools:text="September 24, 2026" />
+                    tools:text="Oct 10, 2026" />
 
                 <TextView
-                    android:id="@+id/tvNotePageBadge"
+                    android:id="@+id/tvPageCountBadge"
                     android:layout_width="wrap_content"
-                    android:layout_height="22dp"
-                    android:background="@drawable/bg_filter_active"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_page_count_badge"
                     android:fontFamily="@font/poppins_medium"
                     android:gravity="center"
                     android:paddingStart="8dp"
                     android:paddingEnd="8dp"
                     android:text="3 pages"
                     android:textColor="@color/nts_blue"
-                    android:textSize="8sp"
+                    android:textSize="7sp"
                     android:visibility="gone"
                     tools:visibility="visible" />
             </LinearLayout>
-
-
         </LinearLayout>
 
     </RelativeLayout>

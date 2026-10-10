@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="nts_card_outline">#344158</color>
+    <color name="nts_card_outline_strong">#465776</color>
+    <color name="nts_settings_card">#182132</color>
+    <color name="nts_editor_tool_bg">#182132</color>
+    <color name="nts_editor_tool_icon">#AAB5CB</color>
+    <color name="nts_editor_tool_active">#263653</color>
+    <color name="nts_editor_tool_active_icon">#9DB4FF</color>
+</resources>
