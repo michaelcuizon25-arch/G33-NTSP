@@ -37,6 +37,9 @@ android {
             useLegacyPackaging = true
         }
     }
+    buildFeatures {
+        mlModelBinding = true
+    }
 }
 
 // Explicitly forces KAPT and Kotlin tasks to use JVM 17
