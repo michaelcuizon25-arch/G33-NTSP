@@ -1,5 +1,6 @@
 package com.example.note2snap.activities
 
+import android.util.Log
 import android.os.Bundle
 import android.view.View
 import android.view.HapticFeedbackConstants

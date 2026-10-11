@@ -108,7 +108,7 @@ object WhiteboardRuleEngine {
                 SpatialCell(text, Rect(box))
             }
 
-        return processCells(items)
+        return processCells(items, allowMarginNotes = true)
     }
 
     /**
@@ -124,7 +124,7 @@ object WhiteboardRuleEngine {
             SpatialCell(text, Rect(line.boundingBox))
         }
 
-        return processCells(items)
+        return processCells(items, allowMarginNotes = false)
     }
 
     /** Plain strings without positions (no columns / indentation available). */
@@ -152,7 +152,10 @@ object WhiteboardRuleEngine {
     // MAIN PIPELINE
     // =========================================================
 
-    private fun processCells(allItems: List<SpatialCell>): StructuredNote {
+    private fun processCells(
+        allItems: List<SpatialCell>,
+        allowMarginNotes: Boolean
+    ): StructuredNote {
         if (allItems.isEmpty()) return emptyNote()
 
         // 1. Document title (top line standing alone)
@@ -186,8 +189,16 @@ object WhiteboardRuleEngine {
         val bodyRight = percentileRight(bodyItems, 0.85)
         val bodyWidth = max(1, bodyRight - bodyLeft)
 
+        // CRNN line fragments can be short, displaced, or overlapping. Treat them
+        // as ordinary content for now, rather than incorrectly labeling a
+        // sentence continuation as a handwritten margin note.
+        // The existing margin-note detector remains available for ML Kit input.
         val (mainCandidates, marginCandidates) =
-            splitMarginCells(bodyItems, bodyLeft, bodyWidth, metrics)
+            if (allowMarginNotes) {
+                splitMarginCells(bodyItems, bodyLeft, bodyWidth, metrics)
+            } else {
+                Pair(bodyItems, emptyList<SpatialCell>())
+            }
 
         val mainItems = if (mainCandidates.isEmpty()) bodyItems else mainCandidates
         val marginItems = if (mainCandidates.isEmpty()) emptyList() else marginCandidates
