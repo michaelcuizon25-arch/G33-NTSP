@@ -432,9 +432,15 @@ class ConnectedComponentLabeler {
         println("=======================================")
         println()
 
+        // Step 105: repair overlapping same-line fragments before CRNN.
+        // Keep the existing merge logic, then repair remaining partial lines.
         val mergedTextRegions =
-            mergeOverlappingTextRegions(
-                input = cleanedTextRegions,
+            reconnectSameLineFragments(
+                input = mergeOverlappingTextRegions(
+                    input = cleanedTextRegions,
+                    source = recognitionBitmap,
+                    medianTextHeight = medianTextHeight
+                ),
                 source = recognitionBitmap,
                 medianTextHeight = medianTextHeight
             )
@@ -790,107 +796,25 @@ class ConnectedComponentLabeler {
         component: Component,
         medianTextHeight: Int
     ): Boolean {
-
-        val lineTop =
-            line.minOf { it.box.top }
-
-        val lineBottom =
-            line.maxOf { it.box.bottom }
-
-        val lineLeft =
-            line.minOf { it.box.left }
-
-        val lineRight =
-            line.maxOf { it.box.right }
-
-        val componentTop =
-            component.box.top
-
-        val componentBottom =
-            component.box.bottom
-
-        val componentCenterY =
-            component.box.centerY()
-
-        val lineCenterY =
-            (lineTop + lineBottom) / 2
-
-        val overlapTop =
-            max(
-                lineTop,
-                componentTop
-            )
-
-        val overlapBottom =
-            min(
-                lineBottom,
-                componentBottom
-            )
-
-        val verticalOverlap =
-            max(
-                0,
-                overlapBottom - overlapTop
-            )
-
-        val lineHeight =
-            max(
-                1,
-                lineBottom - lineTop
-            )
-
-        val componentHeight =
-            max(
-                1,
-                component.box.height()
-            )
-
-        val smallerHeight =
-            min(
-                lineHeight,
-                componentHeight
-            )
-
-        val overlapRatio =
-            verticalOverlap.toFloat() /
-                    smallerHeight.toFloat()
-
-        val centerDistance =
-            abs(
-                componentCenterY -
-                        lineCenterY
-            )
-
-        val verticallyCompatible =
-            overlapRatio >= 0.30f ||
-                    centerDistance <=
-                    medianTextHeight * 1.50f
-
-        if (!verticallyCompatible) {
-            return false
+        val lineTop = line.minOf { it.box.top }
+        val lineBottom = line.maxOf { it.box.bottom }
+        val lineLeft = line.minOf { it.box.left }
+        val lineRight = line.maxOf { it.box.right }
+        val componentTop = component.box.top
+        val componentBottom = component.box.bottom
+        val lineHeight = (lineBottom - lineTop).coerceAtLeast(1)
+        val componentHeight = component.box.height().coerceAtLeast(1)
+        val verticalOverlap = max(0, min(lineBottom, componentBottom) - max(lineTop, componentTop))
+        val overlapRatio = verticalOverlap.toFloat() / min(lineHeight, componentHeight).coerceAtLeast(1)
+        val centerDistance = abs(component.box.centerY() - (lineTop + lineBottom) / 2)
+        val verticallyCompatible = overlapRatio >= 0.50f && centerDistance <= medianTextHeight * 0.85f
+        if (!verticallyCompatible) return false
+        val horizontalGap = when {
+            component.box.left > lineRight -> component.box.left - lineRight
+            component.box.right < lineLeft -> lineLeft - component.box.right
+            else -> 0
         }
-
-        val horizontalGap =
-            when {
-
-                component.box.left > lineRight ->
-                    component.box.left - lineRight
-
-                component.box.right < lineLeft ->
-                    lineLeft - component.box.right
-
-                else ->
-                    0
-            }
-
-        val maximumHorizontalGap =
-            max(
-                30,
-                medianTextHeight * 9
-            )
-
-        return horizontalGap <=
-                maximumHorizontalGap
+        return horizontalGap <= max(20, medianTextHeight * 5)
     }
 
     private fun mergeOverlappingTextRegions(
@@ -2038,167 +1962,144 @@ class ConnectedComponentLabeler {
     // REGION CREATION
     // =========================================================
 
+    /**
+     * Step 116: reconnect overlapping or nearby fragments of one physical line.
+     * Always recrop the union from the original recognition bitmap.
+     * Do not merge vertically adjacent writing rows.
+     */
+    private fun reconnectSameLineFragments(
+        input: List<Region>,
+        source: Bitmap,
+        medianTextHeight: Int
+    ): List<Region> {
+        if (input.size < 2) return input
+
+        val remaining = input.sortedWith(
+            compareBy<Region>({ it.boundingBox.top }, { it.boundingBox.left })
+        ).toMutableList()
+        val output = mutableListOf<Region>()
+
+        while (remaining.isNotEmpty()) {
+            var current = remaining.removeAt(0)
+            var changed = true
+            while (changed) {
+                changed = false
+                val iterator = remaining.iterator()
+                while (iterator.hasNext()) {
+                    val next = iterator.next()
+                    val a = current.boundingBox
+                    val b = next.boundingBox
+                    val aHeight = a.height().coerceAtLeast(1)
+                    val bHeight = b.height().coerceAtLeast(1)
+                    val smallerHeight = min(aHeight, bHeight)
+                    val tallerHeight = max(aHeight, bHeight)
+
+                    // Never attach isolated dots, board blemishes, or tiny artifacts.
+                    val meaningfulWidth = max(12, medianTextHeight * 2)
+                    if (a.width() < meaningfulWidth || b.width() < meaningfulWidth) continue
+
+                    val overlapY = max(0, min(a.bottom, b.bottom) - max(a.top, b.top))
+                    val overlapFraction = overlapY.toFloat() / smallerHeight
+                    val centerDelta = abs(a.centerY() - b.centerY())
+                    val joinedHeight = max(a.bottom, b.bottom) - min(a.top, b.top)
+
+                    // Crops of slanted handwriting often differ in center/height.
+                    // Requiring substantial vertical overlap prevents joining different rows.
+                    if (overlapFraction < 0.60f) continue
+                    if (centerDelta > max(medianTextHeight * 1.15f, smallerHeight * 0.50f)) continue
+                    if (joinedHeight > tallerHeight * 1.45f) continue
+
+                    val gapX = when {
+                        a.right < b.left -> b.left - a.right
+                        b.right < a.left -> a.left - b.right
+                        else -> 0
+                    }
+                    if (gapX > max(48, medianTextHeight * 4)) continue
+
+                    val joinedBox = Rect(
+                        min(a.left, b.left), min(a.top, b.top),
+                        max(a.right, b.right), max(a.bottom, b.bottom)
+                    )
+
+                    current = makeRegion(
+                        id = current.id,
+                        box = joinedBox,
+                        area = current.pixelArea + next.pixelArea,
+                        type = RegionType.TEXT,
+                        source = source
+                    )
+                    iterator.remove()
+                    changed = true
+                    break
+                }
+            }
+            output += current
+        }
+
+        android.util.Log.d(
+            "CCL_REPAIR",
+            "Step116 same-line regions: ${input.size} -> ${output.size}"
+        )
+        return output.sortedWith(
+            compareBy<Region>({ it.boundingBox.top }, { it.boundingBox.left })
+        )
+    }
+
     private fun mergeOverlappingTextRegions(
         input: List<Region>,
         source: Bitmap,
         medianTextHeight: Int
     ): List<Region> {
-
-        if (input.isEmpty()) {
-            return emptyList()
-        }
-
-        val remaining =
-            input.toMutableList()
-
-        val result =
-            mutableListOf<Region>()
-
+        if (input.isEmpty()) return emptyList()
+        val remaining = input.sortedWith(
+            compareBy<Region>({ it.boundingBox.top }, { it.boundingBox.left })
+        ).toMutableList()
+        val result = mutableListOf<Region>()
         while (remaining.isNotEmpty()) {
-
-            var current =
-                remaining.removeAt(0)
-
+            var current = remaining.removeAt(0)
             var changed = true
-
             while (changed) {
-
                 changed = false
-
-                val iterator =
-                    remaining.iterator()
-
+                val iterator = remaining.iterator()
                 while (iterator.hasNext()) {
-
-                    val other =
-                        iterator.next()
-
-                    val first =
-                        current.boundingBox
-
-                    val second =
-                        other.boundingBox
-
-                    val overlapTop =
-                        max(
-                            first.top,
-                            second.top
-                        )
-
-                    val overlapBottom =
-                        min(
-                            first.bottom,
-                            second.bottom
-                        )
-
-                    val verticalOverlap =
-                        max(
-                            0,
-                            overlapBottom - overlapTop
-                        )
-
-                    val smallerHeight =
-                        min(
-                            first.height(),
-                            second.height()
-                        ).coerceAtLeast(1)
-
-                    val verticalOverlapRatio =
-                        verticalOverlap.toFloat() /
-                                smallerHeight.toFloat()
-
-                    val horizontalGap =
-                        when {
-
-                            second.left > first.right ->
-                                second.left - first.right
-
-                            first.left > second.right ->
-                                first.left - second.right
-
-                            else ->
-                                0
-                        }
-
-
-                    val firstCenterY =
-                        first.centerY()
-
-                    val secondCenterY =
-                        second.centerY()
-
-                    val centerDistance =
-                        abs(
-                            firstCenterY -
-                                    secondCenterY
-                        )
-
-                    val smallerRegionHeight =
-                        min(
-                            first.height(),
-                            second.height()
-                        )
-
-                    val closeCenters =
-                        centerDistance <=
-                                medianTextHeight * 1.50f
-
-                    val smallFragment =
-                        smallerRegionHeight <=
-                                medianTextHeight * 1.50f
-
-                    val sameLine =
-                        verticalOverlapRatio >= 0.60f &&
-                                horizontalGap <=
-                                medianTextHeight * 3 &&
-                                (
-                                        closeCenters ||
-                                                smallFragment
-                                        )
-                    if (sameLine) {
-
-                        val mergedBox =
-                            Rect(
-                                min(
-                                    first.left,
-                                    second.left
-                                ),
-                                min(
-                                    first.top,
-                                    second.top
-                                ),
-                                max(
-                                    first.right,
-                                    second.right
-                                ),
-                                max(
-                                    first.bottom,
-                                    second.bottom
-                                )
-                            )
-
-                        current =
-                            makeRegion(
-                                id = current.id,
-                                box = mergedBox,
-                                area =
-                                    current.pixelArea +
-                                            other.pixelArea,
-                                type = RegionType.TEXT,
-                                source = source
-                            )
-
-                        iterator.remove()
-
-                        changed = true
+                    val other = iterator.next()
+                    val first = current.boundingBox
+                    val second = other.boundingBox
+                    val overlapTop = max(first.top, second.top)
+                    val overlapBottom = min(first.bottom, second.bottom)
+                    val verticalOverlap = max(0, overlapBottom - overlapTop)
+                    val smallerHeight = min(first.height(), second.height()).coerceAtLeast(1)
+                    val overlapRatio = verticalOverlap.toFloat() / smallerHeight
+                    val centerDistance = abs(first.centerY() - second.centerY())
+                    val heightDifference = abs(first.height() - second.height())
+                    val horizontalGap = when {
+                        second.left > first.right -> second.left - first.right
+                        first.left > second.right -> first.left - second.right
+                        else -> 0
                     }
+                    val sameLine = overlapRatio >= 0.75f &&
+                            centerDistance <= medianTextHeight * 0.60f &&
+                            heightDifference <= medianTextHeight * 1.20f &&
+                            horizontalGap <= max(20, medianTextHeight * 3)
+                    if (!sameLine) continue
+                    val mergedBox = Rect(
+                        min(first.left, second.left), min(first.top, second.top),
+                        max(first.right, second.right), max(first.bottom, second.bottom)
+                    )
+                    current = makeRegion(
+                        id = current.id, box = mergedBox,
+                        area = current.pixelArea + other.pixelArea,
+                        type = RegionType.TEXT, source = source
+                    )
+                    iterator.remove()
+                    changed = true
                 }
             }
-
-            result += current
+            result.add(current)
         }
-
-        return result
+        return result.sortedWith(
+            compareBy<Region>({ it.boundingBox.top }, { it.boundingBox.left })
+        )
     }
 
     private fun makeRegion(
@@ -2262,5 +2163,3 @@ class ConnectedComponentLabeler {
 class TooManyRegionsException(
     message: String
 ) : Exception(message)
-
-

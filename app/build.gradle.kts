@@ -67,7 +67,7 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.1")
 
     // TensorFlow Lite - CRNN handwriting recognition
-    implementation("org.tensorflow:tensorflow-lite:2.17.0")
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
     implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.16.1")
 
     // Coil & Lottie
