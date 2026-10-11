@@ -55,10 +55,10 @@ class CrnnLineRecognizer(
     companion object {
 
         private const val MODEL_FILE =
-            "ocr/crnn_note2snap.tflite"
+            "ocr/note2snap_crnn_v2_epoch03_flex.tflite"
 
         private const val CHARSET_FILE =
-            "ocr/charset_crnn.txt"
+            "ocr/note2snap_crnn_v2_epoch03_charlist.txt"
 
         private const val INPUT_WIDTH = 512
         private const val INPUT_HEIGHT = 32
@@ -827,13 +827,13 @@ class CrnnLineRecognizer(
     /**
      * Preprocess ONE physical text line.
      *
-     * Current implementation:
+     * Epoch 3 implementation:
      *
      * grayscale
      * -> aspect-ratio preserving resize
      * -> 512 × 32 white canvas
      * -> pad right/bottom
-     * -> Float32 normalization
+     * -> Float32 normalization (gray / 255 - 0.5)
      * -> transpose to [512, 32, 1]
      *
      * This matches the current Android implementation
@@ -995,7 +995,7 @@ class CrnnLineRecognizer(
                             ) / 255f
 
                 inputBuffer.putFloat(
-                    gray
+                    gray - 0.5f
                 )
             }
         }
@@ -1262,18 +1262,15 @@ class CrnnLineRecognizer(
     private fun loadCharset(
         context: Context
     ): List<String> {
+        // Epoch 3 stores all 79 characters on ONE line.
+        // Do not call trim(): the FIRST character is a space.
+        val chars = context.assets.open(CHARSET_FILE)
+            .bufferedReader(Charsets.UTF_8)
+            .use { it.readText() }
+            .removePrefix("\uFEFF")
+            .trimEnd('\r', '\n')
 
-        return context.assets
-            .open(
-                CHARSET_FILE
-            )
-            .bufferedReader(
-                Charsets.UTF_8
-            )
-            .useLines { lines ->
-
-                lines.toList()
-            }
+        return chars.map { it.toString() }
     }
 
     override fun close() {

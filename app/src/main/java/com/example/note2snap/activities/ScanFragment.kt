@@ -76,6 +76,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import com.example.note2snap.preprocessing.WhiteboardPreprocessor
+import com.example.note2snap.recognition.CrnnLineRecognizer
+import com.example.note2snap.structuring.PipelineTextStructurer
 
 class ScanFragment : Fragment() {
 
@@ -338,14 +341,14 @@ class ScanFragment : Fragment() {
                             "Finish current batch?",
                         message =
                             "You still have ${capturedCameraBatchPaths.size} captured page" +
-                                if (
-                                    capturedCameraBatchPaths.size == 1
-                                ) {
-                                    "."
-                                } else {
-                                    "s."
-                                } +
-                                " Process them first, or discard the batch before returning to Single mode.",
+                                    if (
+                                        capturedCameraBatchPaths.size == 1
+                                    ) {
+                                        "."
+                                    } else {
+                                        "s."
+                                    } +
+                                    " Process them first, or discard the batch before returning to Single mode.",
                         primaryText =
                             "Discard batch",
                         closeText =
@@ -763,14 +766,14 @@ class ScanFragment : Fragment() {
                 "Discard captured pages?",
             message =
                 "You have ${capturedCameraBatchPaths.size} captured page" +
-                    if (
-                        capturedCameraBatchPaths.size == 1
-                    ) {
-                        "."
-                    } else {
-                        "s."
-                    } +
-                    " Leaving the scanner will remove them from this batch.",
+                        if (
+                            capturedCameraBatchPaths.size == 1
+                        ) {
+                            "."
+                        } else {
+                            "s."
+                        } +
+                        " Leaving the scanner will remove them from this batch.",
             primaryText =
                 "Discard",
             closeText =
@@ -1193,7 +1196,7 @@ class ScanFragment : Fragment() {
         if (
             isCameraBatchMode &&
             capturedCameraBatchPaths.size >=
-                MAX_CAMERA_BATCH
+            MAX_CAMERA_BATCH
         ) {
             WarningDialog(
                 requireContext()
@@ -1228,13 +1231,13 @@ class ScanFragment : Fragment() {
             File(
                 cacheDir,
                 "camera_capture_" +
-                    SimpleDateFormat(
-                        "yyyyMMdd_HHmmss_SSS",
-                        Locale.getDefault()
-                    ).format(
-                        System.currentTimeMillis()
-                    ) +
-                    ".jpg"
+                        SimpleDateFormat(
+                            "yyyyMMdd_HHmmss_SSS",
+                            Locale.getDefault()
+                        ).format(
+                            System.currentTimeMillis()
+                        ) +
+                        ".jpg"
             )
 
         val outputOptions =
@@ -1264,7 +1267,7 @@ class ScanFragment : Fragment() {
 
                 override fun onError(
                     exc:
-                        ImageCaptureException
+                    ImageCaptureException
                 ) {
                     isSavingCameraPage =
                         false
@@ -1295,7 +1298,7 @@ class ScanFragment : Fragment() {
 
                 override fun onImageSaved(
                     output:
-                        ImageCapture.OutputFileResults
+                    ImageCapture.OutputFileResults
                 ) {
                     isSavingCameraPage =
                         false
@@ -1550,7 +1553,7 @@ class ScanFragment : Fragment() {
                     ).apply {
                         gravity =
                             Gravity.BOTTOM or
-                            Gravity.START
+                                    Gravity.START
 
                         marginStart =
                             dpCameraBatch(
@@ -1648,7 +1651,7 @@ class ScanFragment : Fragment() {
                     ).apply {
                         gravity =
                             Gravity.TOP or
-                            Gravity.END
+                                    Gravity.END
                     }
                 )
 
@@ -1770,11 +1773,11 @@ class ScanFragment : Fragment() {
         value: Int
     ): Int =
         (
-            value *
-                resources
-                    .displayMetrics
-                    .density
-            ).toInt()
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
 
     /**
      * Camera-batch counterpart of the existing Gallery batch.
@@ -2403,9 +2406,14 @@ class ScanFragment : Fragment() {
          * headings like "AI", formulas, or labels are not rejected too easily.
          */
         return meaningfulCharacters >=
-            3
+                3
     }
 
+    /**
+     * SINGLE-image algorithm path for validation:
+     * preprocessing -> CCL -> Epoch 3 CRNN -> rule-based structuring.
+     * Batch paths are intentionally unchanged in this revision.
+     */
     private fun processImageUri(
         rawUri: Uri,
         rawFilePath: String? = null,
@@ -2415,161 +2423,121 @@ class ScanFragment : Fragment() {
         val safeContext = context ?: return
         setLoading(true)
 
-        try {
-            val filePath = rawFilePath ?: if (rawUri.scheme == "content") {
-                copyUriToCache(safeContext, rawUri)
-            } else {
-                rawUri.path
-            }
-
-            if (filePath == null) {
-                setLoading(false)
-                Toast.makeText(safeContext, "Failed to load image file", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            val imageFile = File(filePath)
-
-            val sourceFilePath =
-                if (cropToGuide) {
-                    cropImageToVisibleGuideFrame(
-                        imageFile = imageFile
-                    ) ?: filePath
-                } else {
-                    filePath
-                }
-
-            val sourceFile =
-                File(sourceFilePath)
-
-            // QUALITY GATE (camera captures only):
-            // Do not send severely blurry / badly lit / unclear camera photos to OCR.
-            // Gallery uploads skip this check.
-            if (validateQuality) {
-                val qualityResult =
-                    validateImageBeforeOcr(
-                        sourceFilePath
-                    )
-
-                if (
-                    !qualityResult.isValid
-                ) {
-                    Log.w(
-                        "ScanFragment",
-                        "Image rejected before OCR: " +
-                                "issue=${qualityResult.issue}, " +
-                                "brightness=${qualityResult.brightness}, " +
-                                "contrast=${qualityResult.contrast}, " +
-                                "edge=${qualityResult.edgeStrength}"
-                    )
-
-                    showImageQualityWarning(
-                        qualityResult
-                    )
-
-                    return
-                }
-            }
-
-            showActualAnalysisState(
-                AnalysisStage.DETECTING_TEXT
-            )
-
-            val image =
-                InputImage.fromFilePath(
-                    safeContext,
-                    Uri.fromFile(sourceFile)
-                )
-
-            val recognizer =
-                TextRecognition.getClient(
-                    TextRecognizerOptions.DEFAULT_OPTIONS
-                )
-
-            recognizer.process(image)
-                .addOnSuccessListener { visionText ->
-                    if (!isAdded) return@addOnSuccessListener
-                    showActualAnalysisState(
-                        AnalysisStage.CHECKING_RECOGNITION
-                    )
-
-                    val extractedText =
-                        visionText.text
-
-                    if (
-                        !hasMeaningfulRecognizedText(
-                            extractedText
-                        )
-                    ) {
-                        recognizer.close()
-
-                        showImageQualityWarning(
-                            ImageQualityResult(
-                                isValid =
-                                    false,
-                                issue =
-                                    ImageQualityIssue.BOARD_NOT_CLEAR,
-                                title =
-                                    "No readable writing detected",
-                                message =
-                                    "Note2Snap could not find clear text on the board. Reframe the board, improve the lighting, or use a clearer image."
-                            )
-                        )
-
-                        return@addOnSuccessListener
+        lifecycleScope.launch {
+            try {
+                // File and quality checks are performed off the UI thread.
+                val sourceFilePath = withContext(Dispatchers.IO) {
+                    val filePath = rawFilePath ?: if (rawUri.scheme == "content") {
+                        copyUriToCache(safeContext, rawUri)
+                    } else {
+                        rawUri.path
                     }
 
-                    val ocrIssues =
-                        findOcrIssues(
-                            visionText
-                        )
-
-                    lifecycleScope.launch(
-                        Dispatchers.IO
-                    ) {
-                        val diagramHtml =
-                            detectDiagramHtml(
-                                sourceFilePath
-                            )
-
-                        withContext(
-                            Dispatchers.Main
-                        ) {
-                            if (!isAdded) {
-                                return@withContext
-                            }
-
-                            showActualAnalysisState(
-                                AnalysisStage.STRUCTURING_NOTES
-                            )
-
-                            val finalContent =
-                                if (diagramHtml.isBlank()) {
-                                    extractedText
-                                } else {
-                                    extractedText +
-                                            "<br/><br/><b>Detected Diagram</b><br/>" +
-                                            diagramHtml
-                                }
-
-                            finishAnalyzingAndNavigate(
-                                content = finalContent,
-                                imagePath = sourceFilePath,
-                                ocrIssues = ocrIssues
-                            )
-                        }
+                    if (filePath == null) {
+                        null
+                    } else if (cropToGuide) {
+                        cropImageToVisibleGuideFrame(File(filePath)) ?: filePath
+                    } else {
+                        filePath
                     }
                 }
-                .addOnFailureListener { e ->
-                    if (!isAdded) return@addOnFailureListener
+
+                if (sourceFilePath == null || !File(sourceFilePath).exists()) {
                     setLoading(false)
-                    Log.e("ScanFragment", "Text recognition failed", e)
-                    Toast.makeText(context, "OCR failed to read text", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(safeContext, "Failed to load image file", Toast.LENGTH_SHORT).show()
+                    return@launch
                 }
-        } catch (e: Exception) {
-            if (isAdded) setLoading(false)
-            Log.e("ScanFragment", "Error processing image", e)
-            Toast.makeText(safeContext, "Error loading image", Toast.LENGTH_SHORT).show()
+
+                if (validateQuality) {
+                    val qualityResult = withContext(Dispatchers.IO) {
+                        validateImageBeforeOcr(sourceFilePath)
+                    }
+                    if (!qualityResult.isValid) {
+                        showImageQualityWarning(qualityResult)
+                        return@launch
+                    }
+                }
+
+                if (!isAdded) return@launch
+                showActualAnalysisState(AnalysisStage.DETECTING_TEXT)
+
+                val scanResult = withContext(Dispatchers.IO) {
+                    val bitmap = BitmapFactory.decodeFile(sourceFilePath)
+                        ?: error("Unable to decode whiteboard image")
+
+                    try {
+                        val preprocessed = WhiteboardPreprocessor().process(bitmap)
+                        val regions = ConnectedComponentLabeler().label(
+                            binary = preprocessed.binarizedBitmap,
+                            recognitionBitmap = preprocessed.recognitionBitmap
+                        )
+                        val textRegions = regions.filter { it.type == RegionType.TEXT }
+
+                        // The recognizer uses the selected Epoch 3 model.
+                        val recognizer = CrnnLineRecognizer(safeContext.applicationContext)
+                        val recognizedLines = try {
+                            recognizer.recognize(textRegions)
+                        } finally {
+                            recognizer.close()
+                        }
+
+                        val structured = PipelineTextStructurer().structure(recognizedLines)
+                        Pair(structured, recognizedLines.size)
+                    } finally {
+                        // Source bitmap is ours; don't recycle shared/preprocessed bitmaps here.
+                        bitmap.recycle()
+                    }
+                }
+
+                if (!isAdded) return@launch
+                showActualAnalysisState(AnalysisStage.CHECKING_RECOGNITION)
+
+                val structured = scanResult.first
+                val readable = structured.blocks.any { block ->
+                    hasMeaningfulRecognizedText(block.rawText)
+                }
+
+                if (!readable) {
+                    showImageQualityWarning(
+                        ImageQualityResult(
+                            isValid = false,
+                            issue = ImageQualityIssue.BOARD_NOT_CLEAR,
+                            title = "No readable writing detected",
+                            message = "The Note2Snap CRNN could not recognize enough handwriting. Try a clearer photo or a less crowded board."
+                        )
+                    )
+                    return@launch
+                }
+
+                showActualAnalysisState(AnalysisStage.STRUCTURING_NOTES)
+
+                // The rule engine supplies HTML-formatted blocks for the editor/PDF viewer.
+                val htmlContent = structured.blocks.joinToString("<br/><br/>") {
+                    it.formattedText
+                }
+
+                Log.d(
+                    "NOTE2SNAP_PIPELINE",
+                    "Epoch 3 scan: ${scanResult.second} recognized lines, " +
+                            "${structured.blocks.size} structured blocks"
+                )
+
+                finishAnalyzingAndNavigate(
+                    content = htmlContent,
+                    imagePath = sourceFilePath,
+                    titleOverride = structured.title
+                )
+            } catch (error: Exception) {
+                Log.e("NOTE2SNAP_PIPELINE", "Algorithm scan failed", error)
+                if (isAdded) {
+                    setLoading(false)
+                    Toast.makeText(
+                        safeContext,
+                        "Algorithm scan failed. Check Logcat: NOTE2SNAP_PIPELINE",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         }
     }
 
@@ -3236,18 +3204,18 @@ class ScanFragment : Fragment() {
                         .trim()
                 }
                 .firstOrNull {
-                    line ->
+                        line ->
                     line.length in 3..100 &&
-                        !line.equals(
-                            "[No text detected]",
-                            ignoreCase =
-                                true
-                        ) &&
-                        !line.startsWith(
-                            "Detected Diagram",
-                            ignoreCase =
-                                true
-                        )
+                            !line.equals(
+                                "[No text detected]",
+                                ignoreCase =
+                                    true
+                            ) &&
+                            !line.startsWith(
+                                "Detected Diagram",
+                                ignoreCase =
+                                    true
+                            )
                 }
                 ?.trim()
 
@@ -3268,7 +3236,7 @@ class ScanFragment : Fragment() {
                     67
                 )
                 .trimEnd() +
-                "..."
+                    "..."
         }
     }
 
