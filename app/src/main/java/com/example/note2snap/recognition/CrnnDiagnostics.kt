@@ -58,7 +58,7 @@ internal class CrnnDiagnostics(context: Context) {
             .put("tensorByteOrder", ByteOrder.nativeOrder().toString())
             .put("inputLayout", "x-major: offset=(x*32+y)*4")
             .put("normalization", "gray / 255 - 0.5; dark ink negative, white padding +0.5")
-            .put("trainingParity", "MISMATCH: notebook uses height=32, dynamic width +16, centered affine margin, multiple-of-4 width; Android uses 512x32 fit at top-left")
+            .put("trainingParity", "Per-line preprocessing records identify the selected transform. Legacy fits 512x32 at top-left; reference uses height=32, dynamic width +16, centered affine margin and multiple-of-4 width.")
             .put("outputShapeStage", "Before inference; dynamic output shape may resolve on invocation")
             .put("confidenceSemantics", "Existing average of selected raw outputs; notebook exports logits, not calibrated probabilities"))
     }
@@ -95,7 +95,8 @@ internal class CrnnDiagnostics(context: Context) {
             .put("regions", regionJson))
     }
 
-    fun beginLine(region: Region, line: PhysicalLine, input: ByteBuffer): Int {
+    fun beginLine(region: Region, line: PhysicalLine, input: ByteBuffer,
+                  prepared: PreparedCrnnInput? = null): Int {
         val id = sequence++
         safely {
             val prefix = "line-%04d".format(id)
@@ -123,6 +124,11 @@ internal class CrnnDiagnostics(context: Context) {
                 .put("containsCompleteHandwrittenLine", JSONObject.NULL)
                 .put("completenessEvidence", "Human review against source.png required")
                 .put("groundTruth", JSONObject.NULL)
+                .put("preprocessing", JSONObject()
+                    .put("requestedMode", (prepared?.requestedMode ?: CrnnPreprocessingMode.LEGACY).name)
+                    .put("actualMode", (prepared?.actualMode ?: CrnnPreprocessingMode.LEGACY).name)
+                    .put("referenceWidth", prepared?.referenceWidth ?: JSONObject.NULL)
+                    .put("fallbackReason", prepared?.fallbackReason ?: JSONObject.NULL))
             persist(id)
         }
         return id

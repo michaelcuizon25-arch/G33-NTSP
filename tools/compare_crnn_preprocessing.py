@@ -64,6 +64,8 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reviewed-labels", type=Path)
     parser.add_argument("--model", type=Path)
+    parser.add_argument("--grayscale-mode", choices=("file", "unprofiled_rgb_png"), default="file",
+                        help="file: cv2 IMREAD_GRAYSCALE as in notebook; unprofiled_rgb_png: compare identical decoded RGB pixels without PNG gamma/profile conversion")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     records = [json.loads(s) for s in (args.session / "lines.jsonl").read_text().splitlines() if s.strip()]
@@ -93,6 +95,17 @@ def main():
         crop = cv2.imread(str(args.session / record["cropImage"]), cv2.IMREAD_GRAYSCALE)
         if crop is None:
             raise ValueError("Cannot read crop: " + record["cropImage"])
+        if args.grayscale_mode == "unprofiled_rgb_png":
+            # Android Bitmap PNG compression adds sRGB metadata. libpng may apply
+            # gamma-aware conversion when reading that PNG directly as grayscale.
+            # process_img itself receives only samples, never profile metadata.
+            # Round-trip the same decoded RGB pixels through OpenCV's unprofiled
+            # PNG encoder to isolate transform parity from file-decoder behavior.
+            rgb = cv2.imread(str(args.session / record["cropImage"]), cv2.IMREAD_COLOR)
+            encoded, png = cv2.imencode(".png", rgb)
+            if not encoded:
+                raise ValueError("Cannot encode canonical pixel snapshot")
+            crop = cv2.imdecode(png, cv2.IMREAD_GRAYSCALE)
         byte_order = ">f4" if record["inputByteOrder"] == "BIG_ENDIAN" else "<f4"
         actual = np.fromfile(args.session / record["inputTensor"], dtype=byte_order)
         if actual.size != 512 * 32:
@@ -101,11 +114,15 @@ def main():
         ref = reference_preprocessor.process_img(crop).astype(np.float32)
         width = int(ref.shape[0])
         result = {"id": record["id"], "box": record["box"], "referenceWidth": width,
+                  "actualMode": record.get("actualMode"), "fallbackReason": record.get("fallbackReason"),
                   "predictedText": record.get("predictedText"),
                   "cropCompleteness": labels.get(record["id"], record).get("cropCompleteness", "unreviewed")}
         if width > 512:
             # Notebook skips these. Never silently compress the training reference.
             result["status"] = "reference_exceeds_fixed_model_width"
+            if record.get("legacyInputTensor"):
+                legacy = np.fromfile(args.session / record["legacyInputTensor"], dtype=byte_order).reshape(512, 32)
+                result["fallbackMatchesLegacy"] = bool(np.array_equal(actual, legacy))
         else:
             reference = np.full((512, 32), 0.5, dtype=np.float32)
             reference[:width, :] = ref
@@ -118,6 +135,13 @@ def main():
                           meanAbsDifference=float(np.mean(np.abs(delta))),
                           rmse=float(np.sqrt(np.mean(delta * delta))),
                           identicalBytes=bool(np.array_equal(actual, reference)))
+            if record.get("legacyInputTensor"):
+                legacy = np.fromfile(args.session / record["legacyInputTensor"], dtype=byte_order).reshape(512, 32)
+                legacy_delta = legacy - reference
+                result.update(actualMode=record.get("actualMode"),
+                              legacyRmse=float(np.sqrt(np.mean(legacy_delta * legacy_delta))),
+                              legacyMaxAbsDifference=float(np.max(np.abs(legacy_delta))),
+                              legacyIdenticalBytes=bool(np.array_equal(legacy, reference)))
             if infer:
                 actual_prediction, logits = infer(actual)
                 reference_prediction, _ = infer(reference)
@@ -133,6 +157,7 @@ def main():
                                   referenceCER=edit_distance(truth, reference_prediction) / len(truth))
         comparisons.append(result)
     report = {"preprocessorSha256": hashlib.sha256(args.preprocessor.read_bytes()).hexdigest(),
+              "opencvVersion": cv2.__version__, "grayscaleMode": args.grayscale_mode,
               "modelInferenceRun": bool(infer), "comparisons": comparisons,
               "interpretation": "Tensor differences establish transform mismatch, not accuracy loss. Use complete labeled crops and same-model inference to attribute errors."}
     (args.output / "comparison.json").write_text(json.dumps(report, indent=2))

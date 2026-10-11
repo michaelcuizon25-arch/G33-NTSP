@@ -36,8 +36,9 @@ import java.nio.channels.FileChannel
  *      ↓
  * CRNN
  */
-class CrnnLineRecognizer(
-    private val context: Context
+class CrnnLineRecognizer @JvmOverloads constructor(
+    private val context: Context,
+    preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY
 ) : LineRecognizer {
 
     companion object {
@@ -66,7 +67,7 @@ class CrnnLineRecognizer(
         loadCharset(context)
 
     internal val diagnostics = CrnnDiagnostics(context)
-    private val inputPreprocessor = CrnnInputPreprocessor()
+    private val inputPreprocessor = CrnnPreprocessing(preprocessingMode)
 
     init {
 
@@ -104,8 +105,9 @@ class CrnnLineRecognizer(
 
                 try {
 
-                    val input = inputPreprocessor.preprocess(line.bitmap)
-                    val diagnosticId = diagnostics.beginLine(region, line, input)
+                    val prepared = inputPreprocessor.prepare(line.bitmap)
+                    val input = prepared.input
+                    val diagnosticId = diagnostics.beginLine(region, line, input, prepared)
                     val output = try {
                         recognizeInput(input)
                     } catch (error: Exception) {

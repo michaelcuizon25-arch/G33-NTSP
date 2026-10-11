@@ -1,5 +1,10 @@
 # Epoch 3 recognition investigation
 
+This report describes the diagnostic baseline commit `26f09e9`. The later
+opt-in transform and its numerical comparison are documented in
+[CRNN_REFERENCE_PREPROCESSING.md](CRNN_REFERENCE_PREPROCESSING.md). Default
+recognition still uses the original transform.
+
 This branch adds observation only. The CCL algorithm, physical-line segmentation,
 whiteboard preprocessing, CRNN transform math, model assets, greedy decoder,
 confidence calculation, and rule engine are unchanged from `ff5616f`.
