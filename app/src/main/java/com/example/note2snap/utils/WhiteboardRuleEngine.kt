@@ -133,8 +133,10 @@ object WhiteboardRuleEngine {
 
         if (cleaned.isEmpty()) return emptyNote()
 
-        val blocks = cleaned.mapIndexed { index, text ->
-            val next = cleaned.getOrNull(index + 1)
+        val title = cleaned.firstOrNull()?.takeIf { isTitleText(it) }
+        val body = if (title == null) cleaned else cleaned.drop(1)
+        val blocks = body.mapIndexed { index, text ->
+            val next = body.getOrNull(index + 1)
             parseSingleLineBlock(
                 text = text,
                 boundingBox = null,
@@ -143,7 +145,7 @@ object WhiteboardRuleEngine {
             )
         }
 
-        return StructuredNote(title = fallbackTitle(blocks), blocks = blocks)
+        return StructuredNote(title = title ?: fallbackTitle(blocks), blocks = blocks)
     }
 
     private fun emptyNote() = StructuredNote(title = "Untitled Scan", blocks = emptyList())
@@ -292,15 +294,6 @@ object WhiteboardRuleEngine {
         val orderedInsertions = insertions.sortedWith(compareBy({ it.index }, { it.priority }))
 
         val blocks = mutableListOf<NoteBlock>()
-
-        if (titleCell != null && titleText != null) {
-            blocks += NoteBlock(
-                rawText = titleText,
-                type = BlockType.SECTION_HEADER,
-                formattedText = "<big><b>${esc(titleText)}</b></big>",
-                boundingBox = Rect(titleCell.box)
-            )
-        }
 
         val cueBlocks = mutableListOf<NoteBlock>()
         var nextInsertion = 0
@@ -500,15 +493,12 @@ object WhiteboardRuleEngine {
 
     /** Top line standing alone = document title. */
     private fun findTitleCell(items: List<SpatialCell>): SpatialCell? {
-        if (items.size < 3) return null
+        if (items.isEmpty()) return null
 
         val top = items.minByOrNull { it.box.top } ?: return null
         val text = top.text.trim()
 
-        if (text.length !in 3..70) return null
-        if (".,;!?:".contains(text.last())) return null
-        if (isBulletRule(text) || isCalloutRule(text) || isQuestionHeader(text)) return null
-        if (isNumberedItemRule(text) || isKeyDefinitionRule(text)) return null
+        if (!isTitleText(text)) return null
 
         val sharesRow = items.any {
             it !== top && verticalOverlapRatio(it.box, top.box) >= 0.35f
@@ -516,6 +506,17 @@ object WhiteboardRuleEngine {
         if (sharesRow) return null
 
         return top
+    }
+
+    private fun isTitleText(text: String): Boolean {
+        val t = sanitizeOcrText(text)
+        if (t.length !in 3..70 || !t.any { it.isLetter() }) return false
+        if (".,;!?:".contains(t.last()) || endsMidSentence(t)) return false
+        if (isBulletRule(t) || isCalloutRule(t) || isQuestionHeader(t) ||
+            isNumberedItemRule(t) || isKeyDefinitionRule(t) || isMathRule(t)) return false
+        // A sentence or lowercase continuation is not a document title.
+        return (t.first().isUpperCase() || t.startsWith("#") || isSectionNumberHeader(t)) &&
+                t.split(Regex("\\s+")).size <= 8
     }
 
     /** Merges wrapped cue-column lines ("What is the difference / between ... / a sample?"). */
@@ -766,6 +767,7 @@ object WhiteboardRuleEngine {
 
         if (prevText.isEmpty() || curText.isEmpty()) return false
         if (isMergeBreaker(curText)) return false
+        if (isSectionHeaderRule(prevText) || isSubheadingRule(prevText)) return false
         if (".!?:;".contains(prevText.last())) return false
 
         // Wrapped lines sit directly under each other.
@@ -805,6 +807,8 @@ object WhiteboardRuleEngine {
 
     private fun isMergeBreaker(text: String): Boolean {
         return isBulletRule(text) ||
+                isKeyDefinitionRule(text) ||
+                isSectionHeaderRule(text) ||
                 isNumberedItemRule(text) ||
                 isSectionNumberHeader(text) ||
                 isCalloutRule(text) ||
@@ -884,7 +888,10 @@ object WhiteboardRuleEngine {
                         entry.top - prev.bottom <= metrics.unit * 1.6 &&
                         startsLikeItem
 
-            if (entry.level >= 1 || siblingOfList) {
+            val nestedInList = entry.level >= 1 && prev != null &&
+                    isListType(prev.block.type) && entry.level > prev.level &&
+                    entry.top - prev.bottom <= metrics.unit * 1.6
+            if (nestedInList || siblingOfList) {
                 out += Entry(
                     block = NoteBlock(
                         rawText = text,
@@ -1013,7 +1020,7 @@ object WhiteboardRuleEngine {
                 )
             }
 
-            isKeyDefinitionRule(trimmed) -> {
+            isKeyDefinitionRule(trimmed) && !isBulletRule(trimmed) && !isNumberedItemRule(trimmed) -> {
                 val colonIndex = trimmed.indexOf(":")
                 val key = trimmed.substring(0, colonIndex).trim()
                 val value = trimmed.substring(colonIndex + 1).trim()
@@ -1138,7 +1145,7 @@ object WhiteboardRuleEngine {
         )
 
     private val mathRelationPattern =
-        Regex("^\\(?[A-Za-z]\\)?\\s*[=≠≈≤≥<>]\\s*\\(?[A-Za-z0-9]")
+        Regex("^\\(?[A-Za-z]\\)?\\s*(?:<=|>=|!=|==|[=≠≈≤≥<>])\\s*\\(?[A-Za-z0-9]")
 
     private fun isBulletRule(text: String): Boolean = text.matches(bulletLinePattern)
 
@@ -1187,6 +1194,7 @@ object WhiteboardRuleEngine {
 
         if (isBulletRule(trimmed) || isNumberedItemRule(trimmed)) return false
         if (trimmed.startsWith("##")) return true
+        if (isMathRule(trimmed)) return false
 
         if (isSectionNumberHeader(trimmed)) return true
         if (chapterPattern.matches(trimmed)) return true
