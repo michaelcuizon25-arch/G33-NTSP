@@ -120,6 +120,9 @@ interface AppDao {
     @Query("DELETE FROM scan_history")
     suspend fun clearHistory()
 
+    @Query("SELECT * FROM scan_history WHERE imagePath NOT IN (SELECT imagePath FROM notes WHERE imagePath IS NOT NULL AND imagePath != '') ORDER BY timestamp DESC")
+    fun getUnsavedScans(): LiveData<List<ScanHistory>>
+
     @Transaction
     suspend fun renameNoteAndHistoryByPath(imagePath: String, newTitle: String) {
         updateNoteTitleByPath(imagePath, newTitle)

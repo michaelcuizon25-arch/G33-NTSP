@@ -156,7 +156,7 @@
                             android:contentDescription="Snap assistant"
                             app:lottie_autoPlay="true"
                             app:lottie_loop="true"
-                            app:lottie_rawRes="@raw/robot_mascot"
+                            app:lottie_rawRes="@raw/notes"
                             app:lottie_speed="0.72" />
                     </FrameLayout>
                 </LinearLayout>
@@ -199,11 +199,11 @@
                         app:strokeWidth="1dp">
 
                         <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
+                            android:layout_width="25dp"
+                            android:layout_height="25dp"
                             android:layout_gravity="center"
                             android:contentDescription="Saved notes"
-                            android:src="@drawable/ic_notes"
+                            android:src="@drawable/paper"
                             app:tint="@color/nts_blue" />
 
                     </com.google.android.material.card.MaterialCardView>
