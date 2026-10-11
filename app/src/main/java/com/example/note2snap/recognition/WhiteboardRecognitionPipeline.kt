@@ -86,6 +86,8 @@ class WhiteboardRecognitionPipeline(
                         RegionType.NON_TEXT
             }
 
+        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordSource(photo, preprocessed, regions)
+
         val recognizedLines =
             lineRecognizer.recognize(
                 textRegions
@@ -95,6 +97,8 @@ class WhiteboardRecognitionPipeline(
             structurer.structure(
                 recognizedLines
             )
+
+        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordStructured(structuredNote)
 
         return RecognitionPipelineResult(
             structuredNote =

@@ -2476,12 +2476,14 @@ class ScanFragment : Fragment() {
                         // The recognizer uses the selected Epoch 3 model.
                         val recognizer = CrnnLineRecognizer(safeContext.applicationContext)
                         val recognizedLines = try {
+                            recognizer.diagnostics.recordSource(bitmap, preprocessed, regions)
                             recognizer.recognize(textRegions)
                         } finally {
                             recognizer.close()
                         }
 
                         val structured = PipelineTextStructurer().structure(recognizedLines)
+                        recognizer.diagnostics.recordStructured(structured)
                         Pair(structured, recognizedLines.size)
                     } finally {
                         // Source bitmap is ours; don't recycle shared/preprocessed bitmaps here.
