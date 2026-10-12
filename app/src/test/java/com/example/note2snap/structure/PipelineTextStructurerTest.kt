@@ -113,45 +113,143 @@ class PipelineTextStructurerTest {
             result.title
         )
 
+
         assertEquals(
             4,
             result.blocks.size
         )
 
         assertEquals(
-            BlockType.REGULAR_TEXT,
+            "Binary Tree",
+            result.title
+        )
+
+        assertEquals(
+            BlockType.SECTION_HEADER,
             result.blocks[0].type
         )
 
         assertEquals(
-            "A binary tree is a hierarchical",
+            "Binary Tree",
             result.blocks[0].rawText
         )
 
+// Two recognized fragments should become
+// one readable paragraph.
         assertEquals(
-            BlockType.REGULAR_TEXT,
+            BlockType.KEY_DEFINITION,
             result.blocks[1].type
         )
 
         assertEquals(
-            "data structure in which each node",
+            "A binary tree is a hierarchical data structure in which each node",
             result.blocks[1].rawText
         )
 
+// Section heading should remain identifiable.
         assertEquals(
             BlockType.SECTION_HEADER,
             result.blocks[2].type
         )
 
         assertEquals(
+            "Properties:",
+            result.blocks[2].rawText
+        )
+
+// Explicit bullet should remain a bullet.
+        assertEquals(
             BlockType.BULLET_ITEM,
             result.blocks[3].type
         )
 
+// All blocks should preserve their coordinates.
         assertTrue(
             result.blocks.all {
                 it.boundingBox != null
             }
         )
+
     }
+
+    @Test
+    fun testIndentedParagraphIsNotBullet() {
+
+        val lines = listOf(
+            RecognizedLine(
+                sourceRegionId = 1,
+                boundingBox = Rect(50, 50, 500, 90),
+                text = "Photosynthesis",
+                confidence = 1f
+            ),
+            RecognizedLine(
+                sourceRegionId = 2,
+                boundingBox = Rect(50, 120, 650, 160),
+                text = "Plants produce food using sunlight.",
+                confidence = 1f
+            ),
+            RecognizedLine(
+                sourceRegionId = 3,
+                boundingBox = Rect(110, 200, 650, 240),
+                text = "Chlorophyll absorbs light energy.",
+                confidence = 1f
+            ),
+            RecognizedLine(
+                sourceRegionId = 4,
+                boundingBox = Rect(50, 280, 550, 320),
+                text = "Requirements:",
+                confidence = 1f
+            ),
+            RecognizedLine(
+                sourceRegionId = 5,
+                boundingBox = Rect(110, 360, 550, 400),
+                text = "• Water",
+                confidence = 1f
+            ),
+            RecognizedLine(
+                sourceRegionId = 6,
+                boundingBox = Rect(110, 440, 550, 480),
+                text = "• Sunlight",
+                confidence = 1f
+            )
+        )
+
+        val result = PipelineTextStructurer().structure(lines)
+
+        result.blocks.forEach {
+            println("${it.type} -> ${it.rawText}")
+        }
+
+        val paragraph = result.blocks.firstOrNull {
+            it.rawText.contains("Chlorophyll absorbs light energy")
+        }
+
+        assertTrue(
+            "Indented explanation should exist",
+            paragraph != null
+        )
+
+        assertEquals(
+            "Indented explanation should not become a bullet",
+            BlockType.REGULAR_TEXT,
+            paragraph!!.type
+        )
+
+        assertTrue(
+            "Water should remain a bullet",
+            result.blocks.any {
+                it.rawText.contains("Water") &&
+                        it.type == BlockType.BULLET_ITEM
+            }
+        )
+
+        assertTrue(
+            "Sunlight should remain a bullet",
+            result.blocks.any {
+                it.rawText.contains("Sunlight") &&
+                        it.type == BlockType.BULLET_ITEM
+            }
+        )
+    }
+
 }
