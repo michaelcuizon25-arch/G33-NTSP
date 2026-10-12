@@ -39,14 +39,13 @@ class WhiteboardRecognitionPipeline(
      * Passing Context automatically enables
      * the CRNN/TFLite recognizer.
      */
-    constructor(
-        context: Context
-    ) : this(
-        lineRecognizer =
-            CrnnLineRecognizer(
-                context.applicationContext
-            )
-    )
+    @JvmOverloads
+    constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
+        this(context, preprocessingMode, { appContext, mode -> CrnnLineRecognizer(appContext, mode) })
+
+    internal constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY,
+                         recognizerFactory: (Context, CrnnPreprocessingMode) -> LineRecognizer) :
+        this(recognizerFactory(context.applicationContext, preprocessingMode))
 
     private val preprocessor =
         WhiteboardPreprocessor()

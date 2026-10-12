@@ -76,8 +76,11 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import com.example.note2snap.recognition.WhiteboardRecognitionPipeline
 import com.example.note2snap.recognition.RecognitionReadability
+import com.example.note2snap.recognition.SingleScanDebugControls
+import com.example.note2snap.recognition.SingleScanSource
+import com.example.note2snap.recognition.SingleScanPreprocessingSettings
+import com.example.note2snap.recognition.SingleScanPipelineFactory
 
 class ScanFragment : Fragment() {
 
@@ -214,6 +217,7 @@ class ScanFragment : Fragment() {
 
             uris.size == 1 -> {
                 processImageUri(
+                    source = SingleScanSource.GALLERY,
                     rawUri =
                         uris.first(),
                     cropToGuide =
@@ -318,6 +322,8 @@ class ScanFragment : Fragment() {
             view.findViewById<View>(
                 R.id.btnBatchMode
             )
+
+        btnSingleMode?.let { SingleScanDebugControls.install(it, requireContext()) { isScanBusy } }
 
         // Single is the default. These are camera-style text tabs, not a switch.
         isCameraBatchMode =
@@ -679,6 +685,7 @@ class ScanFragment : Fragment() {
             sampleBitmap.recycle()
 
             processImageUri(
+                source = SingleScanSource.TUTORIAL,
                 rawUri =
                     Uri.fromFile(
                         file
@@ -1393,6 +1400,7 @@ class ScanFragment : Fragment() {
                         // Normal single-capture behavior:
                         // valid 4:3 crop -> quality check -> process immediately.
                         processImageUri(
+                            source = SingleScanSource.CAMERA,
                             rawUri =
                                 Uri.fromFile(
                                     File(
@@ -2414,12 +2422,14 @@ class ScanFragment : Fragment() {
      * Batch paths are intentionally unchanged in this revision.
      */
     private fun processImageUri(
+        source: SingleScanSource,
         rawUri: Uri,
         rawFilePath: String? = null,
         cropToGuide: Boolean = false,
         validateQuality: Boolean = true
     ) {
         val safeContext = context ?: return
+        val scanRequest = SingleScanPreprocessingSettings(safeContext).snapshot(source)
         setLoading(true)
 
         lifecycleScope.launch {
@@ -2465,7 +2475,7 @@ class ScanFragment : Fragment() {
                         ?: error("Unable to decode whiteboard image")
 
                     try {
-                        val pipeline = WhiteboardRecognitionPipeline(safeContext.applicationContext)
+                        val pipeline = SingleScanPipelineFactory().create(safeContext.applicationContext, scanRequest)
                         val result = try {
                             pipeline.process(bitmap)
                         } finally {
