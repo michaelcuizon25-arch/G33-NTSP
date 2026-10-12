@@ -2,6 +2,7 @@ package com.example.note2snap.recognition
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import com.example.note2snap.ccl.ConnectedComponentLabeler
 import com.example.note2snap.ccl.Region
 import com.example.note2snap.ccl.RegionType
@@ -60,6 +61,8 @@ class WhiteboardRecognitionPipeline(
         photo: Bitmap
     ): RecognitionPipelineResult {
 
+        Log.i(RECOGNITION_LOG_TAG, "Scan source=${photo.width}x${photo.height}")
+
         val preprocessed =
             preprocessor.process(
                 photo
@@ -74,6 +77,9 @@ class WhiteboardRecognitionPipeline(
                     preprocessed.recognitionBitmap
             )
 
+        Log.i(RECOGNITION_LOG_TAG, "Preprocessing recognition=${preprocessed.recognitionBitmap.width}x${preprocessed.recognitionBitmap.height} " +
+            "binary=${preprocessed.binarizedBitmap.width}x${preprocessed.binarizedBitmap.height}")
+
         val textRegions =
             regions.filter {
                 it.type ==
@@ -85,6 +91,8 @@ class WhiteboardRecognitionPipeline(
                 it.type ==
                         RegionType.NON_TEXT
             }
+
+        Log.i(RECOGNITION_LOG_TAG, "CCL totalRegions=${regions.size} textRegions=${textRegions.size} nonTextRegions=${diagramRegions.size}")
 
         (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordSource(photo, preprocessed, regions)
 
@@ -99,6 +107,8 @@ class WhiteboardRecognitionPipeline(
             )
 
         (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordStructured(structuredNote)
+        Log.i(RECOGNITION_LOG_TAG, "Structuring recognizedLines=${recognizedLines.size} blocks=${structuredNote.blocks.size} " +
+            "readable=${RecognitionReadability.hasReadableWriting(recognizedLines)} title=${org.json.JSONObject.quote(structuredNote.title)}")
 
         return RecognitionPipelineResult(
             structuredNote =

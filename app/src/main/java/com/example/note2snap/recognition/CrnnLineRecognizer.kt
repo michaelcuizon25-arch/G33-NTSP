@@ -1,12 +1,10 @@
 package com.example.note2snap.recognition
 
 import android.content.Context
-import android.graphics.Bitmap
+import android.util.Log
 import com.example.note2snap.ccl.Region
-import org.tensorflow.lite.Interpreter
-import java.io.FileInputStream
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
+import kotlinx.coroutines.CancellationException
+import org.json.JSONObject
 
 /**
  * CRNN handwriting recognizer for Note2Snap.
@@ -36,35 +34,19 @@ import java.nio.channels.FileChannel
  *      ↓
  * CRNN
  */
-class CrnnLineRecognizer @JvmOverloads constructor(
+class CrnnLineRecognizer internal constructor(
     private val context: Context,
-    preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY
+    preprocessingMode: CrnnPreprocessingMode,
+    private val runtime: CrnnInferenceRuntime,
+    private val charset: List<String>
 ) : LineRecognizer {
+    @JvmOverloads
+    constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
+        this(context, preprocessingMode, TensorFlowLiteCrnnRuntime(context), loadCrnnCharset(context))
 
     companion object {
-
-        private const val MODEL_FILE =
-            "ocr/note2snap_crnn_v2_epoch03_flex.tflite"
-
-        private const val CHARSET_FILE =
-            "ocr/note2snap_crnn_v2_epoch03_charlist.txt"
-
-        private const val INPUT_WIDTH = 512
-        private const val INPUT_HEIGHT = 32
-
-        private const val TIME_STEPS = 128
-        private const val NUM_CLASSES = 80
-
         private const val CTC_BLANK_INDEX = 79
     }
-
-    private val interpreter: Interpreter =
-        Interpreter(
-            loadModel(context)
-        )
-
-    private val charset: List<String> =
-        loadCharset(context)
 
     internal val diagnostics = CrnnDiagnostics(context)
     private val inputPreprocessor = CrnnPreprocessing(preprocessingMode)
@@ -75,10 +57,8 @@ class CrnnLineRecognizer @JvmOverloads constructor(
             "CRNN charset must contain 79 characters, " +
                     "but found ${charset.size}"
         }
-        diagnostics.recordModel(context, MODEL_FILE, CHARSET_FILE, charset,
-            interpreter.getInputTensor(0).shape(), interpreter.getOutputTensor(0).shape(),
-            interpreter.getInputTensor(0).dataType().toString(),
-            interpreter.getOutputTensor(0).dataType().toString())
+        diagnostics.recordModel(context, CrnnModelAssets.MODEL, CrnnModelAssets.CHARSET, charset,
+            runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType)
     }
 
     private val lineSegmenter = PhysicalLineSegmenter()
@@ -93,102 +73,71 @@ class CrnnLineRecognizer @JvmOverloads constructor(
         regions: List<Region>
     ): List<RecognizedLine> {
 
-        val recognizedLines =
-            mutableListOf<RecognizedLine>()
-
+        val recognizedLines = mutableListOf<RecognizedLine>()
+        var physicalCount = 0
+        var successfulCount = 0
+        var blankCount = 0
+        var failedCount = 0
+        var firstFailure: Exception? = null
+        Log.i(RECOGNITION_LOG_TAG, "CRNN received textRegions=${regions.size}")
         for (region in regions) {
-
-            val physicalLines =
-                lineSegmenter.splitIntoPhysicalLines(region)
-
+            val physicalLines = lineSegmenter.splitIntoPhysicalLines(region)
+            physicalCount += physicalLines.size
+            Log.i(RECOGNITION_LOG_TAG, "Segmentation region=${region.id} box=${region.boundingBox} physicalLines=${physicalLines.size}")
             for (line in physicalLines) {
-
+                var stage = "preprocessing"
+                var diagnosticId: Int? = null
                 try {
-
                     val prepared = inputPreprocessor.prepare(line.bitmap)
                     val input = prepared.input
-                    val diagnosticId = diagnostics.beginLine(region, line, input, prepared)
-                    val output = try {
-                        recognizeInput(input)
-                    } catch (error: Exception) {
-                        diagnostics.failLine(diagnosticId, error)
-                        throw error
+                    diagnosticId = diagnostics.beginLine(region, line, input, prepared)
+                    Log.d(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId region=${region.id} box=${line.boundingBox} " +
+                        "crop=${line.bitmap.width}x${line.bitmap.height} requested=${prepared.requestedMode} " +
+                        "actual=${prepared.actualMode} referenceWidth=${prepared.referenceWidth} fallback=${prepared.fallbackReason}")
+                    stage = "inference"
+                    val output = runtime.run(input)
+                    if (successfulCount == 0) {
+                        diagnostics.recordModel(context, CrnnModelAssets.MODEL, CrnnModelAssets.CHARSET, charset,
+                            runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType,
+                            outputShapeStage = "After successful inference")
                     }
+                    stage = "decoding"
                     val rawText = decodeCtc(output)
                     val confidence = calculateConfidence(output)
-
-                    val text =
-                        rawText
-                            .trim()
-                            .replace(
-                                Regex("\\s+"),
-                                " "
-                            )
-
+                    val text = rawText.trim().replace(Regex("\\s+"), " ")
                     diagnostics.completeLine(diagnosticId, rawText, text, confidence, output)
-
-                    if (text.isNotBlank()) {
-
-                        recognizedLines.add(
-                            RecognizedLine(
-                                sourceRegionId =
-                                    region.id,
-
-                                boundingBox =
-                                    line.boundingBox,
-
-                                text =
-                                    text,
-
-                                confidence =
-                                    confidence
-                            )
-                        )
-                    }
-
-                } catch (e: Exception) {
-
-                    e.printStackTrace()
+                    successfulCount++
+                    Log.i(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId predicted=${JSONObject.quote(text)} blank=${text.isBlank()}")
+                    if (text.isBlank()) blankCount++
+                    else recognizedLines.add(RecognizedLine(region.id, line.boundingBox, text, confidence))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    failedCount++
+                    if (firstFailure == null) firstFailure = error
+                    diagnosticId?.let { diagnostics.failLine(it, error, stage) }
+                    Log.e(RECOGNITION_LOG_TAG, "CRNN failure stage=$stage region=${region.id} box=${line.boundingBox} " +
+                        "crop=${line.bitmap.width}x${line.bitmap.height}", error)
                 }
             }
         }
-
+        val status = when {
+            failedCount > 0 && recognizedLines.isEmpty() -> "recognition_failed"
+            failedCount > 0 -> "partial_success"
+            regions.isEmpty() -> "no_text_regions"
+            physicalCount == 0 -> "no_physical_lines"
+            recognizedLines.isEmpty() -> "all_predictions_blank"
+            else -> "recognized"
+        }
+        diagnostics.recordRecognitionSummary(JSONObject().put("status", status)
+            .put("textRegions", regions.size).put("physicalLines", physicalCount)
+            .put("successfulLines", successfulCount).put("blankPredictions", blankCount)
+            .put("failedLines", failedCount).put("recognizedLines", recognizedLines.size))
+        Log.i(RECOGNITION_LOG_TAG, "CRNN summary status=$status textRegions=${regions.size} physicalLines=$physicalCount " +
+            "successful=$successfulCount blank=$blankCount failed=$failedCount recognized=${recognizedLines.size}")
+        if (firstFailure != null && recognizedLines.isEmpty())
+            throw CrnnRecognitionFailure(failedCount, physicalCount, firstFailure)
         return recognizedLines
-    }
-
-    /**
-     * Run TFLite CRNN.
-     */
-    private fun recognizeInput(
-        input: ByteBuffer
-    ): Array<Array<FloatArray>> {
-
-        /*
-         * Java/Kotlin shape:
-         *
-         * Array<Array<FloatArray>>
-         *
-         * =
-         *
-         * [1][128][80]
-         */
-        val output =
-            Array(1) {
-
-                Array(TIME_STEPS) {
-
-                    FloatArray(
-                        NUM_CLASSES
-                    )
-                }
-            }
-
-        interpreter.run(
-            input,
-            output
-        )
-
-        return output
     }
 
     /**
@@ -376,52 +325,8 @@ class CrnnLineRecognizer @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Load TFLite model.
-     */
-    private fun loadModel(
-        context: Context
-    ): ByteBuffer {
-
-        val fileDescriptor =
-            context.assets.openFd(
-                MODEL_FILE
-            )
-
-        FileInputStream(
-            fileDescriptor.fileDescriptor
-        ).use { inputStream ->
-
-            val fileChannel =
-                inputStream.channel
-
-            return fileChannel.map(
-                FileChannel.MapMode.READ_ONLY,
-                fileDescriptor.startOffset,
-                fileDescriptor.declaredLength
-            )
-        }
-    }
-
-    /**
-     * Load exact CRNN vocabulary.
-     */
-    private fun loadCharset(
-        context: Context
-    ): List<String> {
-        // Epoch 3 stores all 79 characters on ONE line.
-        // Do not call trim(): the FIRST character is a space.
-        val chars = context.assets.open(CHARSET_FILE)
-            .bufferedReader(Charsets.UTF_8)
-            .use { it.readText() }
-            .removePrefix("\uFEFF")
-            .trimEnd('\r', '\n')
-
-        return chars.map { it.toString() }
-    }
-
     override fun close() {
 
-        interpreter.close()
+        runtime.close()
     }
 }

@@ -76,9 +76,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import com.example.note2snap.preprocessing.WhiteboardPreprocessor
-import com.example.note2snap.recognition.CrnnLineRecognizer
-import com.example.note2snap.structuring.PipelineTextStructurer
+import com.example.note2snap.recognition.WhiteboardRecognitionPipeline
+import com.example.note2snap.recognition.RecognitionReadability
 
 class ScanFragment : Fragment() {
 
@@ -2466,25 +2465,13 @@ class ScanFragment : Fragment() {
                         ?: error("Unable to decode whiteboard image")
 
                     try {
-                        val preprocessed = WhiteboardPreprocessor().process(bitmap)
-                        val regions = ConnectedComponentLabeler().label(
-                            binary = preprocessed.binarizedBitmap,
-                            recognitionBitmap = preprocessed.recognitionBitmap
-                        )
-                        val textRegions = regions.filter { it.type == RegionType.TEXT }
-
-                        // The recognizer uses the selected Epoch 3 model.
-                        val recognizer = CrnnLineRecognizer(safeContext.applicationContext)
-                        val recognizedLines = try {
-                            recognizer.diagnostics.recordSource(bitmap, preprocessed, regions)
-                            recognizer.recognize(textRegions)
+                        val pipeline = WhiteboardRecognitionPipeline(safeContext.applicationContext)
+                        val result = try {
+                            pipeline.process(bitmap)
                         } finally {
-                            recognizer.close()
+                            pipeline.close()
                         }
-
-                        val structured = PipelineTextStructurer().structure(recognizedLines)
-                        recognizer.diagnostics.recordStructured(structured)
-                        Pair(structured, recognizedLines.size)
+                        Pair(result.structuredNote, result.recognizedLines)
                     } finally {
                         // Source bitmap is ours; don't recycle shared/preprocessed bitmaps here.
                         bitmap.recycle()
@@ -2495,9 +2482,7 @@ class ScanFragment : Fragment() {
                 showActualAnalysisState(AnalysisStage.CHECKING_RECOGNITION)
 
                 val structured = scanResult.first
-                val readable = structured.blocks.any { block ->
-                    hasMeaningfulRecognizedText(block.rawText)
-                }
+                val readable = RecognitionReadability.hasReadableWriting(scanResult.second)
 
                 if (!readable) {
                     showImageQualityWarning(
@@ -2514,13 +2499,11 @@ class ScanFragment : Fragment() {
                 showActualAnalysisState(AnalysisStage.STRUCTURING_NOTES)
 
                 // The rule engine supplies HTML-formatted blocks for the editor/PDF viewer.
-                val htmlContent = structured.blocks.joinToString("<br/><br/>") {
-                    it.formattedText
-                }
+                val htmlContent = RecognitionReadability.htmlContent(structured)
 
                 Log.d(
                     "NOTE2SNAP_PIPELINE",
-                    "Epoch 3 scan: ${scanResult.second} recognized lines, " +
+                    "Epoch 3 scan: ${scanResult.second.size} recognized lines, " +
                             "${structured.blocks.size} structured blocks"
                 )
 
@@ -2529,13 +2512,15 @@ class ScanFragment : Fragment() {
                     imagePath = sourceFilePath,
                     titleOverride = structured.title
                 )
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
             } catch (error: Exception) {
                 Log.e("NOTE2SNAP_PIPELINE", "Algorithm scan failed", error)
                 if (isAdded) {
                     setLoading(false)
                     Toast.makeText(
                         safeContext,
-                        "Algorithm scan failed. Check Logcat: NOTE2SNAP_PIPELINE",
+                        "Handwriting recognition failed. Please try again.",
                         Toast.LENGTH_LONG
                     ).show()
                 }

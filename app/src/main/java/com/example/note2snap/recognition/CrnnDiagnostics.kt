@@ -36,7 +36,8 @@ internal class CrnnDiagnostics(context: Context) {
     }
 
     fun recordModel(context: Context, model: String, charsetFile: String, charset: List<String>,
-                    inputShape: IntArray, outputShape: IntArray, inputType: String, outputType: String) = safely {
+                    inputShape: IntArray, outputShape: IntArray, inputType: String, outputType: String,
+                    outputShapeStage: String = "Before inference; dynamic output tensor deliberately unqueried") = safely {
         fun hashAsset(name: String): String {
             val digest = MessageDigest.getInstance("SHA-256")
             context.assets.open(name).use { stream ->
@@ -59,7 +60,7 @@ internal class CrnnDiagnostics(context: Context) {
             .put("inputLayout", "x-major: offset=(x*32+y)*4")
             .put("normalization", "gray / 255 - 0.5; dark ink negative, white padding +0.5")
             .put("trainingParity", "Per-line preprocessing records identify the selected transform. Legacy fits 512x32 at top-left; reference uses height=32, dynamic width +16, centered affine margin and multiple-of-4 width.")
-            .put("outputShapeStage", "Before inference; dynamic output shape may resolve on invocation")
+            .put("outputShapeStage", outputShapeStage)
             .put("confidenceSemantics", "Existing average of selected raw outputs; notebook exports logits, not calibrated probabilities"))
     }
 
@@ -150,10 +151,14 @@ internal class CrnnDiagnostics(context: Context) {
         Log.i(TAG, "line=$id region=${record.getInt("sourceRegionId")} box=${record.getJSONObject("box")} predicted=${JSONObject.quote(text)}")
     }
 
-    fun failLine(id: Int, error: Exception) = safely {
+    fun failLine(id: Int, error: Exception, stage: String = "inference") = safely {
         val record = records[id] ?: return@safely
-        record.put("status", "inference_error").put("error", error.toString())
+        record.put("status", "${stage}_error").put("failureStage", stage).put("error", error.toString())
         persist(id)
+    }
+
+    fun recordRecognitionSummary(summary: JSONObject) = safely {
+        writeJson("recognition-summary.json", summary)
     }
 
     fun recordStructured(note: StructuredNote) = safely {
