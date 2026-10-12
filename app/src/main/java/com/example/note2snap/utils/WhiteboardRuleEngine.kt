@@ -9,7 +9,6 @@ import com.google.mlkit.vision.text.Text
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import android.util.Log
 
 /**
  * Turns recognized whiteboard / notebook lines (with their positions) into a
@@ -851,21 +850,6 @@ object WhiteboardRuleEngine {
 
                 val canJoin = canMerge(a, b, metrics, bodyWidth)
 
-                Log.d(
-                    "N2S_MERGE",
-                    """
-                MERGE: $canJoin
-                PREVIOUS: ${a.text}
-                CURRENT: ${b.text}
-                VERTICAL GAP: ${b.box.top - a.box.bottom}
-                LEFT OFFSET: ${b.box.left - a.box.left}
-                PREVIOUS WIDTH: ${a.box.width()}
-                BODY WIDTH: $bodyWidth
-                LINE UNIT: ${metrics.unit}
-                --------------------
-                """.trimIndent()
-                )
-
                 if (canJoin) {
                     a.text = a.text.trimEnd() + " " + b.text.trim()
                     a.box = unionRect(a.box, b.box)
@@ -891,6 +875,7 @@ object WhiteboardRuleEngine {
         val curText = cur.text.trim()
 
         if (prevText.isEmpty() || curText.isEmpty()) return false
+        if (isRepetitiveNoise(prevText) || isRepetitiveNoise(curText)) return false
         if (isMergeBreaker(curText)) return false
         if (".!?:;".contains(prevText.last())) return false
 
