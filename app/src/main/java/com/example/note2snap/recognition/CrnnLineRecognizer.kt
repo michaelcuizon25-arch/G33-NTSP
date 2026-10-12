@@ -58,7 +58,9 @@ class CrnnLineRecognizer internal constructor(
                     "but found ${charset.size}"
         }
         diagnostics.recordModel(context, CrnnModelAssets.MODEL, CrnnModelAssets.CHARSET, charset,
-            runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType)
+            runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType,
+            inputSignature = runtime.inputShapeSignature, outputSignature = runtime.outputShapeSignature,
+            cachedOutputShape = runtime.cachedOutputShape)
     }
 
     private val lineSegmenter = PhysicalLineSegmenter()
@@ -99,7 +101,9 @@ class CrnnLineRecognizer internal constructor(
                     if (successfulCount == 0) {
                         diagnostics.recordModel(context, CrnnModelAssets.MODEL, CrnnModelAssets.CHARSET, charset,
                             runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType,
-                            outputShapeStage = "After successful inference")
+                            outputShapeStage = "After successful inference; resolved shape verified from native byte count",
+                            inputSignature = runtime.inputShapeSignature, outputSignature = runtime.outputShapeSignature,
+                            cachedOutputShape = runtime.cachedOutputShape)
                     }
                     stage = "decoding"
                     val rawText = decodeCtc(output)

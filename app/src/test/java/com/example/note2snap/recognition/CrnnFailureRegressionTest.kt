@@ -21,6 +21,8 @@ import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowLog
 import java.io.File
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.zip.GZIPInputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE, sdk = [28])
@@ -59,14 +61,23 @@ class CrnnFailureRegressionTest {
         private var cachedShape: IntArray? = null
         override fun inputShape() = intArrayOf(1, 512, 32)
         override fun inputType() = "FLOAT32"
+        override fun inputShapeSignature() = intArrayOf(1, 512, 32)
         override fun outputShape(): IntArray {
             outputQueries++
             if (cachedShape == null) cachedShape = if (invoked) intArrayOf(1, 128, 80) else intArrayOf(1, 1, 80)
             return cachedShape!!
         }
         override fun outputType(): String { outputShape(); return "FLOAT32" }
-        override fun run(input: ByteBuffer, output: Array<Array<FloatArray>>) {
-            invoked = true // native output resolves; ByteBuffer does not trigger Java cache refresh
+        override fun outputShapeSignature() = intArrayOf(-1, -1, 80)
+        override fun outputNumBytes() = if (invoked) 128 * 80 * 4 else 80 * 4
+        override fun invoke(input: ByteBuffer) { invoked = true }
+        override fun outputBuffer(): ByteBuffer = ByteBuffer.allocateDirect(outputNumBytes())
+            .order(ByteOrder.nativeOrder()).apply {
+                repeat(128 * 80) { putFloat(it.toFloat()) }
+                rewind()
+            }.asReadOnlyBuffer().order(ByteOrder.nativeOrder())
+        fun copyToArray(input: ByteBuffer, output: Array<Array<FloatArray>>) {
+            invoke(input) // native output resolves; ByteBuffer does not trigger Java cache refresh
             val shape = outputShape()
             require(shape.contentEquals(intArrayOf(output.size, output[0].size, output[0][0].size))) {
                 "Cannot copy from a TensorFlowLite tensor with shape ${shape.contentToString()} to [1,128,80]"
@@ -75,21 +86,26 @@ class CrnnFailureRegressionTest {
         override fun close() {}
     }
 
-    @Test fun prematureOutputInspectionReproducesShapeMismatchButRuntimeDefersIt() {
+    @Test fun cachedPlaceholderBreaksArrayCopyButNativeBufferRetainsAllResolvedSteps() {
         val premature = DynamicOutputInterpreter()
         assertArrayEquals(intArrayOf(1, 1, 80), premature.outputShape())
         val input = CrnnInputPreprocessor().preprocess(region().croppedBitmap)
-        try { premature.run(input, Array(1) { Array(128) { FloatArray(80) } }); fail("Must reproduce stale output shape") }
+        try { premature.copyToArray(input, Array(1) { Array(128) { FloatArray(80) } }); fail("Must reproduce stale output shape") }
         catch (e: IllegalArgumentException) { assertTrue(e.message!!.contains("[1, 1, 80]")) }
 
         val adapter = DynamicOutputInterpreter()
+        adapter.outputShape() // Deliberately recreate the stale cache before invocation.
         val runtime = TensorFlowLiteCrnnRuntime(adapter)
         assertTrue(runtime.outputShape.isEmpty())
         assertEquals("UNRESOLVED_BEFORE_INFERENCE", runtime.outputType)
         val recognizer = CrnnLineRecognizer(RuntimeEnvironment.getApplication(),
             CrnnPreprocessingMode.LEGACY, runtime, charset)
-        assertEquals(0, adapter.outputQueries)
-        assertEquals(128, runtime.run(input)[0].size)
+        assertEquals(1, adapter.outputQueries)
+        val output = runtime.run(input)
+        assertEquals(128, output[0].size)
+        assertEquals(10239f, output[0][127][79], 0f)
+        assertArrayEquals(intArrayOf(1, 1, 80), runtime.cachedOutputShape)
+        assertArrayEquals(intArrayOf(-1, -1, 80), runtime.outputShapeSignature)
         recognizer.close()
         assertArrayEquals(intArrayOf(1, 128, 80), runtime.outputShape)
         assertEquals("FLOAT32", runtime.outputType)
@@ -157,6 +173,44 @@ class CrnnFailureRegressionTest {
             }
             val r = recognizer(runtime, mode)
             assertEquals("ELEMENTS", r.recognize(listOf(region)).single().text)
+            r.close()
+        }
+    }
+
+    @Test fun decoderReceivesLastNativeCtcFrameInsteadOfTruncatedPlaceholder() = runBlocking {
+        val runtime = FakeRuntime {
+            val frames = logits("A")
+            frames[0][127][charset.indexOf("Z")] = 10f
+            val buffer = ByteBuffer.allocate(128 * 80 * 4).order(ByteOrder.nativeOrder())
+            frames[0].forEach { step -> step.forEach { buffer.putFloat(it) } }
+            buffer.rewind()
+            readCrnnLogits(buffer, buffer.remaining(), intArrayOf(1, 1, 80),
+                intArrayOf(-1, -1, 80), "FLOAT32", intArrayOf(1, 512, 32))
+        }
+        val r = recognizer(runtime)
+        assertEquals("AZ", r.recognize(listOf(region())).single().text)
+        r.close()
+    }
+
+    @Test fun capturedNativeFlexOutputsDecodeExactlyLikePythonInBothPreprocessingModes() = runBlocking {
+        fun resource(name: String) = javaClass.classLoader!!.getResourceAsStream("crnn_dynamic_native/$name")!!
+        val manifest = JSONObject(resource("manifest.json").bufferedReader().use { it.readText() })
+        val cases = manifest.getJSONArray("cases")
+        assertEquals(2, cases.length())
+        for (i in 0 until cases.length()) {
+            val c = cases.getJSONObject(i)
+            val bytes = GZIPInputStream(resource(c.getString("tensor"))).use { it.readBytes() }
+            assertEquals(40960, bytes.size)
+            val littleEndianFloats = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer()
+            val native = ByteBuffer.allocate(bytes.size).order(ByteOrder.nativeOrder())
+            while (littleEndianFloats.hasRemaining()) native.putFloat(littleEndianFloats.get())
+            native.rewind()
+            val mode = CrnnPreprocessingMode.valueOf(c.getString("actualMode"))
+            val r = recognizer(FakeRuntime {
+                readCrnnLogits(native, native.remaining(), intArrayOf(1, 1, 80),
+                    intArrayOf(-1, -1, 80), "FLOAT32", intArrayOf(1, 512, 32))
+            }, mode)
+            assertEquals(c.getString("prediction"), r.recognize(listOf(region())).single().text)
             r.close()
         }
     }

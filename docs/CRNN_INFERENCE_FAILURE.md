@@ -1,5 +1,9 @@
 # Recognition failure investigation and fix
 
+Follow-up: the user's actual Android stack trace and native CPU/Flex verification
+are documented in [CRNN_DYNAMIC_OUTPUT.md](CRNN_DYNAMIC_OUTPUT.md). That revision
+also replaces Java array output copying with validated full native-buffer reading.
+
 Branch: `fix/crnn-inference-failure`, based on `07a613f` from
 `experiment/epoch3-reference-preprocessing`. No weights, preprocessing modes,
 custom CCL, physical-line algorithm, rule engine, vocabulary, decoder, confidence

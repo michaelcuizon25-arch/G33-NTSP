@@ -37,7 +37,9 @@ internal class CrnnDiagnostics(context: Context) {
 
     fun recordModel(context: Context, model: String, charsetFile: String, charset: List<String>,
                     inputShape: IntArray, outputShape: IntArray, inputType: String, outputType: String,
-                    outputShapeStage: String = "Before inference; dynamic output tensor deliberately unqueried") = safely {
+                    outputShapeStage: String = "Before inference; dynamic output tensor deliberately unqueried",
+                    inputSignature: IntArray = inputShape, outputSignature: IntArray = outputShape,
+                    cachedOutputShape: IntArray = outputShape) = safely {
         fun hashAsset(name: String): String {
             val digest = MessageDigest.getInstance("SHA-256")
             context.assets.open(name).use { stream ->
@@ -56,6 +58,9 @@ internal class CrnnDiagnostics(context: Context) {
             .put("charset", JSONArray(charset)).put("blankIndex", 79)
             .put("inputShape", JSONArray(inputShape.toList())).put("inputType", inputType)
             .put("outputShape", JSONArray(outputShape.toList())).put("outputType", outputType)
+            .put("inputShapeSignature", JSONArray(inputSignature.toList()))
+            .put("outputShapeSignature", JSONArray(outputSignature.toList()))
+            .put("cachedOutputTensorShape", JSONArray(cachedOutputShape.toList()))
             .put("tensorByteOrder", ByteOrder.nativeOrder().toString())
             .put("inputLayout", "x-major: offset=(x*32+y)*4")
             .put("normalization", "gray / 255 - 0.5; dark ink negative, white padding +0.5")

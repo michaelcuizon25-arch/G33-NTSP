@@ -1,0 +1,551 @@
+{
+  "tensorflowVersion": "2.16.1",
+  "numpyVersion": "1.26.4",
+  "modelSha256": "f19c3b00c2507869a545a5475b1499f8b31c4717969225e5bc3f092369f02ab1",
+  "created": {
+    "inputs": [
+      {
+        "name": "note2snap_image",
+        "shape": [
+          1,
+          512,
+          32
+        ],
+        "signature": [
+          1,
+          512,
+          32
+        ],
+        "dtype": "float32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "note2snap_logits",
+        "shape": [
+          1,
+          1,
+          80
+        ],
+        "signature": [
+          -1,
+          -1,
+          80
+        ],
+        "dtype": "float32"
+      }
+    ]
+  },
+  "allocated": {
+    "inputs": [
+      {
+        "name": "note2snap_image",
+        "shape": [
+          1,
+          512,
+          32
+        ],
+        "signature": [
+          1,
+          512,
+          32
+        ],
+        "dtype": "float32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "note2snap_logits",
+        "shape": [
+          1,
+          1,
+          80
+        ],
+        "signature": [
+          -1,
+          -1,
+          80
+        ],
+        "dtype": "float32"
+      }
+    ]
+  },
+  "afterFirstInvoke": {
+    "inputs": [
+      {
+        "name": "note2snap_image",
+        "shape": [
+          1,
+          512,
+          32
+        ],
+        "signature": [
+          1,
+          512,
+          32
+        ],
+        "dtype": "float32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "note2snap_logits",
+        "shape": [
+          1,
+          128,
+          80
+        ],
+        "signature": [
+          -1,
+          -1,
+          80
+        ],
+        "dtype": "float32"
+      }
+    ]
+  },
+  "blankInputPrediction": "",
+  "comparisons": [
+    {
+      "id": 0,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "ba51e046743b1b6aa38d65bf75e7efa34cd5670be1da6a9ed1c7ecfd71fd2c1e",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 0,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "9c1984ea656ef4827c2d21e2b335ca3681c6324cd388e8b8cedf0252a1166cda",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "5",
+      "prediction": "5"
+    },
+    {
+      "id": 1,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "c47cf9ff8db872fdbbbfafb54cd4bab305067384f3b4914ccd00b42ae02790b1",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 1,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "3fd66a0df26111e35b09b77f93562b607c8d748057f71cb6c1d78f956bb56f7e",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 2,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "8109ad503cd23447c3d55b34cda61c8c16b8d439d068329031368a62ca0d639f",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "Mobile Application Development",
+      "prediction": "Mobile Application Development"
+    },
+    {
+      "id": 2,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "d00229edbf4d3022c13b5092e4de11a55920088b40bfe8023a39750a92c57666",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "Mobile Application Development",
+      "prediction": "Mobile Application Development"
+    },
+    {
+      "id": 3,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "0e712ca5da68d1583f8a7c65d176a18ca5066f0f456eb8841e10caa27f40a7a0",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "LECTURE SERIES",
+      "prediction": "LECTURE SERIES"
+    },
+    {
+      "id": 3,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "2ee30dae5ddb39effb8b6b5f417e12bc9f3b26145bd7ce3a4348ca0432c2ac01",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "LECTURE SERIES",
+      "prediction": "LECTURE SERIES"
+    },
+    {
+      "id": 4,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "d2f022bfaa4eb32a99799ba06562f497367119422fa25213791748720b3c954a",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "implementing with User Input",
+      "prediction": "implementing with User Input"
+    },
+    {
+      "id": 4,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "26f6e8aaa73c350a69cef4dc8abdd1749ccd264cabff410969594c4eba85e5de",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "mplementing with User Irput",
+      "prediction": "mplementing with User Irput"
+    },
+    {
+      "id": 5,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "665ddce79b3bc1912bb52f041a16887b3e67fd5ccd945d5c4fecc9a4d23a6f46",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 5,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "993fd91015ab5328179055da62b35345f3de9cc259c81681702c605b7eb05e4a",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 6,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "75d9bff9575ead8e5b20d515599d6b5aeae91464e1e11d211bb9ff0f1ef8412c",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 6,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "fed3a787423d5701b64d3404afba542dee945fb1c7512d530d1532ddedfa2329",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 7,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "a4942b4086da66df82b53ec4feaf2a3ab43b88ef1108b6d87d7251ab89f04bc8",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "This principl can also applied to user inputs in Dart",
+      "prediction": "This principl can also applied to user inputs in Dart"
+    },
+    {
+      "id": 7,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "033456b2f02adada98cac8f6568674d8ecc6e5fddb0a9c626e217c6f2a75b664",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "This principl can also applied to user inputs in Dart",
+      "prediction": "This principl can also applied to user inputs in Dart"
+    },
+    {
+      "id": 8,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "e3310cca7d37c38961efe502cbd999bfa5f9d49d5bbf6aba76b6264179f01b0d",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 8,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "b8525f40134d73fb477c40aafe9a3cd684506ddc9fbf74fbb8bc5eac2278d88c",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "",
+      "prediction": ""
+    },
+    {
+      "id": 9,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "77b1d6cd2e761d471d832585b31db268bfa0c4d59914d4c4d62eb8e078ab1405",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "The cutput is declaredinthe function ercatet inside",
+      "prediction": "The cutput is declaredinthe function ercatet inside"
+    },
+    {
+      "id": 9,
+      "mode": "selected",
+      "actualMode": "LEGACY",
+      "inputSha256": "77b1d6cd2e761d471d832585b31db268bfa0c4d59914d4c4d62eb8e078ab1405",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "The cutput is declaredinthe function ercatet inside",
+      "prediction": "The cutput is declaredinthe function ercatet inside"
+    },
+    {
+      "id": 10,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "1b7ac9dbaf7a9af16720f928e1d6210d53cd42cba23c788c7b0a34f3ae382f51",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "the class",
+      "prediction": "the class"
+    },
+    {
+      "id": 10,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "b978ea92f332e8b3cdc561cd0a26b9e33c8d4c79bce11567b7094dd6eadeba3d",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "he class",
+      "prediction": "he class"
+    }
+  ],
+  "scope": "CPU native TFLite/Flex inference; Android Java copying requires device validation"
+}
