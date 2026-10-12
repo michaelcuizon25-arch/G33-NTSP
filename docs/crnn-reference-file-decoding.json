@@ -1,0 +1,245 @@
+{
+  "preprocessorSha256": "94e308f7142902e61937515f8726716a65418b1248f531428f7fcb121afc6f9f",
+  "opencvVersion": "4.12.0",
+  "grayscaleMode": "file",
+  "modelInferenceRun": false,
+  "comparisons": [
+    {
+      "id": 0,
+      "box": {
+        "left": 716,
+        "top": 233,
+        "right": 744,
+        "bottom": 259
+      },
+      "referenceWidth": 52,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.013082116842269897,
+      "meanAbsDifference": 0.0002788459532894194,
+      "rmse": 0.0011879391968250275,
+      "identicalBytes": false,
+      "legacyRmse": 0.11444445699453354,
+      "legacyMaxAbsDifference": 0.7549020051956177,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 1,
+      "box": {
+        "left": 213,
+        "top": 247,
+        "right": 264,
+        "bottom": 280
+      },
+      "referenceWidth": 68,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.007843144237995148,
+      "meanAbsDifference": 0.00031776592368260026,
+      "rmse": 0.0011313955765217543,
+      "identicalBytes": false,
+      "legacyRmse": 0.10165820270776749,
+      "legacyMaxAbsDifference": 0.5882353186607361,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 2,
+      "box": {
+        "left": 206,
+        "top": 334,
+        "right": 959,
+        "bottom": 408
+      },
+      "referenceWidth": 344,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.00784313678741455,
+      "meanAbsDifference": 0.0019434601999819279,
+      "rmse": 0.0027481047436594963,
+      "identicalBytes": false,
+      "legacyRmse": 0.1099337786436081,
+      "legacyMaxAbsDifference": 0.7647058963775635,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 3,
+      "box": {
+        "left": 211,
+        "top": 434,
+        "right": 624,
+        "bottom": 504
+      },
+      "referenceWidth": 204,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.00784313678741455,
+      "meanAbsDifference": 0.0011796792969107628,
+      "rmse": 0.0021446640603244305,
+      "identicalBytes": false,
+      "legacyRmse": 0.08989503979682922,
+      "legacyMaxAbsDifference": 0.7137254476547241,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 4,
+      "box": {
+        "left": 212,
+        "top": 547,
+        "right": 837,
+        "bottom": 628
+      },
+      "referenceWidth": 264,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.00784313678741455,
+      "meanAbsDifference": 0.001300727017223835,
+      "rmse": 0.0022132378071546555,
+      "identicalBytes": false,
+      "legacyRmse": 0.09148985892534256,
+      "legacyMaxAbsDifference": 0.6626225709915161,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 5,
+      "box": {
+        "left": 1754,
+        "top": 574,
+        "right": 1776,
+        "bottom": 600
+      },
+      "referenceWidth": 44,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.007843137718737125,
+      "meanAbsDifference": 0.00019918795442208648,
+      "rmse": 0.000980073818936944,
+      "identicalBytes": false,
+      "legacyRmse": 0.0896356999874115,
+      "legacyMaxAbsDifference": 0.5882353186607361,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 6,
+      "box": {
+        "left": 1759,
+        "top": 637,
+        "right": 1780,
+        "bottom": 670
+      },
+      "referenceWidth": 36,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.00784314051270485,
+      "meanAbsDifference": 0.00016078108455985785,
+      "rmse": 0.000885663612280041,
+      "identicalBytes": false,
+      "legacyRmse": 0.09422064572572708,
+      "legacyMaxAbsDifference": 0.6012254953384399,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 7,
+      "box": {
+        "left": 202,
+        "top": 651,
+        "right": 1464,
+        "bottom": 733
+      },
+      "referenceWidth": 508,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.00784314051270485,
+      "meanAbsDifference": 0.003115346422418952,
+      "rmse": 0.0035533958580344915,
+      "identicalBytes": false,
+      "legacyRmse": 0.10497841984033585,
+      "legacyMaxAbsDifference": 0.7372548580169678,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 8,
+      "box": {
+        "left": 1623,
+        "top": 714,
+        "right": 1764,
+        "bottom": 749
+      },
+      "referenceWidth": 144,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.007843151688575745,
+      "meanAbsDifference": 0.0008418169454671443,
+      "rmse": 0.0018804434221237898,
+      "identicalBytes": false,
+      "legacyRmse": 0.0654672160744667,
+      "legacyMaxAbsDifference": 0.5208333134651184,
+      "legacyIdenticalBytes": false
+    },
+    {
+      "id": 9,
+      "box": {
+        "left": 207,
+        "top": 736,
+        "right": 1765,
+        "bottom": 800
+      },
+      "referenceWidth": 796,
+      "actualMode": "LEGACY",
+      "fallbackReason": "reference_width_exceeds_512",
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "reference_exceeds_fixed_model_width",
+      "fallbackMatchesLegacy": true
+    },
+    {
+      "id": 10,
+      "box": {
+        "left": 224,
+        "top": 834,
+        "right": 432,
+        "bottom": 888
+      },
+      "referenceWidth": 140,
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "fallbackReason": null,
+      "predictedText": null,
+      "cropCompleteness": "unreviewed",
+      "status": "compared",
+      "maxAbsDifference": 0.00784313678741455,
+      "meanAbsDifference": 0.0006351405754685402,
+      "rmse": 0.0015388329047709703,
+      "identicalBytes": false,
+      "legacyRmse": 0.08851820230484009,
+      "legacyMaxAbsDifference": 0.7257353067398071,
+      "legacyIdenticalBytes": false
+    }
+  ],
+  "interpretation": "Tensor differences establish transform mismatch, not accuracy loss. Use complete labeled crops and same-model inference to attribute errors."
+}

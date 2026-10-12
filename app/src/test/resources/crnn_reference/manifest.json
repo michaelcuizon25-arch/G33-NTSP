@@ -1,0 +1,44 @@
+{
+  "opencvVersion": "4.12.0",
+  "numpyVersion": "2.2.6",
+  "preprocessorSha256": "94e308f7142902e61937515f8726716a65418b1248f531428f7fcb121afc6f9f",
+  "inferenceRun": false,
+  "cases": [
+    {
+      "name": "narrow",
+      "width": 5,
+      "height": 80,
+      "dynamicWidth": 20
+    },
+    {
+      "name": "color",
+      "width": 200,
+      "height": 40,
+      "dynamicWidth": 176
+    },
+    {
+      "name": "fractional",
+      "width": 137,
+      "height": 43,
+      "dynamicWidth": 120
+    },
+    {
+      "name": "exact_width",
+      "width": 496,
+      "height": 32,
+      "dynamicWidth": 512
+    },
+    {
+      "name": "single_pixel",
+      "width": 1,
+      "height": 1,
+      "dynamicWidth": 48
+    },
+    {
+      "name": "fractional_tall",
+      "width": 87,
+      "height": 51,
+      "dynamicWidth": 72
+    }
+  ]
+}
