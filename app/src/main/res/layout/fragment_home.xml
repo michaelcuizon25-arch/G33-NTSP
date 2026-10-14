@@ -503,7 +503,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:fontFamily="@font/poppins_semibold"
-            android:text="Snap says"
+            android:text="Unsave Note's"
             android:textColor="@color/nts_text"
             android:textSize="16sp" />
 
@@ -532,12 +532,12 @@
                 android:paddingBottom="9dp">
 
                 <com.airbnb.lottie.LottieAnimationView
-                    android:layout_width="54dp"
-                    android:layout_height="54dp"
+                    android:layout_width="65dp"
+                    android:layout_height="65dp"
                     android:contentDescription="Snap"
                     app:lottie_autoPlay="true"
                     app:lottie_loop="true"
-                    app:lottie_rawRes="@raw/robot_mascot"
+                    app:lottie_rawRes="@raw/wait"
                     app:lottie_speed="0.7" />
 
                 <LinearLayout

@@ -1,5 +1,8 @@
 package com.example.note2snap.activities
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -12,8 +15,6 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -42,6 +43,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import org.json.JSONArray
 
 @SuppressLint("SetTextI18n")
 class HomeFragment : Fragment() {
@@ -61,6 +63,7 @@ class HomeFragment : Fragment() {
     private var tvStatStreakEmoji: TextView? = null
     private var streakRobot: LottieAnimationView? = null
     private var streakRobotCard: com.google.android.material.card.MaterialCardView? = null
+    private var streakMotionAnimator: AnimatorSet? = null
     private var tvStreakLevel: TextView? = null
     private var tvStreakStage: TextView? = null
     private var tvStreakNext: TextView? = null
@@ -81,6 +84,9 @@ class HomeFragment : Fragment() {
     private var snapHomeTip: TextView? = null
     private var snapHomeBob: ObjectAnimator? = null
     private var homeScanCard: View? = null
+
+    // Snap Tips banner is hidden until requested or shown after the home guide.
+    private var isTipsVisible = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -137,26 +143,25 @@ class HomeFragment : Fragment() {
                 )
         }
 
+        // Opens Unsaved Notes first; falls back to the latest unsaved scan if unavailable.
         cardSmartSuggestion?.setOnClickListener {
-            val savedPaths =
-                latestNotes
-                    .mapNotNull { note ->
-                        note.imagePath
-                            .takeIf { path ->
-                                path.isNotBlank()
-                            }
-                    }
+            try {
+                startActivity(Intent(requireContext(), UnsavedNotesActivity::class.java))
+            } catch (e: Exception) {
+                val savedPaths = latestNotes
+                    .mapNotNull { note -> normalizePath(note.imagePath).takeIf { it.isNotBlank() } }
                     .toSet()
 
-            latestHistory
-                .sortedByDescending { item -> item.timestamp }
-                .firstOrNull { item ->
-                    item.imagePath !in savedPaths
-                }
-                ?.let { item ->
-                    openRecentScan(item)
-                }
+                latestHistory
+                    .sortedByDescending { item -> item.timestamp }
+                    .firstOrNull { item -> normalizePath(item.imagePath) !in savedPaths }
+                    ?.let { item -> openRecentScan(item) }
+            }
         }
+
+        // Tap Snap or the greeting subtitle to show/hide Snap Tips.
+        streakRobot?.setOnClickListener { toggleSnapTips() }
+        tvGreetingSubtitle?.setOnClickListener { toggleSnapTips() }
 
         cardStreakEvolution?.setOnClickListener {
             showSnapEvolutionSheet()
@@ -181,6 +186,27 @@ class HomeFragment : Fragment() {
         return view
     }
 
+    fun showSnapTips() {
+        isTipsVisible = true
+        ensureSnapHomeBanner(anchor = homeScanCard ?: cardSmartSuggestion ?: cardContinue)
+        view?.findViewWithTag<View>("note2snap_home_snap_banner")?.visibility = View.VISIBLE
+    }
+
+    fun toggleSnapTips() {
+        val banner = view?.findViewWithTag<View>("note2snap_home_snap_banner")
+        if (banner == null || !isTipsVisible) {
+            showSnapTips()
+        } else {
+            isTipsVisible = false
+            banner.visibility = View.GONE
+        }
+    }
+
+    private fun normalizePath(path: String?): String {
+        if (path.isNullOrBlank()) return ""
+        return path.trim().removePrefix("file://")
+    }
+
     private fun ensureSnapHomeBanner(
         anchor: View?
     ) {
@@ -188,22 +214,18 @@ class HomeFragment : Fragment() {
 
         val root = view ?: return
 
-        // If already added, just restart animation and keep it visible.
-        val existing =
-            root.findViewWithTag<View>(
-                "note2snap_home_snap_banner"
-            )
+        val existing = root.findViewWithTag<View>("note2snap_home_snap_banner")
 
         if (existing != null) {
-            existing.visibility =
-                View.VISIBLE
-
-            snapHomeRobot
-                ?.playAnimation()
-
-            startSnapHomeBob()
+            existing.visibility = if (isTipsVisible) View.VISIBLE else View.GONE
+            if (isTipsVisible) {
+                snapHomeRobot?.playAnimation()
+                startSnapHomeBob()
+            }
             return
         }
+
+        if (!isTipsVisible) return
 
         val insertion =
             findLinearInsertionPoint(
@@ -413,7 +435,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.START or
-                        Gravity.CENTER_VERTICAL
+                            Gravity.CENTER_VERTICAL
 
                 leftMargin =
                     dpHome(
@@ -464,7 +486,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.END or
-                        Gravity.BOTTOM
+                            Gravity.BOTTOM
 
                 rightMargin =
                     dpHome(
@@ -511,7 +533,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.END or
-                        Gravity.TOP
+                            Gravity.TOP
 
                 rightMargin =
                     dpHome(
@@ -574,7 +596,7 @@ class HomeFragment : Fragment() {
             if (
                 parent is LinearLayout &&
                 parent.orientation ==
-                    LinearLayout.VERTICAL
+                LinearLayout.VERTICAL
             ) {
                 return Pair(
                     parent,
@@ -678,11 +700,11 @@ class HomeFragment : Fragment() {
         val next =
             messages[
                 (
-                    currentIndex +
-                        1
-                    ).mod(
-                    messages.size
-                )
+                        currentIndex +
+                                1
+                        ).mod(
+                        messages.size
+                    )
             ]
 
         snapHomeTip
@@ -715,11 +737,11 @@ class HomeFragment : Fragment() {
         value: Int
     ): Int {
         return (
-            value *
-                resources
-                    .displayMetrics
-                    .density
-            ).toInt()
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
     }
 
     private fun startHomeGuideIfNeeded(
@@ -776,11 +798,10 @@ class HomeFragment : Fragment() {
                     putBoolean("HOME_GUIDE_V5_SHOWN", true)
                 }
 
-                // Tutorial overlay is gone: make sure Snap is immediately visible.
+                // Show Snap Tips after the tutorial has finished.
+                isTipsVisible = true
                 view?.post {
-                    ensureSnapHomeBanner(
-                        anchor = homeScanCard
-                    )
+                    ensureSnapHomeBanner(anchor = homeScanCard ?: cardSmartSuggestion)
                 }
             }
     }
@@ -832,18 +853,16 @@ class HomeFragment : Fragment() {
         val savedPaths =
             latestNotes
                 .mapNotNull { note ->
-                    note.imagePath
-                        .takeIf { path ->
-                            path.isNotBlank()
-                        }
+                    normalizePath(note.imagePath)
+                        .takeIf { path -> path.isNotBlank() }
                 }
                 .toSet()
 
         val unsavedCount =
             latestHistory
                 .count { item ->
-                    item.imagePath.isNotBlank() &&
-                        item.imagePath !in savedPaths
+                    normalizePath(item.imagePath).isNotBlank() &&
+                            normalizePath(item.imagePath) !in savedPaths
                 }
 
         if (unsavedCount > 0) {
@@ -926,11 +945,11 @@ class HomeFragment : Fragment() {
         val recent = latestHistory.sortedByDescending { it.timestamp }.take(3)
 
         val savedPaths = latestNotes.mapNotNull {
-            it.imagePath.takeIf { path -> path.isNotBlank() }
+            normalizePath(it.imagePath).takeIf { path -> path.isNotBlank() }
         }.toSet()
 
         val starredPaths = latestNotes.filter { it.isStarred }.mapNotNull {
-            it.imagePath.takeIf { path -> path.isNotBlank() }
+            normalizePath(it.imagePath).takeIf { path -> path.isNotBlank() }
         }.toSet()
 
         recentScanAdapter.updateData(
@@ -1004,7 +1023,7 @@ class HomeFragment : Fragment() {
                         currentCtx,
                         title = if (existingNote == null) "Open scan" else "Open note",
                         subtitle = "View this captured note",
-                        icon = "↗"
+                        iconRes = R.drawable.ic_option_open
                     ) {
                         dialog.dismiss()
                         openRecentScan(scan)
@@ -1016,7 +1035,7 @@ class HomeFragment : Fragment() {
                         currentCtx,
                         title = if (existingNote == null) "Save to Notes" else if (existingNote.isStarred) "Unfavorite" else "Favorite",
                         subtitle = if (existingNote == null) "Keep this scan in Notes" else if (existingNote.isStarred) "Remove from favorites" else "Keep this note easy to find",
-                        icon = if (existingNote == null) "+" else "★"
+                        iconRes = R.drawable.ic_option_star_soft
                     ) {
                         dialog.dismiss()
                         if (existingNote == null) {
@@ -1034,7 +1053,7 @@ class HomeFragment : Fragment() {
                         currentCtx,
                         title = "Delete from History",
                         subtitle = "Remove this item from recent scans",
-                        icon = "×",
+                        iconRes = R.drawable.ic_option_delete,
                         destructive = true
                     ) {
                         dialog.dismiss()
@@ -1096,7 +1115,7 @@ class HomeFragment : Fragment() {
         ctx: Context,
         title: String,
         subtitle: String,
-        icon: String,
+        iconRes: Int,
         destructive: Boolean = false,
         action: () -> Unit
     ): View {
@@ -1107,18 +1126,47 @@ class HomeFragment : Fragment() {
             isClickable = true
             isFocusable = true
 
-            addView(
-                TextView(ctx).apply {
-                    text = icon
-                    textSize = 18f
+            val iconBox =
+                LinearLayout(ctx).apply {
                     gravity = Gravity.CENTER
-                    setTextColor(
-                        if (destructive) "#D94B62".toColorInt()
-                        else ContextCompat.getColor(ctx, R.color.nts_blue)
-                    )
-                    background = roundedBackground(ctx, colorHex(ctx, R.color.nts_surface_blue_soft), 14f)
-                },
-                LinearLayout.LayoutParams(dp(ctx, 42), dp(ctx, 42))
+                    background =
+                        roundedBackground(
+                            ctx,
+                            colorHex(ctx, R.color.nts_surface_blue_soft),
+                            14f
+                        )
+                }
+
+            val iconView =
+                ImageView(ctx).apply {
+                    setImageResource(iconRes)
+                    imageTintList =
+                        android.content.res.ColorStateList.valueOf(
+                            if (destructive) {
+                                "#D94B62".toColorInt()
+                            } else {
+                                ContextCompat.getColor(
+                                    ctx,
+                                    R.color.nts_blue
+                                )
+                            }
+                        )
+                }
+
+            iconBox.addView(
+                iconView,
+                LinearLayout.LayoutParams(
+                    dp(ctx, 22),
+                    dp(ctx, 22)
+                )
+            )
+
+            addView(
+                iconBox,
+                LinearLayout.LayoutParams(
+                    dp(ctx, 42),
+                    dp(ctx, 42)
+                )
             )
 
             val labels = LinearLayout(ctx).apply {
@@ -1179,23 +1227,103 @@ class HomeFragment : Fragment() {
 
     private fun openRecentScan(scan: ScanHistory) {
         val safeContext = context ?: return
-        lifecycleScope.launch(Dispatchers.IO) {
-            val dao = AppDatabase.getDatabase(safeContext).appDao()
 
-            val existingNote = if (scan.imagePath.isNotBlank()) {
-                dao.getNoteByPath(scan.imagePath)
-            } else null
+        lifecycleScope.launch(Dispatchers.IO) {
+            val dao =
+                AppDatabase
+                    .getDatabase(safeContext)
+                    .appDao()
+
+            val existingNote =
+                if (scan.imagePath.isNotBlank()) {
+                    dao.getNoteByPath(scan.imagePath)
+                } else {
+                    null
+                }
+
+            val sourcePaths =
+                runCatching {
+                    val array =
+                        JSONArray(
+                            scan.sourceImagePathsJson
+                        )
+
+                    List(array.length()) { index ->
+                        array.optString(index)
+                    }.filter { it.isNotBlank() }
+                }.getOrDefault(
+                    listOfNotNull(
+                        scan.imagePath.takeIf {
+                            it.isNotBlank()
+                        }
+                    )
+                )
+
+            val pageContents =
+                runCatching {
+                    val array =
+                        JSONArray(
+                            scan.pageContentsJson
+                        )
+
+                    List(array.length()) { index ->
+                        array.optString(index)
+                    }
+                }.getOrDefault(
+                    emptyList()
+                )
 
             withContext(Dispatchers.Main) {
-                val currentCtx = context ?: return@withContext
-                val intent = Intent(currentCtx, PdfViewerActivity::class.java).apply {
-                    putExtra("NOTE_ID", existingNote?.id ?: -1)
-                    putExtra("TITLE", scan.title)
-                    if (existingNote != null) {
-                        putExtra("CONTENT", existingNote.content)
+                val currentCtx =
+                    context ?: return@withContext
+
+                val intent =
+                    Intent(
+                        currentCtx,
+                        PdfViewerActivity::class.java
+                    ).apply {
+                        putExtra(
+                            "NOTE_ID",
+                            existingNote?.id ?: -1
+                        )
+
+                        putExtra(
+                            "TITLE",
+                            scan.title
+                        )
+
+                        putExtra(
+                            "IMAGE_PATH",
+                            scan.imagePath
+                        )
+
+                        if (existingNote != null) {
+                            putExtra(
+                                "CONTENT",
+                                existingNote.content
+                            )
+                        } else {
+                            pageContents
+                                .firstOrNull()
+                                ?.let {
+                                    putExtra(
+                                        "CONTENT",
+                                        it
+                                    )
+                                }
+
+                            putStringArrayListExtra(
+                                "IMAGE_PATHS",
+                                ArrayList(sourcePaths)
+                            )
+
+                            putStringArrayListExtra(
+                                "PAGE_CONTENTS",
+                                ArrayList(pageContents)
+                            )
+                        }
                     }
-                    putExtra("IMAGE_PATH", scan.imagePath)
-                }
+
                 startActivity(intent)
             }
         }
@@ -1225,11 +1353,11 @@ class HomeFragment : Fragment() {
 
         val sevenDaysAgo =
             System.currentTimeMillis() -
-                7L * 24L * 60L * 60L * 1000L
+                    7L * 24L * 60L * 60L * 1000L
 
         val scansThisWeek =
             latestHistory.count {
-                item ->
+                    item ->
                 item.timestamp >= sevenDaysAgo
             }
 
@@ -1257,19 +1385,19 @@ class HomeFragment : Fragment() {
     private fun calculateStudyStreak(): Int {
         val activityDays =
             (
-                latestNotes.map {
-                    note ->
-                    startOfDay(
-                        note.timestamp
+                    latestNotes.map {
+                            note ->
+                        startOfDay(
+                            note.timestamp
+                        )
+                    } +
+                            latestHistory.map {
+                                    scan ->
+                                startOfDay(
+                                    scan.timestamp
+                                )
+                            }
                     )
-                } +
-                latestHistory.map {
-                    scan ->
-                    startOfDay(
-                        scan.timestamp
-                    )
-                }
-            )
                 .toSet()
 
         if (activityDays.isEmpty()) {
@@ -1460,11 +1588,11 @@ class HomeFragment : Fragment() {
                 100
             } else {
                 (
-                    streak
-                        .coerceAtMost(nextThreshold) *
-                        100f /
-                        nextThreshold
-                    )
+                        streak
+                            .coerceAtMost(nextThreshold) *
+                                100f /
+                                nextThreshold
+                        )
                     .toInt()
                     .coerceIn(
                         0,
@@ -1504,6 +1632,8 @@ class HomeFragment : Fragment() {
             }
         }
 
+        applyStreakMotion(level)
+
         streakRobotCard?.apply {
             setCardBackgroundColor(
                 bgColor
@@ -1522,6 +1652,133 @@ class HomeFragment : Fragment() {
 
         tvStatStreakEmoji?.visibility =
             View.GONE
+    }
+
+    private fun applyStreakMotion(
+        level: Int
+    ) {
+        val robot =
+            streakRobot ?: return
+
+        streakMotionAnimator?.cancel()
+        streakMotionAnimator = null
+
+        robot.translationX = 0f
+        robot.translationY = 0f
+        robot.rotation = 0f
+
+        val density =
+            resources.displayMetrics.density
+
+        fun loopingFloat(
+            property: String,
+            vararg values: Float,
+            duration: Long
+        ): ObjectAnimator {
+            return ObjectAnimator.ofFloat(
+                robot,
+                property,
+                *values
+            ).apply {
+                this.duration = duration
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+            }
+        }
+
+        val animator =
+            when (level) {
+                1 -> {
+                    // Newbie: gentle little bounce.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationY",
+                                0f,
+                                -4f * density,
+                                duration = 900L
+                            )
+                        )
+                    }
+                }
+
+                2 -> {
+                    // Rookie: playful wave / side tilt.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "rotation",
+                                -4f,
+                                5f,
+                                duration = 520L
+                            ),
+                            loopingFloat(
+                                "translationX",
+                                -2f * density,
+                                3f * density,
+                                duration = 520L
+                            )
+                        )
+                    }
+                }
+
+                3 -> {
+                    // Focused: short left-right working motion.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationX",
+                                -4f * density,
+                                4f * density,
+                                duration = 390L
+                            ),
+                            loopingFloat(
+                                "rotation",
+                                -1.5f,
+                                1.5f,
+                                duration = 390L
+                            )
+                        )
+                    }
+                }
+
+                4 -> {
+                    // Scholar: calm confident nod-like bob.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationY",
+                                2f * density,
+                                -3f * density,
+                                duration = 650L
+                            )
+                        )
+                    }
+                }
+
+                else -> {
+                    // Master: slow floating victory motion.
+                    AnimatorSet().apply {
+                        playTogether(
+                            loopingFloat(
+                                "translationY",
+                                0f,
+                                -6f * density,
+                                duration = 820L
+                            ),
+                            loopingFloat(
+                                "rotation",
+                                -1.5f,
+                                1.5f,
+                                duration = 820L
+                            )
+                        )
+                    }
+                }
+            }
+
+        streakMotionAnimator = animator
+        animator.start()
     }
 
     private fun showSnapEvolutionSheet() {
@@ -1585,9 +1842,9 @@ class HomeFragment : Fragment() {
                 0
             } else {
                 (
-                    nextThreshold -
-                        streak
-                    )
+                        nextThreshold -
+                                streak
+                        )
                     .coerceAtLeast(
                         0
                     )
@@ -1664,10 +1921,10 @@ class HomeFragment : Fragment() {
         } else {
             progress.progress =
                 (
-                    streak *
-                        100f /
-                        nextThreshold
-                    )
+                        streak *
+                                100f /
+                                nextThreshold
+                        )
                     .toInt()
                     .coerceIn(
                         0,
@@ -1848,6 +2105,9 @@ class HomeFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        streakMotionAnimator?.cancel()
+        streakMotionAnimator = null
+
         snapHomeBob?.cancel()
         snapHomeBob = null
 
@@ -1857,6 +2117,7 @@ class HomeFragment : Fragment() {
         snapHomeRobot = null
         snapHomeTip = null
         homeScanCard = null
+        isTipsVisible = false
 
         super.onDestroyView()
     }
