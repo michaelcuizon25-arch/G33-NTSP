@@ -113,40 +113,16 @@ class PipelineTextStructurerTest {
             result.title
         )
 
+        assertEquals(3, result.blocks.size)
+        assertEquals(BlockType.REGULAR_TEXT, result.blocks[0].type)
         assertEquals(
-            4,
-            result.blocks.size
-        )
-
-        assertEquals(
-            BlockType.REGULAR_TEXT,
-            result.blocks[0].type
-        )
-
-        assertEquals(
-            "A binary tree is a hierarchical",
+            "A binary tree is a hierarchical data structure in which each node",
             result.blocks[0].rawText
         )
-
-        assertEquals(
-            BlockType.REGULAR_TEXT,
-            result.blocks[1].type
-        )
-
-        assertEquals(
-            "data structure in which each node",
-            result.blocks[1].rawText
-        )
-
-        assertEquals(
-            BlockType.SECTION_HEADER,
-            result.blocks[2].type
-        )
-
-        assertEquals(
-            BlockType.BULLET_ITEM,
-            result.blocks[3].type
-        )
+        assertEquals(Rect(68, 239, 716, 350), result.blocks[0].boundingBox)
+        assertEquals(BlockType.SECTION_HEADER, result.blocks[1].type)
+        assertEquals("Properties:", result.blocks[1].rawText)
+        assertEquals(BlockType.BULLET_ITEM, result.blocks[2].type)
 
         assertTrue(
             result.blocks.all {
