@@ -138,7 +138,7 @@ class PdfViewerActivity : AppCompatActivity() {
     // Exact on-screen markup snapshots per source page.
     // These preserve snapped highlights + freehand pen strokes in PDF export.
     private var pendingAnnotationSnapshots:
-        List<Bitmap?> =
+            List<Bitmap?> =
         emptyList()
 
     private val markupMarkerPrefix = "<!--N2S_MARKUP_BASE64:"
@@ -196,82 +196,64 @@ class PdfViewerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_pdf_viewer)
 
         currentNoteId = intent.getIntExtra("NOTE_ID", -1)
-        currentTitle = intent.getStringExtra("TITLE") ?: "Untitled Note"
-        currentImagePath =
-            sanitizeFilePath(
-                intent.getStringExtra(
-                    "IMAGE_PATH"
-                )
-            )
+        currentTitle = intent.getStringExtra("TITLE")
+            ?: intent.getStringExtra("NOTE_TITLE")
+                    ?: "Untitled Scan"
+
+        currentImagePath = sanitizeFilePath(
+            intent.getStringExtra("IMAGE_PATH")
+                ?: intent.getStringExtra("FILE_PATH")
+                ?: intent.getStringExtra("NOTE_PATH")
+                ?: intent.getStringExtra("EXTRA_IMAGE_PATH")
+                ?: intent.getStringExtra("URI")
+        )
 
         restoreSourcePathsFromIntent()
 
-        val directContent =
-            intent.getStringExtra(
-                "CONTENT"
-            )
+        val directContent = intent.getStringExtra("CONTENT")
+            ?: intent.getStringExtra("EXTRA_CONTENT")
+            ?: intent.getStringExtra("OCR_TEXT")
+            ?: intent.getStringExtra("EXTRACTED_TEXT")
+            ?: intent.getStringExtra("TEXT")
+            ?: intent.getStringExtra("NOTE_CONTENT")
+            ?: intent.getStringArrayListExtra("PAGE_CONTENTS")?.firstOrNull { it.isNotBlank() }
 
         setupHeaderAndMetadata()
         setupToolRibbon()
         setupBottomActions()
         setupPageNavigation()
+        setupPolishedBackHandling()
 
-        /*
-         * IMPORTANT:
-         * If this is an already-saved Note, always reload it from Room by NOTE_ID.
-         * The database contains the full batch:
-         * - sourceImagePathsJson
-         * - pageContentsJson
-         *
-         * Using only CONTENT + IMAGE_PATH would collapse a saved batch back to
-         * one page when reopened.
-         */
-        if (
-            currentNoteId !=
-            -1
-        ) {
-            fetchNoteFromDatabase()
-
-        } else if (
-            !directContent.isNullOrEmpty()
-        ) {
-            restorePageContentsFromIntent(
-                directContent
-            )
-
-            currentBatchPageIndex =
-                0
-
-            currentRawContent =
-                currentPageContents
-                    .firstOrNull()
-                    ?: sanitizeOcrText(
-                        stripPersistedMarkup(
-                            directContent
-                        )
-                    )
-
-            markupLoaded =
-                false
-
+        // Fresh scan text is rendered immediately; saved notes still load from Room.
+        if (!directContent.isNullOrBlank() && currentNoteId == -1) {
+            restorePageContentsFromIntent(directContent)
+            currentBatchPageIndex = 0
+            currentRawContent = currentPageContents.firstOrNull { it.isNotBlank() }
+                ?: sanitizeOcrText(stripPersistedMarkup(directContent))
+            markupLoaded = false
             clearMarkupUiForPageSwitch()
-
-            renderContent(
-                currentRawContent
-            )
-
-            findViewById<View>(
-                R.id.tvPdfContent
-            )?.post {
+            renderContent(currentRawContent)
+            findViewById<View>(R.id.tvPdfContent)?.post {
                 loadMarkupData()
                 maybeShowOcrReviewWarning()
             }
-
-            // Fresh scans stay in History only.
-            // They become Notes only after the user explicitly taps Save.
-
-        } else {
+        } else if (currentNoteId != -1 || !currentImagePath.isNullOrBlank()) {
             fetchNoteFromDatabase()
+        } else if (!directContent.isNullOrBlank()) {
+            restorePageContentsFromIntent(directContent)
+            currentBatchPageIndex = 0
+            currentRawContent = currentPageContents.firstOrNull { it.isNotBlank() }
+                ?: sanitizeOcrText(stripPersistedMarkup(directContent))
+            markupLoaded = false
+            clearMarkupUiForPageSwitch()
+            renderContent(currentRawContent)
+            findViewById<View>(R.id.tvPdfContent)?.post {
+                loadMarkupData()
+                maybeShowOcrReviewWarning()
+            }
+        } else {
+            currentRawContent = "No text content detected."
+            renderContent(currentRawContent)
         }
     }
 
@@ -663,8 +645,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     )
 
                 for (
-                    index in
-                    0 until array.length()
+                index in
+                0 until array.length()
                 ) {
                     sanitizeFilePath(
                         array.optString(
@@ -706,8 +688,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     )
 
                 for (
-                    index in
-                    0 until array.length()
+                index in
+                0 until array.length()
                 ) {
                     currentPageContents.add(
                         sanitizeOcrText(
@@ -760,9 +742,9 @@ class PdfViewerActivity : AppCompatActivity() {
             currentBatchPageIndex.coerceIn(
                 0,
                 (
-                    batchPageCount() -
-                        1
-                    ).coerceAtLeast(
+                        batchPageCount() -
+                                1
+                        ).coerceAtLeast(
                         0
                     )
             )
@@ -999,20 +981,20 @@ class PdfViewerActivity : AppCompatActivity() {
         val ids =
             listOf(
                 R.id.btnToolPen to
-                    (
-                        activeTool ==
-                            ToolMode.PEN
-                        ),
+                        (
+                                activeTool ==
+                                        ToolMode.PEN
+                                ),
                 R.id.btnToolHighlighter to
-                    (
-                        activeTool ==
-                            ToolMode.HIGHLIGHTER
-                        ),
+                        (
+                                activeTool ==
+                                        ToolMode.HIGHLIGHTER
+                                ),
                 R.id.btnToolEraser to
-                    (
-                        activeTool ==
-                            ToolMode.ERASER
-                        )
+                        (
+                                activeTool ==
+                                        ToolMode.ERASER
+                                )
             )
 
         ids.forEach {
@@ -3288,10 +3270,10 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 totalPages =
                     (
-                        totalContentHeight /
-                            viewportHeight
-                                .toFloat()
-                        )
+                            totalContentHeight /
+                                    viewportHeight
+                                        .toFloat()
+                            )
                         .toInt()
                         .coerceAtLeast(
                             1
@@ -3299,13 +3281,13 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 currentPage =
                     (
-                        (
-                            scrollY /
-                                viewportHeight
-                                    .toFloat()
-                            ) +
-                            1
-                        )
+                            (
+                                    scrollY /
+                                            viewportHeight
+                                                .toFloat()
+                                    ) +
+                                    1
+                            )
                         .toInt()
                         .coerceIn(
                             1,
@@ -3322,7 +3304,7 @@ class PdfViewerActivity : AppCompatActivity() {
             ) {
                 showBatchPage(
                     currentBatchPageIndex -
-                        1
+                            1
                 )
             } else if (
                 currentPage > 1
@@ -3343,7 +3325,7 @@ class PdfViewerActivity : AppCompatActivity() {
             ) {
                 showBatchPage(
                     currentBatchPageIndex +
-                        1
+                            1
                 )
             } else if (
                 currentPage <
@@ -3495,7 +3477,7 @@ class PdfViewerActivity : AppCompatActivity() {
             )?.apply {
                 isEnabled =
                     currentBatchPageIndex >
-                    0
+                            0
 
                 alpha =
                     if (
@@ -3512,8 +3494,8 @@ class PdfViewerActivity : AppCompatActivity() {
             )?.apply {
                 isEnabled =
                     currentBatchPageIndex <
-                    batchPageCount() -
-                    1
+                            batchPageCount() -
+                            1
 
                 alpha =
                     if (
@@ -3631,7 +3613,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 val selected =
                     index ==
-                    currentBatchPageIndex
+                            currentBatchPageIndex
 
                 val card =
                     MaterialCardView(
@@ -3762,38 +3744,38 @@ class PdfViewerActivity : AppCompatActivity() {
             }
 
         (
-            scroll as?
-                android.widget.HorizontalScrollView
-            )?.post {
-            val selectedView =
-                strip.getChildAt(
-                    currentBatchPageIndex
-                )
-                    ?: return@post
+                scroll as?
+                        android.widget.HorizontalScrollView
+                )?.post {
+                val selectedView =
+                    strip.getChildAt(
+                        currentBatchPageIndex
+                    )
+                        ?: return@post
 
-            scroll.smoothScrollTo(
-                (
-                    selectedView.left -
-                        dpUi(
-                            16
-                        )
-                    ).coerceAtLeast(
+                scroll.smoothScrollTo(
+                    (
+                            selectedView.left -
+                                    dpUi(
+                                        16
+                                    )
+                            ).coerceAtLeast(
+                            0
+                        ),
                     0
-                ),
-                0
-            )
-        }
+                )
+            }
     }
 
     private fun dpUi(
         value: Int
     ): Int =
         (
-            value *
-            resources
-                .displayMetrics
-                .density
-            ).toInt()
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
 
     private fun showViewerNotice(
         title: String,
@@ -3822,10 +3804,10 @@ class PdfViewerActivity : AppCompatActivity() {
                             "pen",
                             true
                         ) ||
-                        title.contains(
-                            "highlight",
-                            true
-                        ) ->
+                                title.contains(
+                                    "highlight",
+                                    true
+                                ) ->
                             "✦"
 
                         else ->
@@ -3841,6 +3823,44 @@ class PdfViewerActivity : AppCompatActivity() {
             title =
                 message
         )
+    }
+
+    private fun isNonTextOrGibberish(rawText: String): Boolean {
+        val cleanText = removeDiagramHtml(stripPersistedMarkup(rawText)).trim()
+        if (cleanText.isBlank()) return true
+
+        val textWithoutMarkup = cleanHtmlAndMarkdown(cleanText).trim()
+        if (textWithoutMarkup.isBlank()) return true
+
+        val words = textWithoutMarkup.split(Regex("\\s+")).filter { it.length > 1 }
+        // Numeric-only OCR or isolated symbols are not readable whiteboard text.
+        val alphabeticCharacters = textWithoutMarkup.count { it.isLetter() }
+        if (alphabeticCharacters == 0) return true
+        if (words.size < 3) return false
+
+        var gibberishCount = 0
+        val noisePatterns = listOf(
+            Regex(".*[a-z][A-Z].*"),
+            Regex(".*[A-Z]{2,}[a-z]+[A-Z].*"),
+            Regex("^[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]+$"),
+            Regex(".*[0-9]+[a-zA-Z]+[0-9]+.*")
+        )
+
+        words.forEach { word ->
+            val stripped = word.replace(Regex("[^a-zA-Z]"), "")
+            if (stripped.length >= 3) {
+                val vowelCount = stripped.count { it in "aeiouAEIOU" }
+                val vowelRatio = vowelCount.toFloat() / stripped.length
+                if (
+                    vowelRatio < 0.15f || vowelRatio > 0.80f ||
+                    noisePatterns.any { it.matches(word) }
+                ) {
+                    gibberishCount++
+                }
+            }
+        }
+
+        return gibberishCount.toFloat() / words.size > 0.45f
     }
 
     private fun renderContent(
@@ -3890,6 +3910,30 @@ class PdfViewerActivity : AppCompatActivity() {
             getDiagramHtml(
                 cleanedContent
             )
+
+        // Reject likely OCR noise before showing extracted text or its accuracy card.
+        if (isNonTextOrGibberish(rawContent)) {
+            scrollViewContent?.visibility = View.VISIBLE
+            tvSectionHeader?.visibility = View.GONE
+            tvPdfContent?.text = "No readable whiteboard text detected in this image."
+            tvPdfContent?.setTextColor(
+                ContextCompat.getColor(this, R.color.nts_text_secondary)
+            )
+            tvPdfContent?.visibility = View.VISIBLE
+            webViewContent?.visibility = View.GONE
+            findViewById<View>(R.id.llDetectedVisuals)?.visibility = View.GONE
+            findViewById<LinearLayout>(R.id.llDetectedVisualItems)?.removeAllViews()
+
+            val accuracyRoot =
+                (findViewById<View>(R.id.llDetectedVisuals)?.parent as? LinearLayout)
+                    ?: (findViewById<ScrollView>(R.id.scrollViewContent)?.getChildAt(0) as? LinearLayout)
+            accuracyRoot?.findViewWithTag<View>("AccuracyCardTag")?.let {
+                accuracyRoot.removeView(it)
+            }
+            applySavedHighlightsToDisplayedText()
+            updatePageIndicator()
+            return
+        }
 
         /*
          * Keep the original viewer layout intact:
@@ -3949,14 +3993,14 @@ class PdfViewerActivity : AppCompatActivity() {
         updateSourceThumbnailStrip()
 
         var detectedSubHeader:
-            String? =
+                String? =
             null
 
         for (
-            line in
-            cleanHtmlAndMarkdown(
-                textOnly
-            ).lines()
+        line in
+        cleanHtmlAndMarkdown(
+            textOnly
+        ).lines()
         ) {
             val trimmed =
                 line.trim()
@@ -3969,17 +4013,17 @@ class PdfViewerActivity : AppCompatActivity() {
 
             if (
                 (
-                    trimmed.startsWith(
-                        "Chapter",
-                        ignoreCase =
-                            true
-                    ) ||
-                    trimmed.startsWith(
-                        "Section",
-                        ignoreCase =
-                            true
-                    )
-                ) &&
+                        trimmed.startsWith(
+                            "Chapter",
+                            ignoreCase =
+                                true
+                        ) ||
+                                trimmed.startsWith(
+                                    "Section",
+                                    ignoreCase =
+                                        true
+                                )
+                        ) &&
                 !trimmed.equals(
                     currentTitle,
                     ignoreCase =
@@ -4047,6 +4091,8 @@ class PdfViewerActivity : AppCompatActivity() {
             diagramHtml
         )
 
+        renderAccuracyCard(cleanedContent)
+
         applySavedHighlightsToDisplayedText()
 
         findViewById<DrawingView>(
@@ -4056,6 +4102,153 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         updatePageIndicator()
+    }
+
+    private data class AccuracyReport(
+        val percentage: Int,
+        val reason: String,
+        val tip: String
+    )
+
+    private fun calculateScanAccuracy(rawText: String): AccuracyReport {
+        val cleanText = removeDiagramHtml(stripPersistedMarkup(rawText)).trim()
+        if (cleanText.isBlank()) return AccuracyReport(100, "No text detected.", "")
+
+        val words = cleanText.split(Regex("\\s+")).filter { it.length > 2 }
+        if (words.isEmpty()) return AccuracyReport(100, "Text was extracted clearly.", "")
+
+        var issueCount = 0
+        val suspiciousPatterns = listOf(
+            Regex(".*[a-z][A-Z].*"),
+            Regex(".*[0-9][a-zA-Z]{2,}.*"),
+            Regex(".*[bcdfghjklmnpqrstvwxyz]{4,}.*", RegexOption.IGNORE_CASE),
+            Regex(".*[a-z]{3,}[0-9]+.*"),
+            Regex("^[a-z]{1,2}$")
+        )
+
+        words.forEach { word ->
+            val stripped = word.replace(Regex("[^a-zA-Z0-9]"), "")
+            if (stripped.isNotEmpty() && suspiciousPatterns.any { it.matches(stripped) }) {
+                issueCount++
+            }
+        }
+
+        // Use only the cleaned text so the score is consistent across scan and history views.
+        val totalWords = words.size.toFloat()
+        val errorRatio = (issueCount.toFloat() / totalWords).coerceIn(0f, 1f)
+        val calculatedScore = ((1f - errorRatio) * 100).toInt().coerceIn(40, 98)
+
+        val (reason, tip) = when {
+            calculatedScore < 70 -> Pair(
+                "Photo may be too far from the board. Small text or blur can cause character errors.",
+                "Hold the camera closer or zoom in when scanning."
+            )
+            calculatedScore < 88 -> Pair(
+                "Camera was slightly far from the board. Some letters were confused due to small resolution.",
+                "Crop out empty margins before scanning."
+            )
+            else -> Pair(
+                "Text was extracted clearly from the whiteboard.",
+                "Verify key names or numbers if needed."
+            )
+        }
+
+        return AccuracyReport(calculatedScore, reason, tip)
+    }
+
+    private fun renderAccuracyCard(rawText: String) {
+        if (rawText.isBlank()) return
+
+        val visualSection = findViewById<View>(R.id.llDetectedVisuals)
+        val rootLayout = (visualSection?.parent as? LinearLayout)
+            ?: (findViewById<ScrollView>(R.id.scrollViewContent)?.getChildAt(0) as? LinearLayout)
+            ?: return
+
+        rootLayout.findViewWithTag<View>("AccuracyCardTag")?.let { rootLayout.removeView(it) }
+        val report = calculateScanAccuracy(rawText)
+        val isNightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        val card = MaterialCardView(this).apply {
+            tag = "AccuracyCardTag"
+            radius = dp(18).toFloat()
+            cardElevation = 0f
+            strokeWidth = dp(1)
+            val strokeColorHex = when {
+                report.percentage >= 85 -> if (isNightMode) "#3B82F6" else "#93C5FD"
+                report.percentage >= 70 -> if (isNightMode) "#EAB308" else "#FDE047"
+                else -> if (isNightMode) "#EF4444" else "#FCA5A5"
+            }
+            val bgColorHex = when {
+                report.percentage >= 85 -> if (isNightMode) "#1E293B" else "#EFF6FF"
+                report.percentage >= 70 -> if (isNightMode) "#2A2415" else "#FEFCE8"
+                else -> if (isNightMode) "#2D1A1A" else "#FEF2F2"
+            }
+            strokeColor = Color.parseColor(strokeColorHex)
+            setCardBackgroundColor(Color.parseColor(bgColorHex))
+        }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+        }
+        val tvPercentage = TextView(this).apply {
+            text = "Scan Accuracy: ${report.percentage}%"
+            textSize = 14f
+            typeface = ResourcesCompat.getFont(this@PdfViewerActivity, R.font.poppins_semibold)
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text))
+        }
+        layout.addView(tvPercentage)
+        val tvReason = TextView(this).apply {
+            text = "Why ${report.percentage}%? ${report.reason}"
+            textSize = 10.5f
+            typeface = ResourcesCompat.getFont(this@PdfViewerActivity, R.font.poppins_regular)
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text_secondary))
+            setPadding(0, dp(4), 0, dp(4))
+        }
+        layout.addView(tvReason)
+        if (report.tip.isNotBlank()) {
+            val tvTip = TextView(this).apply {
+                text = "💡 ${report.tip}"
+                textSize = 10f
+                typeface = ResourcesCompat.getFont(this@PdfViewerActivity, R.font.poppins_regular)
+                setTextColor(Color.parseColor(if (isNightMode) "#93C5FD" else "#1E40AF"))
+                setPadding(0, dp(2), 0, dp(6))
+            }
+            layout.addView(tvTip)
+        }
+        val btnFix = TextView(this).apply {
+            text = "Tap to review & edit text"
+            textSize = 10.5f
+            typeface = ResourcesCompat.getFont(this@PdfViewerActivity, R.font.poppins_semibold)
+            setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_blue))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { if (!isEditMode) toggleInlineEditMode() }
+        }
+        layout.addView(btnFix)
+        card.addView(layout)
+
+        val params = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(8); bottomMargin = dp(12) }
+        if (visualSection != null && visualSection.parent === rootLayout) {
+            rootLayout.addView(card, rootLayout.indexOfChild(visualSection).coerceAtLeast(0), params)
+        } else {
+            rootLayout.addView(card, params)
+        }
+    }
+
+    private fun isValidDiagramContent(diagramHtml: String): Boolean {
+        val clean = diagramHtml.trim()
+        if (clean.isBlank()) return false
+
+        val isTextCrop = clean.contains("alt=\"text\"", ignoreCase = true) ||
+                clean.contains("data-type=\"text\"", ignoreCase = true)
+        if (isTextCrop) return false
+
+        // This viewer renders saved diagram image files, not arbitrary HTML snippets.
+        return clean.contains("<img", ignoreCase = true) &&
+                extractDiagramImagePaths(clean).isNotEmpty()
     }
 
     private fun renderDetectedDiagrams(
@@ -4074,7 +4267,7 @@ class PdfViewerActivity : AppCompatActivity() {
         container?.removeAllViews()
 
         if (
-            diagramHtml.isBlank() ||
+            !isValidDiagramContent(diagramHtml) ||
             container == null
         ) {
             section?.visibility =
@@ -4216,16 +4409,16 @@ class PdfViewerActivity : AppCompatActivity() {
                 diagramHtml
             )
             .mapNotNull {
-                match ->
+                    match ->
 
                 match.groupValues
                     .getOrNull(
                         1
                     )
                     ?.takeIf {
-                        path ->
+                            path ->
                         path.isNotBlank() &&
-                            File(path).exists()
+                                File(path).exists()
                     }
             }
             .distinct()
@@ -4323,8 +4516,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     updatedTextHtml
                 } else {
                     updatedTextHtml +
-                        "<br/><br/>" +
-                        preservedDiagramHtml
+                            "<br/><br/>" +
+                            preservedDiagramHtml
                 }
 
             syncCurrentPageContentFromRaw()
@@ -4970,9 +5163,9 @@ class PdfViewerActivity : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 showViewerNotice(
-                            "Note moved",
-                            folderName
-                        )
+                    "Note moved",
+                    folderName
+                )
             }
         }
     }
@@ -5116,28 +5309,28 @@ class PdfViewerActivity : AppCompatActivity() {
             val existingNote =
                 currentNote
                     ?: (
-                        if (
-                            currentNoteId !=
-                            -1
-                        ) {
-                            db.getNoteById(
-                                currentNoteId
+                            if (
+                                currentNoteId !=
+                                -1
+                            ) {
+                                db.getNoteById(
+                                    currentNoteId
+                                )
+                            } else {
+                                null
+                            }
                             )
-                        } else {
-                            null
-                        }
-                        )
                     ?: (
-                        if (
-                            !path.isNullOrEmpty()
-                        ) {
-                            db.getNoteByPath(
-                                path
+                            if (
+                                !path.isNullOrEmpty()
+                            ) {
+                                db.getNoteByPath(
+                                    path
+                                )
+                            } else {
+                                null
+                            }
                             )
-                        } else {
-                            null
-                        }
-                        )
 
             val formattedDate =
                 SimpleDateFormat(
@@ -5438,8 +5631,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     ?: JSONArray()
 
             for (
-                index in
-                0 until highlightsJson.length()
+            index in
+            0 until highlightsJson.length()
             ) {
                 val item =
                     highlightsJson
@@ -5476,8 +5669,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     ?: JSONArray()
 
             for (
-                index in
-                0 until strokesJson.length()
+            index in
+            0 until strokesJson.length()
             ) {
                 val strokeObject =
                     strokesJson
@@ -5497,8 +5690,8 @@ class PdfViewerActivity : AppCompatActivity() {
                         ?: JSONArray()
 
                 for (
-                    pointIndex in
-                    0 until pointsJson.length()
+                pointIndex in
+                0 until pointsJson.length()
                 ) {
                     val pointObject =
                         pointsJson
@@ -5605,13 +5798,13 @@ class PdfViewerActivity : AppCompatActivity() {
                     it > 0
                 }
                 ?: (
-                    resources
-                        .displayMetrics
-                        .widthPixels -
-                    dpExport(
-                        64
-                    )
-                    ).coerceAtLeast(
+                        resources
+                            .displayMetrics
+                            .widthPixels -
+                                dpExport(
+                                    64
+                                )
+                        ).coerceAtLeast(
                         320
                     )
 
@@ -5667,9 +5860,9 @@ class PdfViewerActivity : AppCompatActivity() {
             TextPaint().apply {
                 textSize =
                     13f *
-                    resources
-                        .displayMetrics
-                        .scaledDensity
+                            resources
+                                .displayMetrics
+                                .scaledDensity
 
                 color =
                     Color.BLACK
@@ -5702,9 +5895,9 @@ class PdfViewerActivity : AppCompatActivity() {
                 )
                 .setLineSpacing(
                     2f *
-                    resources
-                        .displayMetrics
-                        .density,
+                            resources
+                                .displayMetrics
+                                .density,
                     1f
                 )
                 .build()
@@ -5722,14 +5915,14 @@ class PdfViewerActivity : AppCompatActivity() {
         val logicalHeight =
             maxOf(
                 layout.height +
-                    dpExport(
-                        24
-                    ),
+                        dpExport(
+                            24
+                        ),
                 strokeBottom
                     .toInt() +
-                    dpExport(
-                        24
-                    ),
+                        dpExport(
+                            24
+                        ),
                 referenceDrawingView
                     ?.height
                     ?: 0,
@@ -5818,11 +6011,11 @@ class PdfViewerActivity : AppCompatActivity() {
                          */
                         val px =
                             point.x *
-                            bitmap.width
+                                    bitmap.width
 
                         val py =
                             point.y *
-                            bitmap.height
+                                    bitmap.height
 
                         if (
                             index ==
@@ -5850,7 +6043,7 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private fun buildAllAnnotationSnapshots():
-        List<Bitmap?> {
+            List<Bitmap?> {
         saveMarkupData()
 
         val pages =
@@ -5891,11 +6084,11 @@ class PdfViewerActivity : AppCompatActivity() {
         value: Int
     ): Int =
         (
-            value *
-            resources
-                .displayMetrics
-                .density
-            ).toInt()
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
 
     private enum class ReviewerPdfBlockType {
         SECTION,
@@ -5953,9 +6146,9 @@ class PdfViewerActivity : AppCompatActivity() {
                         normalized.startsWith(
                             "•"
                         ) ||
-                        normalized.startsWith(
-                            "-"
-                        ) ->
+                                normalized.startsWith(
+                                    "-"
+                                ) ->
                             ReviewerPdfBlockType.BULLET
 
                         isReviewerSubheading(
@@ -5991,30 +6184,30 @@ class PdfViewerActivity : AppCompatActivity() {
     ) {
         val lineY =
             pageHeight -
-                27f
+                    27f
 
         canvas.drawRect(
             outerMargin,
             lineY,
             pageWidth -
-                outerMargin -
-                34f,
+                    outerMargin -
+                    34f,
             lineY +
-                1.1f,
+                    1.1f,
             accentPaint
         )
 
         val pageBox =
             RectF(
                 pageWidth -
-                    outerMargin -
-                    28f,
+                        outerMargin -
+                        28f,
                 lineY -
-                    10f,
+                        10f,
                 pageWidth -
-                    outerMargin,
+                        outerMargin,
                 lineY +
-                    14f
+                        14f
             )
 
         canvas.drawRoundRect(
@@ -6037,10 +6230,10 @@ class PdfViewerActivity : AppCompatActivity() {
         canvas.drawText(
             pageText,
             pageBox.centerX() -
-                textWidth /
-                2f,
+                    textWidth /
+                    2f,
             pageBox.centerY() +
-                3.7f,
+                    3.7f,
             footerPaint
         )
     }
@@ -6063,15 +6256,15 @@ class PdfViewerActivity : AppCompatActivity() {
                         ),
                         sectionPaint,
                         (
-                            width -
-                            16
-                        ).coerceAtLeast(
-                            1
-                        )
+                                width -
+                                        16
+                                ).coerceAtLeast(
+                                1
+                            )
                     )
 
                 layout.height +
-                    14
+                        14
             }
 
             ReviewerPdfBlockType.SUBHEADING -> {
@@ -6080,15 +6273,15 @@ class PdfViewerActivity : AppCompatActivity() {
                         block.text,
                         headingPaint,
                         (
-                            width -
-                            16
-                        ).coerceAtLeast(
-                            1
-                        )
+                                width -
+                                        16
+                                ).coerceAtLeast(
+                                1
+                            )
                     )
 
                 layout.height +
-                    14
+                        14
             }
 
             ReviewerPdfBlockType.BULLET -> {
@@ -6105,15 +6298,15 @@ class PdfViewerActivity : AppCompatActivity() {
                         clean,
                         bodyPaint,
                         (
-                            width -
-                            18
-                        ).coerceAtLeast(
-                            1
-                        )
+                                width -
+                                        18
+                                ).coerceAtLeast(
+                                1
+                            )
                     )
 
                 layout.height +
-                    7
+                        7
             }
 
             ReviewerPdfBlockType.BODY -> {
@@ -6127,7 +6320,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     )
 
                 layout.height +
-                    7
+                        7
             }
         }
     }
@@ -6159,18 +6352,18 @@ class PdfViewerActivity : AppCompatActivity() {
                         text,
                         sectionPaint,
                         (
-                            width -
-                            16
-                        ).coerceAtLeast(
-                            1
-                        )
+                                width -
+                                        16
+                                ).coerceAtLeast(
+                                1
+                            )
                     )
 
                 val height =
                     maxOf(
                         20f,
                         layout.height +
-                            7f
+                                7f
                     )
 
                 val rect =
@@ -6178,9 +6371,9 @@ class PdfViewerActivity : AppCompatActivity() {
                         x,
                         y,
                         x +
-                            width,
+                                width,
                         y +
-                            height
+                                height
                     )
 
                 canvas.drawRect(
@@ -6190,13 +6383,13 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 canvas.withTranslation(
                     x +
-                        8f,
+                            8f,
                     y +
-                        (
-                            height -
-                            layout.height
-                        ) /
-                        2f
+                            (
+                                    height -
+                                            layout.height
+                                    ) /
+                            2f
                 ) {
                     layout.draw(
                         canvas
@@ -6204,8 +6397,8 @@ class PdfViewerActivity : AppCompatActivity() {
                 }
 
                 y +
-                    height +
-                    6f
+                        height +
+                        6f
             }
 
             ReviewerPdfBlockType.SUBHEADING -> {
@@ -6214,18 +6407,18 @@ class PdfViewerActivity : AppCompatActivity() {
                         block.text,
                         headingPaint,
                         (
-                            width -
-                            16
-                        ).coerceAtLeast(
-                            1
-                        )
+                                width -
+                                        16
+                                ).coerceAtLeast(
+                                1
+                            )
                     )
 
                 val height =
                     maxOf(
                         18f,
                         layout.height +
-                            6f
+                                6f
                     )
 
                 val rect =
@@ -6233,9 +6426,9 @@ class PdfViewerActivity : AppCompatActivity() {
                         x,
                         y,
                         x +
-                            width,
+                                width,
                         y +
-                            height
+                                height
                     )
 
                 canvas.drawRect(
@@ -6245,13 +6438,13 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 canvas.withTranslation(
                     x +
-                        8f,
+                            8f,
                     y +
-                        (
-                            height -
-                            layout.height
-                        ) /
-                        2f
+                            (
+                                    height -
+                                            layout.height
+                                    ) /
+                            2f
                 ) {
                     layout.draw(
                         canvas
@@ -6259,8 +6452,8 @@ class PdfViewerActivity : AppCompatActivity() {
                 }
 
                 y +
-                    height +
-                    6f
+                        height +
+                        6f
             }
 
             ReviewerPdfBlockType.BULLET -> {
@@ -6274,9 +6467,9 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 canvas.drawCircle(
                     x +
-                        4.5f,
+                            4.5f,
                     y +
-                        6.2f,
+                            6.2f,
                     1.5f,
                     bulletPaint
                 )
@@ -6286,16 +6479,16 @@ class PdfViewerActivity : AppCompatActivity() {
                         clean,
                         bodyPaint,
                         (
-                            width -
-                            18
-                        ).coerceAtLeast(
-                            1
-                        )
+                                width -
+                                        18
+                                ).coerceAtLeast(
+                                1
+                            )
                     )
 
                 canvas.withTranslation(
                     x +
-                        12f,
+                            12f,
                     y
                 ) {
                     layout.draw(
@@ -6304,8 +6497,8 @@ class PdfViewerActivity : AppCompatActivity() {
                 }
 
                 y +
-                    layout.height +
-                    6f
+                        layout.height +
+                        6f
             }
 
             ReviewerPdfBlockType.BODY -> {
@@ -6328,8 +6521,8 @@ class PdfViewerActivity : AppCompatActivity() {
                 }
 
                 y +
-                    layout.height +
-                    6f
+                        layout.height +
+                        6f
             }
         }
     }
@@ -6372,17 +6565,17 @@ class PdfViewerActivity : AppCompatActivity() {
 
                 val contentWidth =
                     pageWidth -
-                        (
-                            outerMargin *
-                            2f
-                        )
+                            (
+                                    outerMargin *
+                                            2f
+                                    )
 
                 val columnWidth =
                     (
-                        contentWidth -
-                            columnGap
-                        ) /
-                        2f
+                            contentWidth -
+                                    columnGap
+                            ) /
+                            2f
 
                 val titleTypeface =
                     ResourcesCompat.getFont(
@@ -6543,11 +6736,11 @@ class PdfViewerActivity : AppCompatActivity() {
                     1
 
                 var page:
-                    PdfDocument.Page? =
+                        PdfDocument.Page? =
                     null
 
                 var canvas:
-                    Canvas? =
+                        Canvas? =
                     null
 
                 var currentColumn =
@@ -6568,7 +6761,7 @@ class PdfViewerActivity : AppCompatActivity() {
                                 it.canvas,
                             pageNumber =
                                 outputPageNumber -
-                                    1,
+                                        1,
                             pageWidth =
                                 pageWidth,
                             pageHeight =
@@ -6633,15 +6826,15 @@ class PdfViewerActivity : AppCompatActivity() {
 
                         pageTop +=
                             titleLayout.height +
-                                7f
+                                    7f
 
                         canvas!!.drawRect(
                             outerMargin,
                             pageTop,
                             pageWidth -
-                                outerMargin,
+                                    outerMargin,
                             pageTop +
-                                2.2f,
+                                    2.2f,
                             sectionFillPaint
                         )
 
@@ -6670,22 +6863,22 @@ class PdfViewerActivity : AppCompatActivity() {
 
                         pageTop +=
                             subtitleLayout.height +
-                                11f
+                                    11f
                     }
 
                     // Thin divider between columns.
                     canvas!!.drawLine(
                         outerMargin +
-                            columnWidth +
-                            columnGap /
-                            2f,
+                                columnWidth +
+                                columnGap /
+                                2f,
                         pageTop,
                         outerMargin +
-                            columnWidth +
-                            columnGap /
-                            2f,
+                                columnWidth +
+                                columnGap /
+                                2f,
                         pageHeight -
-                            footerReserve,
+                                footerReserve,
                         rulePaint
                     )
 
@@ -6727,11 +6920,11 @@ class PdfViewerActivity : AppCompatActivity() {
                 ) {
                     val scale =
                         columnWidth /
-                            bitmap.width
-                                .coerceAtLeast(
-                                    1
-                                )
-                                .toFloat()
+                                bitmap.width
+                                    .coerceAtLeast(
+                                        1
+                                    )
+                                    .toFloat()
 
                     var sourceTop =
                         0f
@@ -6742,8 +6935,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     ) {
                         var availableHeight =
                             pageHeight -
-                                footerReserve -
-                                y
+                                    footerReserve -
+                                    y
 
                         if (
                             availableHeight <
@@ -6753,15 +6946,15 @@ class PdfViewerActivity : AppCompatActivity() {
 
                             availableHeight =
                                 pageHeight -
-                                    footerReserve -
-                                    y
+                                        footerReserve -
+                                        y
                         }
 
                         val sourceHeightThatFits =
                             (
-                                availableHeight /
-                                    scale
-                                )
+                                    availableHeight /
+                                            scale
+                                    )
                                 .coerceAtLeast(
                                     1f
                                 )
@@ -6771,23 +6964,23 @@ class PdfViewerActivity : AppCompatActivity() {
                                 bitmap.height
                                     .toFloat(),
                                 sourceTop +
-                                    sourceHeightThatFits
+                                        sourceHeightThatFits
                             )
 
                         val destinationHeight =
                             (
-                                sourceBottom -
-                                    sourceTop
-                                ) *
-                                scale
+                                    sourceBottom -
+                                            sourceTop
+                                    ) *
+                                    scale
 
                         val x =
                             outerMargin +
-                                currentColumn *
-                                (
-                                    columnWidth +
-                                        columnGap
-                                )
+                                    currentColumn *
+                                    (
+                                            columnWidth +
+                                                    columnGap
+                                            )
 
                         val sourceRect =
                             android.graphics.Rect(
@@ -6810,9 +7003,9 @@ class PdfViewerActivity : AppCompatActivity() {
                                 x,
                                 y,
                                 x +
-                                    columnWidth,
+                                        columnWidth,
                                 y +
-                                    destinationHeight
+                                        destinationHeight
                             )
 
                         canvas!!.drawBitmap(
@@ -6821,13 +7014,13 @@ class PdfViewerActivity : AppCompatActivity() {
                             destinationRect,
                             Paint(
                                 Paint.ANTI_ALIAS_FLAG or
-                                    Paint.FILTER_BITMAP_FLAG
+                                        Paint.FILTER_BITMAP_FLAG
                             )
                         )
 
                         y +=
                             destinationHeight +
-                                6f
+                                    6f
 
                         sourceTop =
                             sourceBottom
@@ -6887,21 +7080,21 @@ class PdfViewerActivity : AppCompatActivity() {
 
                             if (
                                 y +
-                                    metaLayout.height +
-                                    12f >
+                                metaLayout.height +
+                                12f >
                                 pageHeight -
-                                    footerReserve
+                                footerReserve
                             ) {
                                 moveToNextColumnOrPage()
                             }
 
                             val x =
                                 outerMargin +
-                                    currentColumn *
-                                    (
-                                        columnWidth +
-                                            columnGap
-                                    )
+                                        currentColumn *
+                                        (
+                                                columnWidth +
+                                                        columnGap
+                                                )
 
                             canvas!!.withTranslation(
                                 x,
@@ -6914,7 +7107,7 @@ class PdfViewerActivity : AppCompatActivity() {
 
                             y +=
                                 metaLayout.height +
-                                    7f
+                                        7f
                         }
 
                         val annotationBitmap =
@@ -6938,8 +7131,8 @@ class PdfViewerActivity : AppCompatActivity() {
 
                         } else {
                             for (
-                                block in
-                                blocks
+                            block in
+                            blocks
                             ) {
                                 val required =
                                     reviewerBlockHeight(
@@ -6958,20 +7151,20 @@ class PdfViewerActivity : AppCompatActivity() {
 
                                 if (
                                     y +
-                                        required >
+                                    required >
                                     pageHeight -
-                                        footerReserve
+                                    footerReserve
                                 ) {
                                     moveToNextColumnOrPage()
                                 }
 
                                 val x =
                                     outerMargin +
-                                        currentColumn *
-                                        (
-                                            columnWidth +
-                                                columnGap
-                                        )
+                                            currentColumn *
+                                            (
+                                                    columnWidth +
+                                                            columnGap
+                                                    )
 
                                 y =
                                     drawReviewerBlock(
@@ -7038,21 +7231,21 @@ class PdfViewerActivity : AppCompatActivity() {
 
                             if (
                                 y +
-                                    headerHeight +
-                                    80f >
+                                headerHeight +
+                                80f >
                                 pageHeight -
-                                    footerReserve
+                                footerReserve
                             ) {
                                 moveToNextColumnOrPage()
                             }
 
                             val x =
                                 outerMargin +
-                                    currentColumn *
-                                    (
-                                        columnWidth +
-                                            columnGap
-                                    )
+                                        currentColumn *
+                                        (
+                                                columnWidth +
+                                                        columnGap
+                                                )
 
                             y =
                                 drawReviewerBlock(
@@ -7104,45 +7297,45 @@ class PdfViewerActivity : AppCompatActivity() {
                                     val scale =
                                         minOf(
                                             maxWidth /
-                                                bitmap.width,
+                                                    bitmap.width,
                                             maxHeight /
-                                                bitmap.height
+                                                    bitmap.height
                                         )
 
                                     val drawWidth =
                                         bitmap.width *
-                                            scale
+                                                scale
 
                                     val drawHeight =
                                         bitmap.height *
-                                            scale
+                                                scale
 
                                     if (
                                         y +
-                                            drawHeight +
-                                            8f >
+                                        drawHeight +
+                                        8f >
                                         pageHeight -
-                                            footerReserve
+                                        footerReserve
                                     ) {
                                         moveToNextColumnOrPage()
                                     }
 
                                     val imageX =
                                         outerMargin +
-                                            currentColumn *
-                                            (
-                                                columnWidth +
-                                                    columnGap
-                                            )
+                                                currentColumn *
+                                                (
+                                                        columnWidth +
+                                                                columnGap
+                                                        )
 
                                     val destination =
                                         RectF(
                                             imageX,
                                             y,
                                             imageX +
-                                                drawWidth,
+                                                    drawWidth,
                                             y +
-                                                drawHeight
+                                                    drawHeight
                                         )
 
                                     canvas!!.drawBitmap(
@@ -7151,13 +7344,13 @@ class PdfViewerActivity : AppCompatActivity() {
                                         destination,
                                         Paint(
                                             Paint.ANTI_ALIAS_FLAG or
-                                                Paint.FILTER_BITMAP_FLAG
+                                                    Paint.FILTER_BITMAP_FLAG
                                         )
                                     )
 
                                     y +=
                                         drawHeight +
-                                            10f
+                                                10f
                                 }
                         }
 
@@ -7172,7 +7365,7 @@ class PdfViewerActivity : AppCompatActivity() {
                             it.canvas,
                         pageNumber =
                             outputPageNumber -
-                                1,
+                                    1,
                         pageWidth =
                             pageWidth,
                         pageHeight =
@@ -7256,8 +7449,8 @@ class PdfViewerActivity : AppCompatActivity() {
             -1
 
         for (
-            line in
-            0 until layout.lineCount
+        line in
+        0 until layout.lineCount
         ) {
             if (
                 layout.getLineBottom(
