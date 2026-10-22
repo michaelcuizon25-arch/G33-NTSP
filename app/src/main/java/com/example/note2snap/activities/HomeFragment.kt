@@ -85,6 +85,9 @@ class HomeFragment : Fragment() {
     private var snapHomeBob: ObjectAnimator? = null
     private var homeScanCard: View? = null
 
+    // Snap Tips banner is hidden until requested or shown after the home guide.
+    private var isTipsVisible = false
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -140,26 +143,25 @@ class HomeFragment : Fragment() {
                 )
         }
 
+        // Opens Unsaved Notes first; falls back to the latest unsaved scan if unavailable.
         cardSmartSuggestion?.setOnClickListener {
-            val savedPaths =
-                latestNotes
-                    .mapNotNull { note ->
-                        note.imagePath
-                            .takeIf { path ->
-                                path.isNotBlank()
-                            }
-                    }
+            try {
+                startActivity(Intent(requireContext(), UnsavedNotesActivity::class.java))
+            } catch (e: Exception) {
+                val savedPaths = latestNotes
+                    .mapNotNull { note -> normalizePath(note.imagePath).takeIf { it.isNotBlank() } }
                     .toSet()
 
-            latestHistory
-                .sortedByDescending { item -> item.timestamp }
-                .firstOrNull { item ->
-                    item.imagePath !in savedPaths
-                }
-                ?.let { item ->
-                    openRecentScan(item)
-                }
+                latestHistory
+                    .sortedByDescending { item -> item.timestamp }
+                    .firstOrNull { item -> normalizePath(item.imagePath) !in savedPaths }
+                    ?.let { item -> openRecentScan(item) }
+            }
         }
+
+        // Tap Snap or the greeting subtitle to show/hide Snap Tips.
+        streakRobot?.setOnClickListener { toggleSnapTips() }
+        tvGreetingSubtitle?.setOnClickListener { toggleSnapTips() }
 
         cardStreakEvolution?.setOnClickListener {
             showSnapEvolutionSheet()
@@ -184,6 +186,27 @@ class HomeFragment : Fragment() {
         return view
     }
 
+    fun showSnapTips() {
+        isTipsVisible = true
+        ensureSnapHomeBanner(anchor = homeScanCard ?: cardSmartSuggestion ?: cardContinue)
+        view?.findViewWithTag<View>("note2snap_home_snap_banner")?.visibility = View.VISIBLE
+    }
+
+    fun toggleSnapTips() {
+        val banner = view?.findViewWithTag<View>("note2snap_home_snap_banner")
+        if (banner == null || !isTipsVisible) {
+            showSnapTips()
+        } else {
+            isTipsVisible = false
+            banner.visibility = View.GONE
+        }
+    }
+
+    private fun normalizePath(path: String?): String {
+        if (path.isNullOrBlank()) return ""
+        return path.trim().removePrefix("file://")
+    }
+
     private fun ensureSnapHomeBanner(
         anchor: View?
     ) {
@@ -191,22 +214,18 @@ class HomeFragment : Fragment() {
 
         val root = view ?: return
 
-        // If already added, just restart animation and keep it visible.
-        val existing =
-            root.findViewWithTag<View>(
-                "note2snap_home_snap_banner"
-            )
+        val existing = root.findViewWithTag<View>("note2snap_home_snap_banner")
 
         if (existing != null) {
-            existing.visibility =
-                View.VISIBLE
-
-            snapHomeRobot
-                ?.playAnimation()
-
-            startSnapHomeBob()
+            existing.visibility = if (isTipsVisible) View.VISIBLE else View.GONE
+            if (isTipsVisible) {
+                snapHomeRobot?.playAnimation()
+                startSnapHomeBob()
+            }
             return
         }
+
+        if (!isTipsVisible) return
 
         val insertion =
             findLinearInsertionPoint(
@@ -416,7 +435,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.START or
-                        Gravity.CENTER_VERTICAL
+                            Gravity.CENTER_VERTICAL
 
                 leftMargin =
                     dpHome(
@@ -467,7 +486,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.END or
-                        Gravity.BOTTOM
+                            Gravity.BOTTOM
 
                 rightMargin =
                     dpHome(
@@ -514,7 +533,7 @@ class HomeFragment : Fragment() {
             ).apply {
                 gravity =
                     Gravity.END or
-                        Gravity.TOP
+                            Gravity.TOP
 
                 rightMargin =
                     dpHome(
@@ -577,7 +596,7 @@ class HomeFragment : Fragment() {
             if (
                 parent is LinearLayout &&
                 parent.orientation ==
-                    LinearLayout.VERTICAL
+                LinearLayout.VERTICAL
             ) {
                 return Pair(
                     parent,
@@ -681,11 +700,11 @@ class HomeFragment : Fragment() {
         val next =
             messages[
                 (
-                    currentIndex +
-                        1
-                    ).mod(
-                    messages.size
-                )
+                        currentIndex +
+                                1
+                        ).mod(
+                        messages.size
+                    )
             ]
 
         snapHomeTip
@@ -718,11 +737,11 @@ class HomeFragment : Fragment() {
         value: Int
     ): Int {
         return (
-            value *
-                resources
-                    .displayMetrics
-                    .density
-            ).toInt()
+                value *
+                        resources
+                            .displayMetrics
+                            .density
+                ).toInt()
     }
 
     private fun startHomeGuideIfNeeded(
@@ -779,11 +798,10 @@ class HomeFragment : Fragment() {
                     putBoolean("HOME_GUIDE_V5_SHOWN", true)
                 }
 
-                // Tutorial overlay is gone: make sure Snap is immediately visible.
+                // Show Snap Tips after the tutorial has finished.
+                isTipsVisible = true
                 view?.post {
-                    ensureSnapHomeBanner(
-                        anchor = homeScanCard
-                    )
+                    ensureSnapHomeBanner(anchor = homeScanCard ?: cardSmartSuggestion)
                 }
             }
     }
@@ -835,18 +853,16 @@ class HomeFragment : Fragment() {
         val savedPaths =
             latestNotes
                 .mapNotNull { note ->
-                    note.imagePath
-                        .takeIf { path ->
-                            path.isNotBlank()
-                        }
+                    normalizePath(note.imagePath)
+                        .takeIf { path -> path.isNotBlank() }
                 }
                 .toSet()
 
         val unsavedCount =
             latestHistory
                 .count { item ->
-                    item.imagePath.isNotBlank() &&
-                        item.imagePath !in savedPaths
+                    normalizePath(item.imagePath).isNotBlank() &&
+                            normalizePath(item.imagePath) !in savedPaths
                 }
 
         if (unsavedCount > 0) {
@@ -929,11 +945,11 @@ class HomeFragment : Fragment() {
         val recent = latestHistory.sortedByDescending { it.timestamp }.take(3)
 
         val savedPaths = latestNotes.mapNotNull {
-            it.imagePath.takeIf { path -> path.isNotBlank() }
+            normalizePath(it.imagePath).takeIf { path -> path.isNotBlank() }
         }.toSet()
 
         val starredPaths = latestNotes.filter { it.isStarred }.mapNotNull {
-            it.imagePath.takeIf { path -> path.isNotBlank() }
+            normalizePath(it.imagePath).takeIf { path -> path.isNotBlank() }
         }.toSet()
 
         recentScanAdapter.updateData(
@@ -1337,11 +1353,11 @@ class HomeFragment : Fragment() {
 
         val sevenDaysAgo =
             System.currentTimeMillis() -
-                7L * 24L * 60L * 60L * 1000L
+                    7L * 24L * 60L * 60L * 1000L
 
         val scansThisWeek =
             latestHistory.count {
-                item ->
+                    item ->
                 item.timestamp >= sevenDaysAgo
             }
 
@@ -1369,19 +1385,19 @@ class HomeFragment : Fragment() {
     private fun calculateStudyStreak(): Int {
         val activityDays =
             (
-                latestNotes.map {
-                    note ->
-                    startOfDay(
-                        note.timestamp
+                    latestNotes.map {
+                            note ->
+                        startOfDay(
+                            note.timestamp
+                        )
+                    } +
+                            latestHistory.map {
+                                    scan ->
+                                startOfDay(
+                                    scan.timestamp
+                                )
+                            }
                     )
-                } +
-                latestHistory.map {
-                    scan ->
-                    startOfDay(
-                        scan.timestamp
-                    )
-                }
-            )
                 .toSet()
 
         if (activityDays.isEmpty()) {
@@ -1572,11 +1588,11 @@ class HomeFragment : Fragment() {
                 100
             } else {
                 (
-                    streak
-                        .coerceAtMost(nextThreshold) *
-                        100f /
-                        nextThreshold
-                    )
+                        streak
+                            .coerceAtMost(nextThreshold) *
+                                100f /
+                                nextThreshold
+                        )
                     .toInt()
                     .coerceIn(
                         0,
@@ -1826,9 +1842,9 @@ class HomeFragment : Fragment() {
                 0
             } else {
                 (
-                    nextThreshold -
-                        streak
-                    )
+                        nextThreshold -
+                                streak
+                        )
                     .coerceAtLeast(
                         0
                     )
@@ -1905,10 +1921,10 @@ class HomeFragment : Fragment() {
         } else {
             progress.progress =
                 (
-                    streak *
-                        100f /
-                        nextThreshold
-                    )
+                        streak *
+                                100f /
+                                nextThreshold
+                        )
                     .toInt()
                     .coerceIn(
                         0,
@@ -2101,6 +2117,7 @@ class HomeFragment : Fragment() {
         snapHomeRobot = null
         snapHomeTip = null
         homeScanCard = null
+        isTipsVisible = false
 
         super.onDestroyView()
     }

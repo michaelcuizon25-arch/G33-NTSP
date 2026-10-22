@@ -1,5 +1,6 @@
 package com.example.note2snap.activities
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -26,6 +27,7 @@ import com.example.note2snap.data.AppDatabase
 import com.example.note2snap.model.ScanHistory
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -33,6 +35,7 @@ import org.json.JSONArray
 class HistoryFragment : Fragment() {
 
     private var historyAdapter: HistoryAdapter? = null
+    private var isUnsavedOnlyFilter = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -254,31 +257,62 @@ class HistoryFragment : Fragment() {
                 viewLifecycleOwner
             ) { historyList ->
 
-                if (
-                    historyList.isNullOrEmpty()
-                ) {
+                val rawList = historyList.orEmpty()
 
-                    llEmptyHistory.visibility =
-                        View.VISIBLE
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val safeContext = context ?: return@launch
+                    val dao = AppDatabase.getDatabase(safeContext).appDao()
 
-                    rvHistory.visibility =
-                        View.GONE
+                    val displayList = if (isUnsavedOnlyFilter) {
+                        try {
+                            val notes = dao.getAllNotes().first()
+                            val savedPaths = notes.mapNotNull { n ->
+                                n.imagePath.takeIf { it.isNotBlank() }
+                            }.toSet()
 
-                } else {
+                            rawList.filter { item ->
+                                item.imagePath.isNotBlank() && item.imagePath !in savedPaths
+                            }
+                        } catch (e: Exception) {
+                            rawList
+                        }
+                    } else {
+                        rawList
+                    }
 
-                    llEmptyHistory.visibility =
-                        View.GONE
+                    withContext(Dispatchers.Main) {
+                        if (!isAdded) return@withContext
 
-                    rvHistory.visibility =
-                        View.VISIBLE
-
-                    historyAdapter?.updateData(
-                        historyList
-                    )
+                        if (displayList.isEmpty()) {
+                            llEmptyHistory.visibility = View.VISIBLE
+                            rvHistory.visibility = View.GONE
+                        } else {
+                            llEmptyHistory.visibility = View.GONE
+                            rvHistory.visibility = View.VISIBLE
+                            historyAdapter?.updateData(displayList)
+                        }
+                    }
                 }
             }
 
         return view
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkUnsavedFilter()
+    }
+
+    private fun checkUnsavedFilter() {
+        val safeContext = context ?: return
+        val prefs = safeContext.getSharedPreferences("Note2SnapPrefs", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("SHOW_UNSAVED_ONLY", false)) {
+            isUnsavedOnlyFilter = true
+            // Reset flag after reading so normal tab clicks show full history
+            prefs.edit().putBoolean("SHOW_UNSAVED_ONLY", false).apply()
+        } else {
+            isUnsavedOnlyFilter = false
+        }
     }
 
     private fun updateHistorySelectionBar(
