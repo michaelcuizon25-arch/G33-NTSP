@@ -2344,24 +2344,24 @@ class PdfViewerActivity : AppCompatActivity() {
                 R.id.tvPdfContent
             ) ?: return
 
-        val plain =
-            textView.text.toString()
-
+        // Preserve the StyleSpan / RelativeSizeSpan objects created by
+        // HtmlCompat.fromHtml(). Converting to String here removed all rich
+        // formatting before the note was displayed.
         val styled =
             buildReviewerStyledText(
-                plain
+                textView.text
             )
 
         textView.text = styled
     }
 
     private fun buildReviewerStyledText(
-        plainText: String
+        sourceText: CharSequence
     ): SpannableStringBuilder {
-        val styled =
-            SpannableStringBuilder(
-                plainText
-            )
+        // Keep existing HTML-derived character spans (bold, italics, sizes)
+        // while adding Note2Snap's section and highlight styling.
+        val styled = SpannableStringBuilder(sourceText)
+        val plainText = styled.toString()
 
         val blue =
             "#244F8F".toColorInt()

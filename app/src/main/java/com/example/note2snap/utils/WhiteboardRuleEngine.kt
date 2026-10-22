@@ -1,7 +1,6 @@
 package com.example.note2snap.utils
 
 import android.graphics.Rect
-import android.text.TextUtils
 import com.example.note2snap.model.BlockType
 import com.example.note2snap.model.NoteBlock
 import com.example.note2snap.model.StructuredNote
@@ -86,12 +85,12 @@ object WhiteboardRuleEngine {
     var ocrCorrections: List<Pair<Regex, String>> = emptyList()
 
     /**
-     * Cornell-style output: every cue question is placed in a left column
-     * next to the notes it belongs to (like the original page). Set to false
-     * to get the old flat list where cues are plain bold lines.
+     * Optional Cornell layout. Reviewer-style notes are the default, so cue
+     * questions are inserted as headings rather than rebuilding the board layout.
+     * Set this to true only when a Cornell two-column output is requested.
      */
     @Volatile
-    var cornellLayout: Boolean = true
+    var cornellLayout: Boolean = false
 
     // =========================================================
     // ENTRY POINTS
@@ -143,7 +142,15 @@ object WhiteboardRuleEngine {
             )
         }
 
-        return StructuredNote(title = fallbackTitle(blocks), blocks = blocks)
+        // Prefer an explicit prominent topic over stray CRNN fragments.
+        val title = cleaned.take(5).firstOrNull { isStrongTitleText(it) }
+            ?: cleaned.firstOrNull { isPlausibleTitleText(it) }
+            ?: fallbackTitle(blocks)
+
+        return StructuredNote(
+            title = title,
+            blocks = groupUnlabelledDefinitions(blocks, title)
+        )
     }
 
     private fun emptyNote() = StructuredNote(title = "Untitled Scan", blocks = emptyList())
@@ -158,9 +165,20 @@ object WhiteboardRuleEngine {
     ): StructuredNote {
         if (allItems.isEmpty()) return emptyNote()
 
+        // Skip very short, isolated recognition debris ONLY when a clear topic
+        // heading exists. Preserve numbers, formulas and meaningful short terms.
+        val hasClearTopic = allItems.any { isStrongTitleText(it.text) }
+        val usableItems = if (hasClearTopic) allItems.filterNot { cell ->
+            val t = cell.text.trim()
+            t.length in 1..5 && t.count { it.isLetter() } <= 2 &&
+                    t.any { it.isLetter() } && t.any { it.isDigit() } &&
+                    t.none { it in "=<>+-*/" }
+        } else allItems
+        if (usableItems.isEmpty()) return emptyNote()
+
         // 1. Document title (top line standing alone)
-        val titleCell = findTitleCell(allItems)
-        val items = if (titleCell == null) allItems else allItems.filter { it !== titleCell }
+        val titleCell = findTitleCell(usableItems)
+        val items = if (titleCell == null) usableItems else usableItems.filter { it !== titleCell }
         val titleText = titleCell?.let {
             sanitizeOcrText(it.text).replace(Regex("^#+\\s*"), "")
         }
@@ -323,8 +341,62 @@ object WhiteboardRuleEngine {
 
         return StructuredNote(
             title = titleText ?: fallbackTitle(blocks),
-            blocks = finalBlocks
+            blocks = groupUnlabelledDefinitions(finalBlocks, titleText)
         )
+    }
+
+    /**
+     * Adds a neutral reviewer section only for a run of two or more definitions
+     * that has no existing section heading. The original blocks, their order,
+     * bounding boxes, and recognized wording are all preserved.
+     *
+     * Do not invent a heading if the teacher already provided one, and do not
+     * change Cornell/table output or the treatment of single definitions.
+     */
+    private fun groupUnlabelledDefinitions(
+        blocks: List<NoteBlock>,
+        documentTitle: String?
+    ): List<NoteBlock> {        if (blocks.size < 2) return blocks
+
+        val result = mutableListOf<NoteBlock>()
+        var index = 0
+        while (index < blocks.size) {
+            val block = blocks[index]
+            if (block.type != BlockType.KEY_DEFINITION) {
+                result += block
+                index++
+                continue
+            }
+
+            var end = index
+            while (end < blocks.size && blocks[end].type == BlockType.KEY_DEFINITION) {
+                end++
+            }
+
+            val prior = result.lastOrNull()
+
+            val priorIsDocumentTitle = index == 1 && prior != null &&
+                    prior.rawText.trim().equals(
+                        documentTitle?.trim(),
+                        ignoreCase = true
+                    )
+
+            val hasHeading = !priorIsDocumentTitle && (
+                    prior?.type == BlockType.SECTION_HEADER ||
+                            prior?.type == BlockType.SUBHEADING ||
+                            prior?.type == BlockType.TITLE
+                    )
+            if (end - index >= 2 && !hasHeading) {
+                result += NoteBlock(
+                    rawText = "Key Concepts",
+                    type = BlockType.SECTION_HEADER,
+                    formattedText = "<b>Key Concepts</b>"
+                )
+            }
+            result.addAll(blocks.subList(index, end))
+            index = end
+        }
+        return result
     }
 
     // =========================================================
@@ -394,15 +466,43 @@ object WhiteboardRuleEngine {
         )
     }
 
-    private fun fallbackTitle(blocks: List<NoteBlock>): String {
-        val candidates = blocks.filter {
-            (it.type == BlockType.SECTION_HEADER || it.type == BlockType.SUBHEADING) &&
-                    !it.rawText.startsWith("NOTE", ignoreCase = true)
+    private fun isRepetitiveNoise(text: String): Boolean {
+        val letters = text.filter { it.isLetter() }.lowercase()
+
+        return letters.length >= 5 &&
+                letters.toSet().size <= 2
+    }
+
+    private fun isPlausibleTitleText(text: String): Boolean {
+        val t = text.trim()
+        // Reject repetitive recognition fragments like "AoOOO".
+// Do not reject ordinary one-word titles.
+        val letters = t.filter { it.isLetter() }.lowercase()
+        val uniqueLetters = letters.toSet().size
+
+        if (letters.length >= 5 && uniqueLetters <= 2) {
+            return false
         }
+        if (t.length !in 5..70 || t.count { it.isLetter() } < 5) return false
+        if (t.last() in ".,;!?:" || t.startsWith("•") || t.startsWith("-")) return false
+        if (isKeyDefinitionRule(t) || isNumberedItemRule(t) || isSentenceDefinitionRule(t)) return false
+        if (t.split(Regex("\\s+")).size > 9) return false
+        return true
+    }
 
-        val chosen = candidates.firstOrNull { !it.rawText.trim().endsWith("?") }
-            ?: candidates.firstOrNull()
+    private fun isStrongTitleText(text: String): Boolean {
+        val t = text.trim()
+        val words = t.split(Regex("\\s+"))
+        return isPlausibleTitleText(t) && words.size in 2..8 &&
+                t.filter { it.isLetter() }.all { it.isUpperCase() }
+    }
 
+    private fun fallbackTitle(blocks: List<NoteBlock>): String {
+        val chosen = blocks.firstOrNull { isStrongTitleText(it.rawText) }
+            ?: blocks.firstOrNull {
+                (it.type == BlockType.SECTION_HEADER || it.type == BlockType.SUBHEADING) &&
+                        isPlausibleTitleText(it.rawText)
+            }
         return chosen?.rawText?.replace(Regex("^#+\\s*"), "") ?: "Untitled Scan"
     }
 
@@ -502,20 +602,22 @@ object WhiteboardRuleEngine {
     private fun findTitleCell(items: List<SpatialCell>): SpatialCell? {
         if (items.size < 3) return null
 
+        val topY = items.minOf { it.box.top }
+        val bottomY = items.maxOf { it.box.bottom }
+        val earlyLimit = topY + ((bottomY - topY) * 0.35f).toInt()
+        // Stray fragments sometimes sit above the real title. Prefer a clear
+        // uppercase topic near the top instead of making the fragment a title.
+        val strongTitle = items.filter {
+            it.box.top <= earlyLimit && isStrongTitleText(it.text)
+        }.minByOrNull { it.box.top }
+        if (strongTitle != null) return strongTitle
+
         val top = items.minByOrNull { it.box.top } ?: return null
-        val text = top.text.trim()
-
-        if (text.length !in 3..70) return null
-        if (".,;!?:".contains(text.last())) return null
-        if (isBulletRule(text) || isCalloutRule(text) || isQuestionHeader(text)) return null
-        if (isNumberedItemRule(text) || isKeyDefinitionRule(text)) return null
-
+        if (!isPlausibleTitleText(top.text)) return null
         val sharesRow = items.any {
             it !== top && verticalOverlapRatio(it.box, top.box) >= 0.35f
         }
-        if (sharesRow) return null
-
-        return top
+        return if (sharesRow) null else top
     }
 
     /** Merges wrapped cue-column lines ("What is the difference / between ... / a sample?"). */
@@ -735,18 +837,26 @@ object WhiteboardRuleEngine {
         metrics: LayoutMetrics,
         bodyWidth: Int
     ): List<BodyItem> {
+
         val out = mutableListOf<BodyItem>()
 
         for (item in items) {
             val prev = out.lastOrNull()
 
-            if (
-                item is BodyItem.Line &&
-                prev is BodyItem.Line &&
-                canMerge(prev.line, item.line, metrics, bodyWidth)
-            ) {
-                prev.line.text = prev.line.text.trimEnd() + " " + item.line.text.trim()
-                prev.line.box = unionRect(prev.line.box, item.line.box)
+            if (item is BodyItem.Line && prev is BodyItem.Line) {
+
+                val a = prev.line
+                val b = item.line
+
+                val canJoin = canMerge(a, b, metrics, bodyWidth)
+
+                if (canJoin) {
+                    a.text = a.text.trimEnd() + " " + b.text.trim()
+                    a.box = unionRect(a.box, b.box)
+                } else {
+                    out += item
+                }
+
             } else {
                 out += item
             }
@@ -765,6 +875,7 @@ object WhiteboardRuleEngine {
         val curText = cur.text.trim()
 
         if (prevText.isEmpty() || curText.isEmpty()) return false
+        if (isRepetitiveNoise(prevText) || isRepetitiveNoise(curText)) return false
         if (isMergeBreaker(curText)) return false
         if (".!?:;".contains(prevText.last())) return false
 
@@ -782,12 +893,32 @@ object WhiteboardRuleEngine {
 
         // The line above must have been (nearly) full width. This keeps a
         // short heading or list item from being glued to the line below it.
-        if (prev.box.width() < bodyWidth * 0.5) return false
+        val previousIsWide = prev.box.width() >= bodyWidth * 0.5
+
+        val previousLooksIncomplete =
+            endsMidSentence(prevText) ||
+                    prevText.endsWith(",") ||
+                    prevText.endsWith("-")
+
+        if (!previousIsWide && !previousLooksIncomplete) {
+            return false
+        }
 
         // ...and the new line must continue the sentence. Handwritten wraps
         // start in lowercase; an uppercase start is a new item unless the line
         // above stopped mid-sentence (comma, hyphen, or a connecting word).
-        return curText.first().isLowerCase() || endsMidSentence(prevText)
+        val normalContinuation =
+            curText.first().isLowerCase() ||
+                    endsMidSentence(prevText)
+
+        val tightlyAlignedContinuation =
+            prev.box.width() >= bodyWidth * 0.65 &&
+                    cur.box.top >= prev.box.bottom &&
+                    cur.box.top - prev.box.bottom <= metrics.unit * 0.35 &&
+                    abs(cur.box.left - prev.box.left) <= metrics.unit * 0.5 &&
+                    curText.first().isUpperCase()
+
+        return normalContinuation || tightlyAlignedContinuation
     }
 
     private val connectorWords = setOf(
@@ -861,35 +992,81 @@ object WhiteboardRuleEngine {
     }
 
     /**
-     * A plain line indented inside a list, or directly under a list item at
-     * the same level, is a bullet whose symbol was not read by the OCR.
+     * Conservatively recover missing list markers only next to an existing
+     * list item at the same level. Indentation alone is not enough.
      */
-    private fun promotePlainItems(entries: List<Entry>, metrics: LayoutMetrics): List<Entry> {
+    private fun promotePlainItems(
+        entries: List<Entry>,
+        metrics: LayoutMetrics
+    ): List<Entry> {
+
         val out = mutableListOf<Entry>()
 
-        for (entry in entries) {
+        for ((index, entry) in entries.withIndex()) {
+
             if (!entry.plain) {
                 out += entry
                 continue
             }
 
             val prev = out.lastOrNull()
-            val text = entry.block.rawText
-            val startsLikeItem = text.firstOrNull()?.let { it.isUpperCase() || it.isDigit() } == true
+            val text = entry.block.rawText.trim()
 
-            val siblingOfList =
+            val startsLikeItem =
+                text.firstOrNull()?.let {
+                    it.isUpperCase() || it.isDigit()
+                } == true
+
+            val closeToPrevious =
                 prev != null &&
-                        isListType(prev.block.type) &&
-                        prev.level == entry.level &&
-                        entry.top - prev.bottom <= metrics.unit * 1.6 &&
-                        startsLikeItem
+                        entry.top >= prev.bottom &&
+                        entry.top - prev.bottom <= metrics.unit * 1.6
 
-            if (entry.level >= 1 || siblingOfList) {
+            val next = entries.getOrNull(index + 1)
+
+            val previousIsBullet =
+                prev?.block?.type == BlockType.BULLET_ITEM
+
+            val nextIsBullet =
+                next?.block?.type == BlockType.BULLET_ITEM
+
+            val sameLevel =
+                prev?.level == entry.level &&
+                        next?.level == entry.level
+
+            val closeToNext =
+                next != null &&
+                        next.top >= entry.bottom &&
+                        next.top - entry.bottom <= metrics.unit * 1.6
+
+            val looksLikeShortItem =
+                startsLikeItem &&
+                        text.length <= 65 &&
+                        text.split(Regex("\\s+")).size <= 8 &&
+                        !text.endsWith(".") &&
+                        !text.endsWith("!") &&
+                        !text.endsWith("?")
+
+// Recover a missing bullet only when surrounded
+// by genuine bullets at the same indentation.
+            val shouldPromote =
+                previousIsBullet &&
+                        nextIsBullet &&
+                        sameLevel &&
+                        closeToPrevious &&
+                        closeToNext &&
+                        looksLikeShortItem
+
+            if (shouldPromote) {
+
                 out += Entry(
                     block = NoteBlock(
                         rawText = text,
                         type = BlockType.BULLET_ITEM,
-                        formattedText = "${indentSpaces(entry.level)}${bulletForLevel(entry.level)} ${esc(text)}",
+                        formattedText =
+                            "${indentSpaces(entry.level)}" +
+                                    "${bulletForLevel(entry.level)} " +
+                                    esc(text),
                         boundingBox = entry.block.boundingBox
                     ),
                     level = entry.level,
@@ -897,6 +1074,7 @@ object WhiteboardRuleEngine {
                     bottom = entry.bottom,
                     plain = false
                 )
+
             } else {
                 out += entry
             }
@@ -968,7 +1146,20 @@ object WhiteboardRuleEngine {
             .replace(circle, "◦ ")
     }
 
-    private fun esc(text: String): String = TextUtils.htmlEncode(text)
+    private fun esc(text: String): String {
+        return buildString {
+            for (char in text) {
+                when (char) {
+                    '&' -> append("&amp;")
+                    '<' -> append("&lt;")
+                    '>' -> append("&gt;")
+                    '"' -> append("&quot;")
+                    '\'' -> append("&#39;")
+                    else -> append(char)
+                }
+            }
+        }
+    }
 
     // =========================================================
     // SINGLE-LINE CLASSIFICATION
@@ -1013,6 +1204,18 @@ object WhiteboardRuleEngine {
                 )
             }
 
+            isDashDefinitionRule(trimmed) -> {
+                val match = dashDefinitionPattern.matchEntire(trimmed)!!
+                val term = match.groupValues[1].trim()
+                val meaning = match.groupValues[2].trim()
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.KEY_DEFINITION,
+                    formattedText = "<b>${esc(term)}</b>: ${esc(meaning)}",
+                    boundingBox = boundingBox
+                )
+            }
+
             isKeyDefinitionRule(trimmed) -> {
                 val colonIndex = trimmed.indexOf(":")
                 val key = trimmed.substring(0, colonIndex).trim()
@@ -1022,11 +1225,16 @@ object WhiteboardRuleEngine {
                 val cleanKey = if (symbol != null) key.removePrefix(symbol).trim() else key
                 val effective = max(level, glyphLevel(symbol))
 
+                val prefix = if (symbol != null) {
+                    "${indentSpaces(effective)}${bulletForLevel(effective)} "
+                } else {
+                    ""
+                }
+
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.KEY_DEFINITION,
-                    formattedText = "${indentSpaces(effective)}${bulletForLevel(effective)} " +
-                            "<span style='background-color:#DDF0B4;'><b>${esc(cleanKey)}</b></span>: ${esc(value)}",
+                    formattedText = prefix + "<b>${esc(cleanKey)}</b>: ${esc(value)}",
                     boundingBox = boundingBox
                 )
             }
@@ -1077,6 +1285,16 @@ object WhiteboardRuleEngine {
                 )
             }
 
+            isSentenceDefinitionRule(trimmed) -> {
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.KEY_DEFINITION,
+                    formattedText = formatSentenceDefinition(trimmed),
+                    boundingBox = boundingBox
+                )
+            }
+
+
             isMathRule(trimmed) -> {
                 NoteBlock(
                     rawText = trimmed,
@@ -1120,6 +1338,22 @@ object WhiteboardRuleEngine {
 
     private val sectionNumberPattern =
         Regex("^\\d+(?:\\.\\d+)+[.)]?\\s*(?:[-–—:]\\s*)?[A-Z].{2,}")
+
+    // Accept a leading section count even when CRNN appended a stray trailing digit.
+    private val numberedTopicHeadingPattern =
+        Regex("^\\d+\\s+[A-Za-z][A-Za-z\\s]{5,65}\\s*\\d?$")
+
+    // Avoid treating an ordinary sentence or subtraction as a term-definition pair.
+    private val dashDefinitionPattern =
+        Regex("^([\\p{L}][\\p{L}0-9 ()/]{1,32}?)\\s+[-–—]\\s+(.{4,})$")
+
+    private fun isDashDefinitionRule(text: String): Boolean {
+        val match = dashDefinitionPattern.matchEntire(text.trim()) ?: return false
+        val term = match.groupValues[1].trim()
+        return term.split(Regex("\\s+")).size <= 5 &&
+                term.count { it.isLetter() } >= 2 &&
+                !isBulletRule(text) && !isNumberedItemRule(text)
+    }
 
     private val chapterPattern =
         Regex("^(chapter|section|unit|lesson|topic|part)\\s+([0-9]+|[ivxlc]+)\\b.*", RegexOption.IGNORE_CASE)
@@ -1185,10 +1419,12 @@ object WhiteboardRuleEngine {
     private fun isSectionHeaderRule(text: String): Boolean {
         val trimmed = text.trim()
 
+        if (isRepetitiveNoise(trimmed)) return false
+
         if (isBulletRule(trimmed) || isNumberedItemRule(trimmed)) return false
         if (trimmed.startsWith("##")) return true
 
-        if (isSectionNumberHeader(trimmed)) return true
+        if (isSectionNumberHeader(trimmed) || numberedTopicHeadingPattern.matches(trimmed)) return true
         if (chapterPattern.matches(trimmed)) return true
         if (standaloneHeaderPattern.matches(trimmed)) return true
 
@@ -1229,23 +1465,96 @@ object WhiteboardRuleEngine {
      * list or indented text is a heading of that list: "Scientific Method",
      * "Population (N)", "Census".
      */
-    private fun headingLikeText(text: String, nextText: String?, nextIndented: Boolean): Boolean {
-        val t = sanitizeOcrText(text)
+    private fun headingLikeText(
+        text: String,
+        nextText: String?,
+        nextIndented: Boolean
+    ): Boolean {
+        val t = sanitizeOcrText(text).trim()
+        if (isRepetitiveNoise(t)) return false
+        val next = nextText?.trim() ?: return false
 
         if (t.length !in 3..45) return false
-        if (t.split(Regex("\\s+")).size > 6) return false
-        if (".,;!?:".contains(t.last())) return false
-        if (t.contains(":")) return false
-        if (!(t.first().isUpperCase() || t.first().isDigit())) return false
-        if (isBulletRule(t) || isNumberedItemRule(t)) return false
 
-        val next = nextText?.trim() ?: return false
+        val words = t.split(Regex("\\s+"))
+        if (words.size > 6) return false
+
+        if (t.last() in ".,;!?:") return false
+        if (isBulletRule(t) || isNumberedItemRule(t)) return false
+        if (isKeyDefinitionRule(t) || isMathRule(t)) return false
+
+        val letters = t.filter { it.isLetter() }
+        if (letters.isEmpty()) return false
+
+        val allUppercase = letters.all { it.isUpperCase() }
+
+        val titleCase = words.all { word ->
+            val firstLetter = word.firstOrNull { it.isLetter() }
+            firstLetter == null ||
+                    firstLetter.isUpperCase() ||
+                    word.lowercase() in setOf(
+                "a", "an", "the", "of", "in", "on",
+                "and", "or", "to", "for", "with"
+            )
+        }
+
+        val singleTerm = words.size == 1 &&
+                t.first().isUpperCase()
+
+        val looksLikeHeading =
+            allUppercase || titleCase || singleTerm
+
+        if (!looksLikeHeading) return false
 
         return isBulletRule(next) ||
                 isNumberedItemRule(next) ||
                 isKeyDefinitionRule(next) ||
                 nextIndented
     }
+
+
+    /**
+     * Emphasize the term in a recognized sentence-definition without rewriting it.
+     * Keeps rawText and the exact wording unchanged for editing and saving.
+     */
+    private fun formatSentenceDefinition(text: String): String {
+        val match = sentenceDefinitionPattern.matchEntire(text.trim()) ?: return esc(text)
+        val term = match.groups[1] ?: return esc(text)
+        val start = term.range.first
+        val end = term.range.last + 1
+        return esc(text.substring(0, start)) +
+                "<b>${esc(text.substring(start, end))}</b>" +
+                esc(text.substring(end))
+    }
+
+    private val sentenceDefinitionPattern = Regex(
+        "^(?:(?:A|An|The)\\s+)?([A-Za-z][A-Za-z\\s-]{2,40}?)\\s+" +
+                "(?:is|are)\\s+" +
+                "(?:a|an|the)\\s+" +
+                "(?:process|method|system|structure|concept|technique|" +
+                "procedure|set|collection|sequence|type|form|way|" +
+                "representation|study|field|branch|unit|measure|operation|" +
+                "function|relationship|framework|model|device|tool|" +
+                "hierarchical|organized)\\b.*[.]?$",
+        RegexOption.IGNORE_CASE
+    )
+
+    private fun isSentenceDefinitionRule(text: String): Boolean {
+
+        val cleaned = text.trim()
+
+        if (cleaned.length !in 20..180) return false
+
+        if (isBulletRule(cleaned) ||
+            isNumberedItemRule(cleaned) ||
+            isQuestionHeader(cleaned)
+        ) {
+            return false
+        }
+
+        return sentenceDefinitionPattern.matches(cleaned)
+    }
+
 
     // =========================================================
     // TABLES
