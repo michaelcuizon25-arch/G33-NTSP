@@ -2,6 +2,7 @@ package com.example.note2snap.recognition
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import com.example.note2snap.ccl.ConnectedComponentLabeler
 import com.example.note2snap.ccl.Region
 import com.example.note2snap.ccl.RegionType
@@ -38,14 +39,13 @@ class WhiteboardRecognitionPipeline(
      * Passing Context automatically enables
      * the CRNN/TFLite recognizer.
      */
-    constructor(
-        context: Context
-    ) : this(
-        lineRecognizer =
-            CrnnLineRecognizer(
-                context.applicationContext
-            )
-    )
+    @JvmOverloads
+    constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
+        this(context, preprocessingMode, { appContext, mode -> CrnnLineRecognizer(appContext, mode) })
+
+    internal constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY,
+                         recognizerFactory: (Context, CrnnPreprocessingMode) -> LineRecognizer) :
+        this(recognizerFactory(context.applicationContext, preprocessingMode))
 
     private val preprocessor =
         WhiteboardPreprocessor()
@@ -59,6 +59,8 @@ class WhiteboardRecognitionPipeline(
     suspend fun process(
         photo: Bitmap
     ): RecognitionPipelineResult {
+
+        Log.i(RECOGNITION_LOG_TAG, "Scan source=${photo.width}x${photo.height}")
 
         val preprocessed =
             preprocessor.process(
@@ -74,6 +76,9 @@ class WhiteboardRecognitionPipeline(
                     preprocessed.recognitionBitmap
             )
 
+        Log.i(RECOGNITION_LOG_TAG, "Preprocessing recognition=${preprocessed.recognitionBitmap.width}x${preprocessed.recognitionBitmap.height} " +
+            "binary=${preprocessed.binarizedBitmap.width}x${preprocessed.binarizedBitmap.height}")
+
         val textRegions =
             regions.filter {
                 it.type ==
@@ -86,6 +91,10 @@ class WhiteboardRecognitionPipeline(
                         RegionType.NON_TEXT
             }
 
+        Log.i(RECOGNITION_LOG_TAG, "CCL totalRegions=${regions.size} textRegions=${textRegions.size} nonTextRegions=${diagramRegions.size}")
+
+        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordSource(photo, preprocessed, regions)
+
         val recognizedLines =
             lineRecognizer.recognize(
                 textRegions
@@ -95,6 +104,10 @@ class WhiteboardRecognitionPipeline(
             structurer.structure(
                 recognizedLines
             )
+
+        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordStructured(structuredNote)
+        Log.i(RECOGNITION_LOG_TAG, "Structuring recognizedLines=${recognizedLines.size} blocks=${structuredNote.blocks.size} " +
+            "readable=${RecognitionReadability.hasReadableWriting(recognizedLines)} title=${org.json.JSONObject.quote(structuredNote.title)}")
 
         return RecognitionPipelineResult(
             structuredNote =

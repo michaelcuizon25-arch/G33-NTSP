@@ -1,0 +1,49 @@
+{
+  "modelSha256": "f19c3b00c2507869a545a5475b1499f8b31c4717969225e5bc3f092369f02ab1",
+  "tensorflowVersion": "2.16.1",
+  "source": "board_test_5.jpg physical-line input capture, no ground-truth accuracy assertion",
+  "cases": [
+    {
+      "id": 2,
+      "mode": "legacy",
+      "actualMode": "LEGACY",
+      "inputSha256": "8109ad503cd23447c3d55b34cda61c8c16b8d439d068329031368a62ca0d639f",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "Mobile Application Development",
+      "prediction": "Mobile Application Development",
+      "tensor": "legacy-logits.f32.gz"
+    },
+    {
+      "id": 2,
+      "mode": "selected",
+      "actualMode": "SIMPLE_HTR_REFERENCE",
+      "inputSha256": "d00229edbf4d3022c13b5092e4de11a55920088b40bfe8023a39750a92c57666",
+      "outputShape": [
+        1,
+        128,
+        80
+      ],
+      "outputSignature": [
+        -1,
+        -1,
+        80
+      ],
+      "outputBytes": 40960,
+      "finite": true,
+      "rawPrediction": "Mobile Application Development",
+      "prediction": "Mobile Application Development",
+      "tensor": "selected-logits.f32.gz"
+    }
+  ]
+}

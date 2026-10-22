@@ -1,30 +1,16 @@
 package com.example.note2snap.recognition
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.Rect
+import android.util.Log
 import com.example.note2snap.ccl.Region
-import org.tensorflow.lite.Interpreter
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.channels.FileChannel
-import kotlin.math.max
-import kotlin.math.min
-import android.graphics.Canvas
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
-import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
+import org.json.JSONObject
 
 /**
  * CRNN handwriting recognizer for Note2Snap.
  *
  * Model input:
- * [1, 512, 32, 1] Float32
+ * [1, 512, 32] Float32 (confirmed in the supplied Epoch 3 asset)
  *
  * Model output:
  * [1, 128, 80] Float32
@@ -48,43 +34,22 @@ import kotlin.math.roundToInt
  *      ↓
  * CRNN
  */
-class CrnnLineRecognizer(
-    private val context: Context
+class CrnnLineRecognizer internal constructor(
+    private val context: Context,
+    preprocessingMode: CrnnPreprocessingMode,
+    private val runtime: CrnnInferenceRuntime,
+    private val charset: List<String>
 ) : LineRecognizer {
+    @JvmOverloads
+    constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
+        this(context, preprocessingMode, TensorFlowLiteCrnnRuntime(context), loadCrnnCharset(context))
 
     companion object {
-
-        private const val MODEL_FILE =
-            "ocr/note2snap_crnn_v2_epoch03_flex.tflite"
-
-        private const val CHARSET_FILE =
-            "ocr/note2snap_crnn_v2_epoch03_charlist.txt"
-
-        private const val INPUT_WIDTH = 512
-        private const val INPUT_HEIGHT = 32
-
-        private const val TIME_STEPS = 128
-        private const val NUM_CLASSES = 80
-
         private const val CTC_BLANK_INDEX = 79
     }
 
-    private val interpreter: Interpreter =
-        Interpreter(
-            loadModel(context)
-        )
-
-    private val charset: List<String> =
-        loadCharset(context)
-
-    /*
-     * TEMPORARY DEBUG:
-     * Used to give every saved CRNN crop
-     * a unique filename.
-     *
-     * Remove this after debugging.
-     */
-    private var debugCropIndex = 0
+    internal val diagnostics = CrnnDiagnostics(context)
+    private val inputPreprocessor = CrnnPreprocessing(preprocessingMode)
 
     init {
 
@@ -92,6 +57,10 @@ class CrnnLineRecognizer(
             "CRNN charset must contain 79 characters, " +
                     "but found ${charset.size}"
         }
+        diagnostics.recordModel(context, CrnnModelAssets.MODEL, CrnnModelAssets.CHARSET, charset,
+            runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType,
+            inputSignature = runtime.inputShapeSignature, outputSignature = runtime.outputShapeSignature,
+            cachedOutputShape = runtime.cachedOutputShape)
     }
 
     private val lineSegmenter = PhysicalLineSegmenter()
@@ -106,315 +75,73 @@ class CrnnLineRecognizer(
         regions: List<Region>
     ): List<RecognizedLine> {
 
-        val recognizedLines =
-            mutableListOf<RecognizedLine>()
-
+        val recognizedLines = mutableListOf<RecognizedLine>()
+        var physicalCount = 0
+        var successfulCount = 0
+        var blankCount = 0
+        var failedCount = 0
+        var firstFailure: Exception? = null
+        Log.i(RECOGNITION_LOG_TAG, "CRNN received textRegions=${regions.size}")
         for (region in regions) {
-
-            val physicalLines =
-                lineSegmenter.splitIntoPhysicalLines(region)
-
+            val physicalLines = lineSegmenter.splitIntoPhysicalLines(region)
+            physicalCount += physicalLines.size
+            Log.i(RECOGNITION_LOG_TAG, "Segmentation region=${region.id} box=${region.boundingBox} physicalLines=${physicalLines.size}")
             for (line in physicalLines) {
-
+                var stage = "preprocessing"
+                var diagnosticId: Int? = null
                 try {
-
-                    /*
-                     * TEMPORARY DEBUG:
-                     *
-                     * Save the exact physical-line crop
-                     * that will be sent into the CRNN.
-                     *
-                     * This lets us determine whether
-                     * recognition errors come from:
-                     *
-                     * 1. CCL / line segmentation, or
-                     * 2. the CRNN model itself.
-                     */
-                    val debugFile =
-                        File(
-                            context.cacheDir,
-                            "crnn_test_crop_${debugCropIndex++}.png"
-                        )
-
-                    FileOutputStream(
-                        debugFile
-                    ).use { outputStream ->
-
-                        line.bitmap.compress(
-                            Bitmap.CompressFormat.PNG,
-                            100,
-                            outputStream
-                        )
+                    val prepared = inputPreprocessor.prepare(line.bitmap)
+                    val input = prepared.input
+                    diagnosticId = diagnostics.beginLine(region, line, input, prepared)
+                    Log.d(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId region=${region.id} box=${line.boundingBox} " +
+                        "crop=${line.bitmap.width}x${line.bitmap.height} requested=${prepared.requestedMode} " +
+                        "actual=${prepared.actualMode} referenceWidth=${prepared.referenceWidth} fallback=${prepared.fallbackReason}")
+                    stage = "inference"
+                    val output = runtime.run(input)
+                    if (successfulCount == 0) {
+                        diagnostics.recordModel(context, CrnnModelAssets.MODEL, CrnnModelAssets.CHARSET, charset,
+                            runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType,
+                            outputShapeStage = "After successful inference; resolved shape verified from native byte count",
+                            inputSignature = runtime.inputShapeSignature, outputSignature = runtime.outputShapeSignature,
+                            cachedOutputShape = runtime.cachedOutputShape)
                     }
-
-                    android.util.Log.d(
-                        "CRNN_TEST",
-                        "Saved crop: ${debugFile.absolutePath}"
-                    )
-
-                    val output =
-                        recognizeBitmap(
-                            line.bitmap
-                        )
-
-                    val text =
-                        decodeCtc(output)
-                            .trim()
-                            .replace(
-                                Regex("\\s+"),
-                                " "
-                            )
-
-                    if (text.isNotBlank()) {
-
-                        recognizedLines.add(
-                            RecognizedLine(
-                                sourceRegionId =
-                                    region.id,
-
-                                boundingBox =
-                                    line.boundingBox,
-
-                                text =
-                                    text,
-
-                                confidence =
-                                    calculateConfidence(
-                                        output
-                                    )
-                            )
-                        )
-                    }
-
-                } catch (e: Exception) {
-
-                    e.printStackTrace()
+                    stage = "decoding"
+                    val rawText = decodeCtc(output)
+                    val confidence = calculateConfidence(output)
+                    val text = rawText.trim().replace(Regex("\\s+"), " ")
+                    diagnostics.completeLine(diagnosticId, rawText, text, confidence, output)
+                    successfulCount++
+                    Log.i(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId predicted=${JSONObject.quote(text)} blank=${text.isBlank()}")
+                    if (text.isBlank()) blankCount++
+                    else recognizedLines.add(RecognizedLine(region.id, line.boundingBox, text, confidence))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    failedCount++
+                    if (firstFailure == null) firstFailure = error
+                    diagnosticId?.let { diagnostics.failLine(it, error, stage) }
+                    Log.e(RECOGNITION_LOG_TAG, "CRNN failure stage=$stage region=${region.id} box=${line.boundingBox} " +
+                        "crop=${line.bitmap.width}x${line.bitmap.height}", error)
                 }
             }
         }
-
+        val status = when {
+            failedCount > 0 && recognizedLines.isEmpty() -> "recognition_failed"
+            failedCount > 0 -> "partial_success"
+            regions.isEmpty() -> "no_text_regions"
+            physicalCount == 0 -> "no_physical_lines"
+            recognizedLines.isEmpty() -> "all_predictions_blank"
+            else -> "recognized"
+        }
+        diagnostics.recordRecognitionSummary(JSONObject().put("status", status)
+            .put("textRegions", regions.size).put("physicalLines", physicalCount)
+            .put("successfulLines", successfulCount).put("blankPredictions", blankCount)
+            .put("failedLines", failedCount).put("recognizedLines", recognizedLines.size))
+        Log.i(RECOGNITION_LOG_TAG, "CRNN summary status=$status textRegions=${regions.size} physicalLines=$physicalCount " +
+            "successful=$successfulCount blank=$blankCount failed=$failedCount recognized=${recognizedLines.size}")
+        if (firstFailure != null && recognizedLines.isEmpty())
+            throw CrnnRecognitionFailure(failedCount, physicalCount, firstFailure)
         return recognizedLines
-    }
-
-    /**
-     * Preprocess ONE physical text line.
-     *
-     * Epoch 3 implementation:
-     *
-     * grayscale
-     * -> aspect-ratio preserving resize
-     * -> 512 × 32 white canvas
-     * -> pad right/bottom
-     * -> Float32 normalization (gray / 255 - 0.5)
-     * -> transpose to [512, 32, 1]
-     *
-     * This matches the current Android implementation
-     * being tested against the notebook pipeline.
-     */
-    private fun preprocess(
-        bitmap: Bitmap
-    ): ByteBuffer {
-
-        // 1. Convert to grayscale
-        val grayBitmap =
-            Bitmap.createBitmap(
-                bitmap.width,
-                bitmap.height,
-                Bitmap.Config.ARGB_8888
-            )
-
-        val canvas =
-            Canvas(grayBitmap)
-
-        val paint =
-            Paint()
-
-        val colorMatrix =
-            ColorMatrix().apply {
-                setSaturation(0f)
-            }
-
-        paint.colorFilter =
-            ColorMatrixColorFilter(
-                colorMatrix
-            )
-
-        canvas.drawBitmap(
-            bitmap,
-            0f,
-            0f,
-            paint
-        )
-
-        // 2. Preserve aspect ratio
-        val scale =
-            min(
-                INPUT_WIDTH.toFloat() /
-                        grayBitmap.width,
-
-                INPUT_HEIGHT.toFloat() /
-                        grayBitmap.height
-            )
-
-        val resizedWidth =
-            max(
-                1,
-                (
-                        grayBitmap.width *
-                                scale
-                        ).roundToInt()
-            )
-
-        val resizedHeight =
-            max(
-                1,
-                (
-                        grayBitmap.height *
-                                scale
-                        ).roundToInt()
-            )
-
-        val resized =
-            Bitmap.createScaledBitmap(
-                grayBitmap,
-                resizedWidth,
-                resizedHeight,
-                true
-            )
-
-        // 3. Create 512 × 32 white canvas
-        val letterboxed =
-            Bitmap.createBitmap(
-                INPUT_WIDTH,
-                INPUT_HEIGHT,
-                Bitmap.Config.ARGB_8888
-            )
-
-        letterboxed.eraseColor(
-            Color.WHITE
-        )
-
-        /*
-         * Match the notebook:
-         *
-         * resized image starts at:
-         * x = 0
-         * y = 0
-         *
-         * Remaining space is padded on
-         * the right and bottom.
-         */
-        val letterboxCanvas =
-            Canvas(letterboxed)
-
-        letterboxCanvas.drawBitmap(
-            resized,
-            0f,
-            0f,
-            null
-        )
-
-        // 4. Create Float32 TFLite input
-        val inputBuffer =
-            ByteBuffer.allocateDirect(
-                4 *
-                        INPUT_WIDTH *
-                        INPUT_HEIGHT
-            ).order(
-                ByteOrder.nativeOrder()
-            )
-
-        /*
-         * Notebook:
-         *
-         * original:
-         * [32, 512, 1]
-         *
-         * transpose:
-         * [512, 32, 1]
-         *
-         * Therefore x is the outer loop
-         * and y is the inner loop.
-         */
-        for (
-        x in 0 until INPUT_WIDTH
-        ) {
-
-            for (
-            y in 0 until INPUT_HEIGHT
-            ) {
-
-                val pixel =
-                    letterboxed.getPixel(
-                        x,
-                        y
-                    )
-
-                val r =
-                    Color.red(pixel)
-
-                val g =
-                    Color.green(pixel)
-
-                val b =
-                    Color.blue(pixel)
-
-                val gray =
-                    (
-                            0.299f * r +
-                                    0.587f * g +
-                                    0.114f * b
-                            ) / 255f
-
-                inputBuffer.putFloat(
-                    gray - 0.5f
-                )
-            }
-        }
-
-        inputBuffer.rewind()
-
-        return inputBuffer
-    }
-
-    /**
-     * Run TFLite CRNN.
-     */
-    private fun recognizeBitmap(
-        bitmap: Bitmap
-    ): Array<Array<FloatArray>> {
-
-        val input =
-            preprocess(
-                bitmap
-            )
-
-        /*
-         * Java/Kotlin shape:
-         *
-         * Array<Array<FloatArray>>
-         *
-         * =
-         *
-         * [1][128][80]
-         */
-        val output =
-            Array(1) {
-
-                Array(TIME_STEPS) {
-
-                    FloatArray(
-                        NUM_CLASSES
-                    )
-                }
-            }
-
-        interpreter.run(
-            input,
-            output
-        )
-
-        return output
     }
 
     /**
@@ -520,8 +247,9 @@ class CrnnLineRecognizer(
     }
 
     /**
-     * Average selected softmax probability
-     * for decoded non-blank characters.
+     * Existing average selected raw output for decoded non-blank characters.
+     * The Epoch 3 asset exports logits: this is not a calibrated probability.
+     * Preserved unchanged during this diagnostic investigation.
      */
     private fun calculateConfidence(
         output:
@@ -601,52 +329,8 @@ class CrnnLineRecognizer(
         }
     }
 
-    /**
-     * Load TFLite model.
-     */
-    private fun loadModel(
-        context: Context
-    ): ByteBuffer {
-
-        val fileDescriptor =
-            context.assets.openFd(
-                MODEL_FILE
-            )
-
-        FileInputStream(
-            fileDescriptor.fileDescriptor
-        ).use { inputStream ->
-
-            val fileChannel =
-                inputStream.channel
-
-            return fileChannel.map(
-                FileChannel.MapMode.READ_ONLY,
-                fileDescriptor.startOffset,
-                fileDescriptor.declaredLength
-            )
-        }
-    }
-
-    /**
-     * Load exact CRNN vocabulary.
-     */
-    private fun loadCharset(
-        context: Context
-    ): List<String> {
-        // Epoch 3 stores all 79 characters on ONE line.
-        // Do not call trim(): the FIRST character is a space.
-        val chars = context.assets.open(CHARSET_FILE)
-            .bufferedReader(Charsets.UTF_8)
-            .use { it.readText() }
-            .removePrefix("\uFEFF")
-            .trimEnd('\r', '\n')
-
-        return chars.map { it.toString() }
-    }
-
     override fun close() {
 
-        interpreter.close()
+        runtime.close()
     }
 }
