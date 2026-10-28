@@ -29,6 +29,8 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.TableLayout
+import android.widget.TableRow
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -2344,24 +2346,24 @@ class PdfViewerActivity : AppCompatActivity() {
                 R.id.tvPdfContent
             ) ?: return
 
-        // Preserve the StyleSpan / RelativeSizeSpan objects created by
-        // HtmlCompat.fromHtml(). Converting to String here removed all rich
-        // formatting before the note was displayed.
+        val plain =
+            textView.text.toString()
+
         val styled =
             buildReviewerStyledText(
-                textView.text
+                plain
             )
 
         textView.text = styled
     }
 
     private fun buildReviewerStyledText(
-        sourceText: CharSequence
+        plainText: String
     ): SpannableStringBuilder {
-        // Keep existing HTML-derived character spans (bold, italics, sizes)
-        // while adding Note2Snap's section and highlight styling.
-        val styled = SpannableStringBuilder(sourceText)
-        val plainText = styled.toString()
+        val styled =
+            SpannableStringBuilder(
+                plainText
+            )
 
         val blue =
             "#244F8F".toColorInt()
@@ -2529,12 +2531,23 @@ class PdfViewerActivity : AppCompatActivity() {
             return false
         }
 
-        return text.endsWith(":") ||
-                text.matches(
-                    Regex(
-                        "^[A-Z][A-Za-z0-9 /&()-]{2,40}$"
-                    )
-                )
+        // Don't bold every short Title Case OCR line. Only keep explicit labels
+        // ending in a colon or headings with a strong structural cue (uppercase
+        // multi-word label). Ordinary phrases and recognition fragments remain body text.
+        val letters = text.filter { it.isLetter() }
+        val words = text.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val allCapsMultiWord = words.size >= 2 && letters.length >= 4 &&
+                letters.all { it.isUpperCase() }
+
+        if (text.endsWith(":")) {
+            val labelWords = text.dropLast(1).split(Regex("\\s+")).filter { it.isNotBlank() }
+            return labelWords.size >= 2 && labelWords.all { word ->
+                val wordLetters = word.filter { it.isLetter() }
+                wordLetters.length >= 2 && !wordLetters.drop(1).any { it.isUpperCase() }
+            }
+        }
+
+        return allCapsMultiWord
     }
 
     private fun createPdfTextWithHighlights(): CharSequence {
@@ -3921,15 +3934,10 @@ class PdfViewerActivity : AppCompatActivity() {
             )
             tvPdfContent?.visibility = View.VISIBLE
             webViewContent?.visibility = View.GONE
-            findViewById<View>(R.id.llDetectedVisuals)?.visibility = View.GONE
-            findViewById<LinearLayout>(R.id.llDetectedVisualItems)?.removeAllViews()
-
-            val accuracyRoot =
-                (findViewById<View>(R.id.llDetectedVisuals)?.parent as? LinearLayout)
-                    ?: (findViewById<ScrollView>(R.id.scrollViewContent)?.getChildAt(0) as? LinearLayout)
-            accuracyRoot?.findViewWithTag<View>("AccuracyCardTag")?.let {
-                accuracyRoot.removeView(it)
-            }
+            // Keep diagram detection active even when the OCR text itself is gibberish.
+            // The accuracy card is also retained so the user can review the scan quality.
+            renderDetectedDiagrams(diagramHtml)
+            renderAccuracyCard(cleanedContent)
             applySavedHighlightsToDisplayedText()
             updatePageIndicator()
             return
@@ -4071,6 +4079,11 @@ class PdfViewerActivity : AppCompatActivity() {
                     .FROM_HTML_MODE_COMPACT
             )
 
+        // Rule-based table structuring: render OCR rows as a real table when
+        // the OCR output contains consistent columns separated by pipes,
+        // tabs, or repeated spaces. Ordinary prose is left unchanged.
+        renderStructuredTableIfDetected(textOnly, tvPdfContent)
+
         tvPdfContent?.setTextColor(
             ContextCompat.getColor(
                 this,
@@ -4102,6 +4115,70 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         updatePageIndicator()
+    }
+
+    private fun renderStructuredTableIfDetected(
+        rawText: String,
+        textView: TextView?
+    ) {
+        val parent = textView?.parent as? LinearLayout ?: return
+        val tableTag = "Note2SnapStructuredTable"
+        parent.findViewWithTag<View>(tableTag)?.let { parent.removeView(it) }
+
+        fun cells(line: String): List<String> {
+            val trimmed = line.trim().trim('|')
+            val parts = when {
+                line.contains('|') -> trimmed.split('|')
+                line.contains('\t') -> line.split('\t')
+                Regex("\\s{2,}").containsMatchIn(line.trim()) -> line.trim().split(Regex("\\s{2,}"))
+                else -> emptyList()
+            }.map { it.trim() }.filter { it.isNotEmpty() }
+            return parts
+        }
+
+        val lines = removeDiagramHtml(stripPersistedMarkup(rawText)).lines()
+        val tableLines = lines.mapIndexedNotNull { index, line ->
+            val parsed = cells(line)
+            if (parsed.size >= 2) index to parsed else null
+        }
+        if (tableLines.size < 2) return
+
+        // Require at least two rows with a consistent column count to avoid
+        // converting normal sentences into false tables.
+        val columnCount = tableLines.groupingBy { it.second.size }.eachCount()
+            .maxByOrNull { it.value }?.key ?: return
+        val rows = tableLines.filter { it.second.size == columnCount }
+        if (rows.size < 2 || columnCount !in 2..8) return
+
+        val table = TableLayout(this).apply {
+            tag = tableTag
+            isStretchAllColumns = true
+            setPadding(dpUi(4), dpUi(8), dpUi(4), dpUi(12))
+        }
+        rows.forEachIndexed { rowIndex, (_, values) ->
+            val row = TableRow(this)
+            values.forEach { value ->
+                val cell = TextView(this).apply {
+                    text = value
+                    textSize = 14f
+                    setTextColor(ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_text))
+                    setPadding(dpUi(10), dpUi(10), dpUi(10), dpUi(10))
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = GradientDrawable().apply {
+                        setColor(ContextCompat.getColor(this@PdfViewerActivity,
+                            if (rowIndex == 0) R.color.nts_surface_blue_soft else R.color.nts_surface))
+                        setStroke(dpUi(1), ContextCompat.getColor(this@PdfViewerActivity, R.color.nts_blue_line))
+                    }
+                    if (rowIndex == 0) setTypeface(typeface, Typeface.BOLD)
+                }
+                row.addView(cell, TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            table.addView(row, TableLayout.LayoutParams(
+                TableLayout.LayoutParams.MATCH_PARENT, TableLayout.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        val index = parent.indexOfChild(textView).takeIf { it >= 0 } ?: parent.childCount
+        parent.addView(table, index)
     }
 
     private data class AccuracyReport(
@@ -4242,11 +4319,8 @@ class PdfViewerActivity : AppCompatActivity() {
         val clean = diagramHtml.trim()
         if (clean.isBlank()) return false
 
-        val isTextCrop = clean.contains("alt=\"text\"", ignoreCase = true) ||
-                clean.contains("data-type=\"text\"", ignoreCase = true)
-        if (isTextCrop) return false
-
-        // This viewer renders saved diagram image files, not arbitrary HTML snippets.
+        // Restore diagram display for saved image regions, including regions that
+        // carry OCR/text metadata. Only require an actual existing diagram image.
         return clean.contains("<img", ignoreCase = true) &&
                 extractDiagramImagePaths(clean).isNotEmpty()
     }

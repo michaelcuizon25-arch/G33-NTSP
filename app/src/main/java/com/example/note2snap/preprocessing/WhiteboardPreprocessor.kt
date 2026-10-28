@@ -46,6 +46,9 @@ class WhiteboardPreprocessor {
             }
         }
 
+        // Preserve thin handwriting strokes. The previous filter removed pixels
+        // with fewer than two neighbours, which can break character endpoints
+        // and small marks (for example dots, commas, and the thin parts of letters).
         removeIsolatedNoise(binaryPixels, width, height)
         clearImageBorder(
             pixels = binaryPixels,
@@ -75,21 +78,11 @@ class WhiteboardPreprocessor {
          *
          * These are not note content.
          */
-        val marginX =
-            (width * 0.018f)
-                .toInt()
-                .coerceIn(
-                    8,
-                    30
-                )
-
-        val marginY =
-            (height * 0.018f)
-                .toInt()
-                .coerceIn(
-                    8,
-                    30
-                )
+        // Scale the ignored border with the image, but never clear more than
+        // 1.2% of either dimension. A fixed 8 px minimum can erase real writing
+        // near the edge on small images.
+        val marginX = (width * 0.008f).toInt().coerceIn(1, (width * 0.012f).toInt().coerceAtLeast(1))
+        val marginY = (height * 0.008f).toInt().coerceIn(1, (height * 0.012f).toInt().coerceAtLeast(1))
 
         for (y in 0 until height) {
 
@@ -138,7 +131,9 @@ class WhiteboardPreprocessor {
                         neighbors++
                     }
                 }
-                if (neighbors < 2) pixels[index] = Color.BLACK
+                // Remove only isolated speckles. Keep one-neighbour pixels because
+                // they may be legitimate thin-stroke endpoints in handwriting.
+                if (neighbors == 0) pixels[index] = Color.BLACK
             }
         }
     }
@@ -158,6 +153,8 @@ class WhiteboardPreprocessor {
     private companion object {
         const val MAX_SOURCE_DIMENSION = 1800
         const val WINDOW_RADIUS = 12
-        const val THRESHOLD_OFFSET = 10f
+        // A slightly lower offset keeps faint marker strokes while still
+        // separating dark writing from the whiteboard background.
+        const val THRESHOLD_OFFSET = 8f
     }
 }

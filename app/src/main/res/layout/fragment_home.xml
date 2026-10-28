@@ -532,8 +532,8 @@
                 android:paddingBottom="9dp">
 
                 <com.airbnb.lottie.LottieAnimationView
-                    android:layout_width="65dp"
-                    android:layout_height="65dp"
+                    android:layout_width="75dp"
+                    android:layout_height="75dp"
                     android:contentDescription="Snap"
                     app:lottie_autoPlay="true"
                     app:lottie_loop="true"

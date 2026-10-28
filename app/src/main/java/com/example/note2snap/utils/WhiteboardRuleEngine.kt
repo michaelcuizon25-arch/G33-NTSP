@@ -1428,8 +1428,24 @@ object WhiteboardRuleEngine {
         if (chapterPattern.matches(trimmed)) return true
         if (standaloneHeaderPattern.matches(trimmed)) return true
 
-        if (trimmed.length in 3..45 && trimmed == trimmed.uppercase() && trimmed.any { it.isLetter() }) return true
-        if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && trimmed.length in 2..45) return true
+        // Only treat clearly formatted headings as section headers. A short OCR line
+        // ending in a colon is not enough by itself; OCR often turns ordinary words
+        // into fragments such as "Rulks:" or "Can sideraten:".
+        val letters = trimmed.filter { it.isLetter() }
+        val words = trimmed.removeSuffix(":").split(Regex("\\s+")).filter { it.isNotBlank() }
+        val allCapsHeading =
+            letters.length >= 4 &&
+                    letters.all { it.isUpperCase() } &&
+                    words.size >= 2
+        if (trimmed.length in 3..45 && allCapsHeading) return true
+
+        if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && words.size >= 2 && trimmed.length in 5..45) {
+            val headingWordsLookReliable = words.all { word ->
+                word.count { it.isLetter() } >= 2 &&
+                        !word.drop(1).any { it.isUpperCase() }
+            }
+            if (headingWordsLookReliable) return true
+        }
 
         return false
     }
@@ -1478,6 +1494,13 @@ object WhiteboardRuleEngine {
 
         val words = t.split(Regex("\\s+"))
         if (words.size > 6) return false
+
+        // OCR artifacts with unexpected capitals inside a word (e.g. "QMy")
+        // should stay ordinary text instead of becoming a highlighted heading.
+        if (words.any { word ->
+                val lettersInWord = word.filter { it.isLetter() }
+                lettersInWord.drop(1).any { it.isUpperCase() }
+            }) return false
 
         if (t.last() in ".,;!?:") return false
         if (isBulletRule(t) || isNumberedItemRule(t)) return false

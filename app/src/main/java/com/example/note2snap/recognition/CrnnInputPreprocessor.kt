@@ -1,3 +1,4 @@
+
 package com.example.note2snap.recognition
 
 import android.graphics.Bitmap
@@ -12,191 +13,147 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Existing production transform, extracted unchanged for diagnostics and parity tests. */
+/**
+ * Preprocesses one physical text line for the NOTE2SNAP CRNN model.
+ *
+ * Input dimensions:  [1, 512, 32]
+ * Input data type:   FLOAT32
+ *
+ * Processing:
+ * 1. Convert the image to grayscale.
+ * 2. Resize while preserving the aspect ratio.
+ * 3. Place the image on a white 512 x 32 canvas.
+ * 4. Normalize pixels to the range 0.0 to 1.0.
+ * 5. Write pixels in [512, 32, 1] order.
+ *
+ * IMPORTANT:
+ * This normalization matches the supplied training pipeline's
+ * 0.0–1.0 pixel range. Verify model accuracy against a reference
+ * transcription after making this change.
+ */
 internal class CrnnInputPreprocessor {
+
     private val INPUT_WIDTH = 512
     private val INPUT_HEIGHT = 32
+
     /**
-     * Preprocess ONE physical text line.
-     *
-     * Epoch 3 implementation:
-     *
-     * grayscale
-     * -> aspect-ratio preserving resize
-     * -> 512 × 32 white canvas
-     * -> pad right/bottom
-     * -> Float32 normalization (gray / 255 - 0.5)
-     * -> transpose to [512, 32, 1]
-     *
-     * Existing Android behavior, deliberately preserved for diagnosis.
-     * The supplied Epoch 3 notebook uses dynamic-width height-first resizing,
-     * centered 16-pixel margins and width rounding before right-padding to 512.
-     * This transform is NOT an exact reproduction of that training transform.
+     * Preprocess one physical text line.
      */
-    fun preprocess(
-        bitmap: Bitmap
-    ): ByteBuffer {
+    fun preprocess(bitmap: Bitmap): ByteBuffer {
 
-        // 1. Convert to grayscale
-        val grayBitmap =
-            Bitmap.createBitmap(
-                bitmap.width,
-                bitmap.height,
-                Bitmap.Config.ARGB_8888
+        require(!bitmap.isRecycled) {
+            "Cannot preprocess a recycled bitmap."
+        }
+
+        require(bitmap.width > 0 && bitmap.height > 0) {
+            "Input bitmap must have valid dimensions."
+        }
+
+        // 1. Convert to grayscale.
+        val grayBitmap = Bitmap.createBitmap(
+            bitmap.width,
+            bitmap.height,
+            Bitmap.Config.ARGB_8888
+        )
+
+        val grayscaleCanvas = Canvas(grayBitmap)
+
+        val grayscalePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(
+                ColorMatrix().apply {
+                    setSaturation(0f)
+                }
             )
+        }
 
-        val canvas =
-            Canvas(grayBitmap)
-
-        val paint =
-            Paint()
-
-        val colorMatrix =
-            ColorMatrix().apply {
-                setSaturation(0f)
-            }
-
-        paint.colorFilter =
-            ColorMatrixColorFilter(
-                colorMatrix
-            )
-
-        canvas.drawBitmap(
+        grayscaleCanvas.drawBitmap(
             bitmap,
             0f,
             0f,
-            paint
+            grayscalePaint
         )
 
-        // 2. Preserve aspect ratio
-        val scale =
-            min(
-                INPUT_WIDTH.toFloat() /
-                        grayBitmap.width,
-
-                INPUT_HEIGHT.toFloat() /
-                        grayBitmap.height
-            )
-
-        val resizedWidth =
-            max(
-                1,
-                (
-                        grayBitmap.width *
-                                scale
-                        ).roundToInt()
-            )
-
-        val resizedHeight =
-            max(
-                1,
-                (
-                        grayBitmap.height *
-                                scale
-                        ).roundToInt()
-            )
-
-        val resized =
-            Bitmap.createScaledBitmap(
-                grayBitmap,
-                resizedWidth,
-                resizedHeight,
-                true
-            )
-
-        // 3. Create 512 × 32 white canvas
-        val letterboxed =
-            Bitmap.createBitmap(
-                INPUT_WIDTH,
-                INPUT_HEIGHT,
-                Bitmap.Config.ARGB_8888
-            )
-
-        letterboxed.eraseColor(
-            Color.WHITE
+        // 2. Resize while preserving the aspect ratio.
+        val scale = min(
+            INPUT_WIDTH.toFloat() / grayBitmap.width,
+            INPUT_HEIGHT.toFloat() / grayBitmap.height
         )
 
-        /*
-         * Existing Android placement (differs from the supplied notebook):
-         *
-         * resized image starts at:
-         * x = 0
-         * y = 0
-         *
-         * Remaining space is padded on
-         * the right and bottom.
-         */
-        val letterboxCanvas =
-            Canvas(letterboxed)
+        val resizedWidth = max(
+            1,
+            (grayBitmap.width * scale).roundToInt()
+        )
+
+        val resizedHeight = max(
+            1,
+            (grayBitmap.height * scale).roundToInt()
+        )
+
+        val resizedBitmap = Bitmap.createScaledBitmap(
+            grayBitmap,
+            resizedWidth,
+            resizedHeight,
+            true
+        )
+
+        // 3. Create a white 512 x 32 canvas.
+        val letterboxedBitmap = Bitmap.createBitmap(
+            INPUT_WIDTH,
+            INPUT_HEIGHT,
+            Bitmap.Config.ARGB_8888
+        )
+
+        letterboxedBitmap.eraseColor(Color.WHITE)
+
+        // Place the resized image at the top-left.
+        // Remaining space is padded on the right and bottom.
+        val letterboxCanvas = Canvas(letterboxedBitmap)
 
         letterboxCanvas.drawBitmap(
-            resized,
+            resizedBitmap,
             0f,
             0f,
             null
         )
 
-        // 4. Create Float32 TFLite input
-        val inputBuffer =
-            ByteBuffer.allocateDirect(
-                4 *
-                        INPUT_WIDTH *
-                        INPUT_HEIGHT
-            ).order(
-                ByteOrder.nativeOrder()
-            )
+        // 4. Create FLOAT32 input buffer.
+        val inputBuffer = ByteBuffer.allocateDirect(
+            INPUT_WIDTH * INPUT_HEIGHT * 4
+        ).order(ByteOrder.nativeOrder())
 
-        /*
-         * Notebook:
-         *
-         * original:
-         * [32, 512, 1]
-         *
-         * transpose:
-         * [512, 32, 1]
-         *
-         * Therefore x is the outer loop
-         * and y is the inner loop.
-         */
-        for (
-        x in 0 until INPUT_WIDTH
-        ) {
+        // 5. Write pixels in [512, 32, 1] order.
+        // x is the outer loop; y is the inner loop.
+        for (x in 0 until INPUT_WIDTH) {
+            for (y in 0 until INPUT_HEIGHT) {
 
-            for (
-            y in 0 until INPUT_HEIGHT
-            ) {
+                val pixel = letterboxedBitmap.getPixel(x, y)
 
-                val pixel =
-                    letterboxed.getPixel(
-                        x,
-                        y
-                    )
+                val r = Color.red(pixel)
+                val g = Color.green(pixel)
+                val b = Color.blue(pixel)
 
-                val r =
-                    Color.red(pixel)
+                // Grayscale value normalized to [0.0, 1.0].
+                val gray = (
+                        0.299f * r +
+                                0.587f * g +
+                                0.114f * b
+                        ) / 255f
 
-                val g =
-                    Color.green(pixel)
-
-                val b =
-                    Color.blue(pixel)
-
-                val gray =
-                    (
-                            0.299f * r +
-                                    0.587f * g +
-                                    0.114f * b
-                            ) / 255f
-
-                inputBuffer.putFloat(
-                    gray - 0.5f
-                )
+                // Updated: do not subtract 0.5f.
+                inputBuffer.putFloat(gray)
             }
         }
 
         inputBuffer.rewind()
 
+        // Release temporary bitmaps when they are no longer needed.
+        if (resizedBitmap !== grayBitmap) {
+            resizedBitmap.recycle()
+        }
+
+        grayBitmap.recycle()
+        letterboxedBitmap.recycle()
+
         return inputBuffer
     }
-
 }

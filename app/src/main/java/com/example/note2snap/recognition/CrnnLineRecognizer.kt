@@ -42,7 +42,7 @@ class CrnnLineRecognizer internal constructor(
 ) : LineRecognizer {
     @JvmOverloads
     constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
-        this(context, preprocessingMode, TensorFlowLiteCrnnRuntime(context), loadCrnnCharset(context))
+            this(context, preprocessingMode, TensorFlowLiteCrnnRuntime(context), loadCrnnCharset(context))
 
     companion object {
         private const val CTC_BLANK_INDEX = 79
@@ -94,8 +94,8 @@ class CrnnLineRecognizer internal constructor(
                     val input = prepared.input
                     diagnosticId = diagnostics.beginLine(region, line, input, prepared)
                     Log.d(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId region=${region.id} box=${line.boundingBox} " +
-                        "crop=${line.bitmap.width}x${line.bitmap.height} requested=${prepared.requestedMode} " +
-                        "actual=${prepared.actualMode} referenceWidth=${prepared.referenceWidth} fallback=${prepared.fallbackReason}")
+                            "crop=${line.bitmap.width}x${line.bitmap.height} requested=${prepared.requestedMode} " +
+                            "actual=${prepared.actualMode} referenceWidth=${prepared.referenceWidth} fallback=${prepared.fallbackReason}")
                     stage = "inference"
                     val output = runtime.run(input)
                     if (successfulCount == 0) {
@@ -121,7 +121,7 @@ class CrnnLineRecognizer internal constructor(
                     if (firstFailure == null) firstFailure = error
                     diagnosticId?.let { diagnostics.failLine(it, error, stage) }
                     Log.e(RECOGNITION_LOG_TAG, "CRNN failure stage=$stage region=${region.id} box=${line.boundingBox} " +
-                        "crop=${line.bitmap.width}x${line.bitmap.height}", error)
+                            "crop=${line.bitmap.width}x${line.bitmap.height}", error)
                 }
             }
         }
@@ -138,195 +138,177 @@ class CrnnLineRecognizer internal constructor(
             .put("successfulLines", successfulCount).put("blankPredictions", blankCount)
             .put("failedLines", failedCount).put("recognizedLines", recognizedLines.size))
         Log.i(RECOGNITION_LOG_TAG, "CRNN summary status=$status textRegions=${regions.size} physicalLines=$physicalCount " +
-            "successful=$successfulCount blank=$blankCount failed=$failedCount recognized=${recognizedLines.size}")
+                "successful=$successfulCount blank=$blankCount failed=$failedCount recognized=${recognizedLines.size}")
         if (firstFailure != null && recognizedLines.isEmpty())
             throw CrnnRecognitionFailure(failedCount, physicalCount, firstFailure)
         return recognizedLines
     }
 
     /**
-     * Greedy CTC decoding.
+     * CTC prefix beam search over model logits.
      *
-     * Same principle as:
+     * Unlike greedy decoding, this keeps several likely character sequences
+     * alive across time steps. It can improve decoding when the best character
+     * at an individual time step does not lead to the best overall sequence.
      *
-     * tf.keras.backend.ctc_decode(
-     *     greedy = true
-     * )
+     * This does not replace model training and does not guarantee better text
+     * for every image. The model output is treated as logits, then normalized
+     * with log-softmax before decoding.
      */
     private fun decodeCtc(
-        output:
-        Array<Array<FloatArray>>
+        output: Array<Array<FloatArray>>
     ): String {
+        require(output.isNotEmpty() && output[0].isNotEmpty()) {
+            "CRNN output is empty"
+        }
 
-        val sequence =
-            output[0]
+        val sequence = output[0]
+        require(sequence.all { it.size == CTC_BLANK_INDEX + 1 }) {
+            "Expected ${CTC_BLANK_INDEX + 1} output classes per timestep"
+        }
 
-        val result =
-            StringBuilder()
+        val beamWidth = 8
+        val negativeInfinity = Double.NEGATIVE_INFINITY
 
-        var previousIndex = -1
-
-        for (
-        t in sequence.indices
+        data class BeamScore(
+            var blank: Double = Double.NEGATIVE_INFINITY,
+            var nonBlank: Double = Double.NEGATIVE_INFINITY
         ) {
+            fun total(): Double = logAdd(blank, nonBlank)
+        }
 
-            val probabilities =
-                sequence[t]
+        var beams = mutableMapOf<List<Int>, BeamScore>()
+        beams[emptyList()] = BeamScore(blank = 0.0)
 
-            var bestIndex = 0
+        for (logits in sequence) {
+            val logProbabilities = logSoftmax(logits)
+            val next = mutableMapOf<List<Int>, BeamScore>()
 
-            var bestProbability =
-                probabilities[0]
+            fun state(prefix: List<Int>): BeamScore =
+                next.getOrPut(prefix) { BeamScore() }
 
-            for (
-            i in 1 until probabilities.size
-            ) {
+            for ((prefix, score) in beams) {
+                val totalScore = score.total()
 
-                if (
-                    probabilities[i] >
-                    bestProbability
-                ) {
+                // A blank keeps the prefix unchanged.
+                val blankState = state(prefix)
+                blankState.blank = logAdd(
+                    blankState.blank,
+                    totalScore + logProbabilities[CTC_BLANK_INDEX]
+                )
 
-                    bestProbability =
-                        probabilities[i]
+                for (characterIndex in 0 until CTC_BLANK_INDEX) {
+                    val charScore = logProbabilities[characterIndex]
+                    if (charScore == negativeInfinity) continue
 
-                    bestIndex = i
+                    if (prefix.isNotEmpty() && prefix.last() == characterIndex) {
+                        // Same character without an intervening blank collapses.
+                        val samePrefixState = state(prefix)
+                        samePrefixState.nonBlank = logAdd(
+                            samePrefixState.nonBlank,
+                            score.nonBlank + charScore
+                        )
+
+                        // A repeated character after a blank creates a new token.
+                        val extendedPrefix = prefix + characterIndex
+                        val extendedState = state(extendedPrefix)
+                        extendedState.nonBlank = logAdd(
+                            extendedState.nonBlank,
+                            score.blank + charScore
+                        )
+                    } else {
+                        val extendedPrefix = prefix + characterIndex
+                        val extendedState = state(extendedPrefix)
+                        extendedState.nonBlank = logAdd(
+                            extendedState.nonBlank,
+                            totalScore + charScore
+                        )
+                    }
                 }
             }
 
-            /*
-             * Blank resets repetition.
-             *
-             * Example:
-             *
-             * l l blank l
-             *
-             * becomes:
-             *
-             * ll
-             */
-            if (
-                bestIndex ==
-                CTC_BLANK_INDEX
-            ) {
-
-                previousIndex =
-                    CTC_BLANK_INDEX
-
-                continue
-            }
-
-            /*
-             * Collapse consecutive duplicate
-             * non-blank predictions.
-             */
-            if (
-                bestIndex ==
-                previousIndex
-            ) {
-                continue
-            }
-
-            if (
-                bestIndex in
-                charset.indices
-            ) {
-
-                result.append(
-                    charset[
-                        bestIndex
-                    ]
-                )
-            }
-
-            previousIndex =
-                bestIndex
+            beams = next.entries
+                .sortedByDescending { it.value.total() }
+                .take(beamWidth)
+                .associateTo(mutableMapOf()) { it.key to it.value }
         }
 
-        return result.toString()
+        val bestPrefix = beams.maxByOrNull { it.value.total() }?.key.orEmpty()
+        return buildString {
+            bestPrefix.forEach { index ->
+                if (index in charset.indices) append(charset[index])
+            }
+        }
     }
 
     /**
-     * Existing average selected raw output for decoded non-blank characters.
-     * The Epoch 3 asset exports logits: this is not a calibrated probability.
-     * Preserved unchanged during this diagnostic investigation.
+     * Returns stable log-softmax values for a single timestep of model logits.
+     */
+    private fun logSoftmax(logits: FloatArray): DoubleArray {
+        require(logits.isNotEmpty()) { "CRNN timestep has no classes" }
+        val maxLogit = logits.maxOrNull()?.toDouble()
+            ?: return DoubleArray(0)
+        var sum = 0.0
+        for (value in logits) {
+            sum += kotlin.math.exp(value.toDouble() - maxLogit)
+        }
+        val logNormalizer = maxLogit + kotlin.math.ln(sum)
+        return DoubleArray(logits.size) { index ->
+            logits[index].toDouble() - logNormalizer
+        }
+    }
+
+    private fun logAdd(a: Double, b: Double): Double {
+        if (a == Double.NEGATIVE_INFINITY) return b
+        if (b == Double.NEGATIVE_INFINITY) return a
+        val maxValue = maxOf(a, b)
+        return maxValue + kotlin.math.ln(
+            kotlin.math.exp(a - maxValue) + kotlin.math.exp(b - maxValue)
+        )
+    }
+
+    /**
+     * Approximate line confidence based on softmax probabilities at emitted
+     * greedy character timesteps. This is a diagnostic score, not verified OCR
+     * accuracy and not a calibrated probability for the beam-search result.
      */
     private fun calculateConfidence(
-        output:
-        Array<Array<FloatArray>>
+        output: Array<Array<FloatArray>>
     ): Float {
+        if (output.isEmpty() || output[0].isEmpty()) return 0f
 
-        val sequence =
-            output[0]
-
-        var total = 0f
+        var total = 0.0
         var count = 0
-
         var previousIndex = -1
 
-        for (
-        probabilities in sequence
-        ) {
+        for (logits in output[0]) {
+            if (logits.isEmpty()) continue
 
             var bestIndex = 0
-
-            var bestProbability =
-                probabilities[0]
-
-            for (
-            i in 1 until probabilities.size
-            ) {
-
-                if (
-                    probabilities[i] >
-                    bestProbability
-                ) {
-
-                    bestProbability =
-                        probabilities[i]
-
-                    bestIndex = i
-                }
+            for (i in 1 until logits.size) {
+                if (logits[i] > logits[bestIndex]) bestIndex = i
             }
 
-            if (
-                bestIndex ==
-                CTC_BLANK_INDEX
-            ) {
-
-                previousIndex =
-                    CTC_BLANK_INDEX
-
+            if (bestIndex == CTC_BLANK_INDEX) {
+                previousIndex = CTC_BLANK_INDEX
                 continue
             }
+            if (bestIndex == previousIndex) continue
 
-            if (
-                bestIndex ==
-                previousIndex
-            ) {
-                continue
+            val maxLogit = logits.maxOrNull()?.toDouble() ?: 0.0
+            var denominator = 0.0
+            for (value in logits) {
+                denominator += kotlin.math.exp(value.toDouble() - maxLogit)
             }
+            val selectedProbability =
+                kotlin.math.exp(logits[bestIndex].toDouble() - maxLogit) / denominator
 
-            total +=
-                bestProbability
-
+            total += selectedProbability
             count++
-
-            previousIndex =
-                bestIndex
+            previousIndex = bestIndex
         }
 
-        return if (
-            count == 0
-        ) {
-
-            0f
-
-        } else {
-
-            total /
-                    count
-        }
+        return if (count == 0) 0f else (total / count).toFloat()
     }
 
     override fun close() {

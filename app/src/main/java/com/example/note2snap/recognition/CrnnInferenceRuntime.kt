@@ -150,9 +150,32 @@ private fun loadCrnnModel(context: Context): ByteBuffer =
         }
     }
 
-internal fun loadCrnnCharset(context: Context): List<String> =
-    context.assets.open(CrnnModelAssets.CHARSET).bufferedReader(Charsets.UTF_8).use { it.readText() }
-        .removePrefix("\uFEFF").trimEnd('\r', '\n').map { it.toString() }
+
+internal fun loadCrnnCharset(context: Context): List<String> {
+    val charsetText = context.assets
+        .open(CrnnModelAssets.CHARSET)
+        .bufferedReader(Charsets.UTF_8)
+        .use { it.readText() }
+        .removePrefix("\uFEFF")
+        .trimEnd('\r', '\n')
+
+    // This asset stores the vocabulary as one continuous line.
+    val charset = charsetText.map { it.toString() }
+
+    Log.i(
+        RECOGNITION_LOG_TAG,
+        "CRNN charset count=${charset.size}, " +
+                "characters=${charset.joinToString("")}"
+    )
+
+    check(charset.size == 79) {
+        "Expected 79 CRNN characters, but found ${charset.size}. " +
+                "Check the charset against the Python training vocabulary."
+    }
+
+    return charset
+}
+
 
 class CrnnRecognitionFailure internal constructor(
     val failedLines: Int,
