@@ -12,9 +12,15 @@ android {
         applicationId = "com.example.note2snap"
         minSdk = 24
         targetSdk = 34
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = 1
         versionName = "1.0"
+        // Opt in for evaluation: -PENABLE_OPENCV_ENHANCEMENT=true
+        buildConfigField("boolean", "ENABLE_OPENCV_ENHANCEMENT",
+            providers.gradleProperty("ENABLE_OPENCV_ENHANCEMENT").orElse("false").get().toBooleanStrict().toString())
     }
+
+    sourceSets.getByName("androidTest").assets.srcDir("src/test/resources")
 
     buildTypes {
         release {
@@ -39,6 +45,7 @@ android {
     }
     buildFeatures {
         mlModelBinding = true
+        buildConfig = true
     }
 }
 
@@ -48,6 +55,8 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).conf
 }
 
 dependencies {
+    // Official OpenCV Android AAR; native processing is entirely on-device.
+    implementation("org.opencv:opencv:4.12.0")
     implementation("com.airbnb.android:lottie:6.4.0")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -86,6 +95,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.0")
+
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:runner:1.5.2")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.12.2")

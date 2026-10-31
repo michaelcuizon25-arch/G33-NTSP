@@ -83,6 +83,9 @@ internal class CrnnDiagnostics(context: Context) {
         sourceRecorded = true
         saveBitmap("source.png", photo)
         saveBitmap("recognition.png", preprocessed.recognitionBitmap)
+        if (preprocessed.enhancementRequested) {
+            saveBitmap("recognition-original.png", preprocessed.originalRecognitionBitmap)
+        }
         saveBitmap("ccl-binary.png", preprocessed.binarizedBitmap)
         val regionJson = JSONArray()
         regions.forEach { region ->
@@ -98,6 +101,12 @@ internal class CrnnDiagnostics(context: Context) {
             .put("coordinateSpace", "recognition.png pixels; right/bottom exclusive")
             .put("sourceScaleX", photo.width.toDouble() / preprocessed.recognitionBitmap.width)
             .put("sourceScaleY", photo.height.toDouble() / preprocessed.recognitionBitmap.height)
+            .put("enhancement", JSONObject()
+                .put("requested", preprocessed.enhancementRequested)
+                .put("applied", preprocessed.enhancementApplied)
+                .put("reason", preprocessed.enhancementReason ?: JSONObject.NULL)
+                .put("elapsedMs", preprocessed.enhancementElapsedMs)
+                .put("perspectiveApplied", false))
             .put("regions", regionJson))
     }
 
