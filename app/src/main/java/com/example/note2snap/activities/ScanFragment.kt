@@ -70,6 +70,9 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -83,6 +86,19 @@ import com.example.note2snap.recognition.SingleScanPreprocessingSettings
 import com.example.note2snap.recognition.SingleScanPipelineFactory
 
 class ScanFragment : Fragment() {
+
+    // Reuse the Single Scan recognizer across scans (Batch Scan remains unchanged).
+    private val singleScanRecognizerDelegate = lazy {
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
+    private val singleScanRecognizer by singleScanRecognizerDelegate
+
+    // Cache PP-OCRv6 within this Fragment to avoid reloading ONNX models for every scan.
+    // All engine access (including cleanup) is serialized by this mutex.
+    private val paddleEngineMutex = Mutex()
+    private var cachedPaddleEngine: com.paddle.ocr.PaddleOCR? = null
+    private var paddleClosed = false
+
 
     private var camera: Camera? = null
     private var imageCapture: ImageCapture? = null
@@ -2361,43 +2377,331 @@ class ScanFragment : Fragment() {
         }
     }
 
-    /**
-     * Suspends until ML Kit finishes recognizing one batch page.
-     */
+
     private suspend fun recognizeBatchImage(
         recognizer: com.google.mlkit.vision.text.TextRecognizer,
         image: InputImage
     ): com.google.mlkit.vision.text.Text =
-        suspendCancellableCoroutine {
-                continuation ->
-
+        suspendCancellableCoroutine { continuation ->
             recognizer
-                .process(
-                    image
-                )
-                .addOnSuccessListener {
-                        result ->
-
-                    if (
-                        continuation.isActive
-                    ) {
-                        continuation.resume(
-                            result
-                        )
+                .process(image)
+                .addOnSuccessListener { result ->
+                    if (continuation.isActive) {
+                        continuation.resume(result)
                     }
                 }
-                .addOnFailureListener {
-                        error ->
-
-                    if (
-                        continuation.isActive
-                    ) {
-                        continuation.resumeWithException(
-                            error
-                        )
+                .addOnFailureListener { error ->
+                    if (continuation.isActive) {
+                        continuation.resumeWithException(error)
                     }
                 }
         }
+
+
+    /**
+     * Decode an OCR-only bitmap without allocating a full camera-resolution
+     * pixel buffer. The original image file is preserved for PDF/History.
+     * Previously tested 2048x1536 images stay full size; larger camera
+     * images are bounded to 1920x1440 for the emulator's small heap.
+     */
+    private fun decodeMemorySafeSingleScanBitmap(imagePath: String): Bitmap {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(imagePath, bounds)
+        val srcW = bounds.outWidth
+        val srcH = bounds.outHeight
+        require(srcW > 0 && srcH > 0) { "Cannot read image dimensions" }
+
+        val maxW = if (srcW <= 2048 && srcH <= 1536) 2048 else 1920
+        val maxH = if (srcW <= 2048 && srcH <= 1536) 1536 else 1440
+        val scale = minOf(1.0, maxW.toDouble() / srcW, maxH.toDouble() / srcH)
+        val targetW = (srcW * scale).toInt().coerceAtLeast(1)
+        val targetH = (srcH * scale).toInt().coerceAtLeast(1)
+
+        // Sample the JPEG *during decode*, not only after decoding it.
+        var sample = 1
+        while (srcW / (sample * 2) >= targetW && srcH / (sample * 2) >= targetH) {
+            sample *= 2
+        }
+        val decoded = BitmapFactory.decodeFile(imagePath, BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }) ?: error("Could not decode image for OCR")
+
+        val output = if (decoded.width > targetW || decoded.height > targetH) {
+            val scaled = Bitmap.createScaledBitmap(decoded, targetW, targetH, true)
+            if (scaled !== decoded) decoded.recycle()
+            scaled
+        } else decoded
+        Log.d("NOTE2SNAP_SPEED", "OCR bitmap: ${output.width}x${output.height} " +
+                "(source=${srcW}x${srcH}, sample=$sample, original file unchanged)")
+        return output
+    }
+
+    private suspend fun recognizeSingleImageWithMlKit(
+        imagePath: String
+    ): Pair<com.google.mlkit.vision.text.Text, Pair<Int, Int>> = withContext(Dispatchers.IO) {
+        val bitmap = decodeMemorySafeSingleScanBitmap(imagePath)
+        try {
+            val image = InputImage.fromBitmap(bitmap, 0)
+            val startTime = SystemClock.elapsedRealtime()
+            val result = recognizeBatchImage(singleScanRecognizer, image)
+            val elapsed = SystemClock.elapsedRealtime() - startTime
+            Log.d("NOTE2SNAP_SPEED", "Single Scan ML Kit OCR took ${elapsed} ms")
+            result to (bitmap.width to bitmap.height)
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+
+    /**
+     * Uses PaddleOCR quadrilateral boxes to preserve the order of separate
+     * whiteboard columns. This rearranges lines only; it never fixes or invents
+     * recognized words. The two-column PDF renderer is not involved.
+     */
+    /**
+     * Generic whiteboard reading order. Infer side-by-side columns from
+     * horizontally separated text starts that repeat on nearby rows.
+     * A shared introduction above the columns is kept first.
+     * Does not rewrite OCR words or affect the PDF's own columns.
+     */
+    private fun formatPaddleReadingOrder(
+        items: List<com.paddle.ocr.model.OCRResult>,
+        imageWidth: Int,
+        imageHeight: Int
+    ): String {
+        data class Line(
+            val text: String,
+            val left: Float,
+            val top: Float,
+            val right: Float,
+            val bottom: Float
+        ) {
+            val centerY: Float get() = (top + bottom) / 2f
+        }
+
+        val lines = items.mapNotNull { item ->
+            val text = item.text.trim()
+            val points = item.box.points
+            if (text.isEmpty() || points.size != 4) null else Line(
+                text = text,
+                left = points.minOf { it.x },
+                top = points.minOf { it.y },
+                right = points.maxOf { it.x },
+                bottom = points.maxOf { it.y }
+            )
+        }
+        if (lines.isEmpty()) return ""
+        val verticalOrder = compareBy<Line> { it.centerY }.thenBy { it.left }
+        val width = imageWidth.coerceAtLeast(1).toFloat()
+        val height = imageHeight.coerceAtLeast(1).toFloat()
+
+        // Look for a real gap between recurring LEFT EDGES, not between box
+        // centers. Long handwritten sentences can extend across the midpoint.
+        val starts = lines.map { it.left }.sorted()
+        var boundary: Float? = null
+        var bestGap = 0f
+        for (i in 0 until starts.lastIndex) {
+            val leftStart = starts[i]
+            val rightStart = starts[i + 1]
+            val gap = rightStart - leftStart
+            val candidate = (leftStart + rightStart) / 2f
+            val leftCount = lines.count { it.left < candidate }
+            val rightCount = lines.size - leftCount
+            if (leftCount < 3 || rightCount < 3 ||
+                gap < width * 0.13f ||
+                leftStart > width * 0.49f ||
+                rightStart < width * 0.48f
+            ) continue
+
+            // Multiple parallel rows are evidence of columns, unlike an
+            // indented paragraph or a single isolated word on the right.
+            val leftLines = lines.filter { it.left < candidate }
+            val rightLines = lines.filter { it.left >= candidate }
+            val rowTolerance = height * 0.055f
+            val matchingRows = leftLines.count { left ->
+                rightLines.any { right ->
+                    kotlin.math.abs(left.centerY - right.centerY) <= rowTolerance
+                }
+            }
+            if (matchingRows < 2) continue
+            if (gap > bestGap) {
+                bestGap = gap
+                boundary = candidate
+            }
+        }
+
+        val split = boundary
+        val ordered = if (split != null) {
+            val leftLines = lines.filter { it.left < split }
+            val rightLines = lines.filter { it.left >= split }
+            val rowTolerance = height * 0.055f
+            // First parallel pair identifies where separate columns begin.
+            val firstPairedY = leftLines.flatMap { left ->
+                rightLines.filter { right ->
+                    kotlin.math.abs(left.centerY - right.centerY) <= rowTolerance
+                }.map { right -> minOf(left.top, right.top) }
+            }.minOrNull()
+
+            if (firstPairedY != null) {
+                val header = lines.filter { it.centerY < firstPairedY - height * 0.018f }
+                    .sortedWith(verticalOrder)
+                val rest = lines.filterNot { it in header }
+                val leftColumn = rest.filter { it.left < split }.sortedWith(verticalOrder)
+                val rightColumn = rest.filter { it.left >= split }.sortedWith(verticalOrder)
+                Log.d(
+                    "NOTE2SNAP_LAYOUT",
+                    "Paddle inferred columns: split=${split.toInt()}, " +
+                            "header=${header.size}, left=${leftColumn.size}, right=${rightColumn.size}"
+                )
+                header + leftColumn + rightColumn
+            } else {
+                lines.sortedWith(verticalOrder)
+            }
+        } else {
+            Log.d("NOTE2SNAP_LAYOUT", "Paddle single reading flow: ${lines.size} lines")
+            lines.sortedWith(verticalOrder)
+        }
+        return ordered.joinToString("<br/>") { android.text.TextUtils.htmlEncode(it.text) }
+    }
+
+    /**
+     * Experimental on-device PP-OCRv6 Small. Each model is read from the
+     * ppocr-sdk module assets; failures fall back to ML Kit for Single Scan.
+     * Results are kept verbatim. Layout-aware ordering can be added after
+     * verifying this baseline on the SOFTWARE test image.
+     */
+    private suspend fun tryPaddleSingleScan(
+        appContext: Context,
+        imagePath: String
+    ): String? = withContext(Dispatchers.IO) {
+        paddleEngineMutex.withLock {
+            var bitmap: Bitmap? = null
+            try {
+                check(!paddleClosed) { "Scanner has already been destroyed" }
+                var loadMs = 0L
+                var paddle = cachedPaddleEngine
+                if (paddle == null) {
+                    check(com.paddle.ocr.util.OpenCVUtils.init(appContext)) {
+                        "OpenCV native library initialization failed"
+                    }
+                    val loadStarted = SystemClock.elapsedRealtime()
+                    paddle = com.paddle.ocr.PaddleOCR.create(
+                        appContext,
+                        com.paddle.ocr.PaddleOCRConfig(detBoxThresh = 0.45f, recBatchSize = 2),
+                        com.paddle.ocr.EngineConfig(numThreads = 4),
+                        "models/det/inference.onnx",
+                        "models/rec/inference.onnx",
+                        "models/rec/inference.yml"
+                    )
+                    loadMs = SystemClock.elapsedRealtime() - loadStarted
+                    cachedPaddleEngine = paddle
+                    Log.d("NOTE2SNAP_PADDLE", "PaddleOCR model initialized; cached for next Single Scan")
+                    Log.d("NOTE2SNAP_PADDLE", "Recognition batching experiment: recBatchSize=2")
+                } else {
+                    Log.d("NOTE2SNAP_PADDLE", "Reusing cached PaddleOCR engine")
+                }
+                bitmap = decodeMemorySafeSingleScanBitmap(imagePath)
+                val started = SystemClock.elapsedRealtime()
+                val result = requireNotNull(paddle).recognize(requireNotNull(bitmap))
+                val elapsed = SystemClock.elapsedRealtime() - started
+                Log.d("NOTE2SNAP_SPEED", "PaddleOCR model load took ${loadMs} ms; OCR took ${elapsed} ms " +
+                        "(det=${result.detectionTimeMs} ms, rec=${result.recognitionTimeMs} ms, lines=${result.lineCount})")
+                // Diagnostic-only breakdown. No OCR behavior or PDF rendering changes.
+                Log.d("NOTE2SNAP_PROFILE", "Detection: preprocess=${result.detPreprocessMs} ms, " +
+                        "inference=${result.detInferenceMs} ms, postprocess=${result.detPostprocessMs} ms, " +
+                        "inputShape=${result.detInputShape}")
+                Log.d("NOTE2SNAP_PROFILE", "Recognition: preprocess=${result.recPreprocessMs} ms, " +
+                        "inference=${result.recInferenceMs} ms, postprocess=${result.recPostprocessMs} ms, " +
+                        "batches=${result.recInputShapes.size}, pipelineOverhead=${result.pipelineOverheadMs} ms")
+                Log.d("NOTE2SNAP_PADDLE", "Detection A/B: detBoxThresh=0.45 (baseline=0.60), image=${requireNotNull(bitmap).width}x${requireNotNull(bitmap).height}")
+                result.results.forEachIndexed { index, item ->
+                    val points = item.box.points
+                    val minX = points.minOf { it.x }.toInt()
+                    val minY = points.minOf { it.y }.toInt()
+                    val maxX = points.maxOf { it.x }.toInt()
+                    val maxY = points.maxOf { it.y }.toInt()
+                    Log.d("NOTE2SNAP_PADDLE", "Line ${index + 1}: box=($minX,$minY)-($maxX,$maxY), confidence=${"%.3f".format(java.util.Locale.US, item.confidence)}, text=${item.text}")
+                }
+                val lines = result.results.map { it.text.trim() }.filter { it.isNotEmpty() }
+                if (lines.joinToString(" ").count { it.isLetterOrDigit() } < 3) {
+                    Log.w("NOTE2SNAP_PADDLE", "No meaningful text; using ML Kit fallback")
+                    null
+                } else {
+                    Log.d("NOTE2SNAP_PADDLE", "Recognized ${lines.size} lines")
+                    formatPaddleReadingOrder(result.results, requireNotNull(bitmap).width, requireNotNull(bitmap).height)
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Log.e("NOTE2SNAP_PADDLE", "PaddleOCR unavailable; using ML Kit", error)
+                // Drop a possibly damaged engine so the next scan can try a fresh one.
+                val failed = cachedPaddleEngine
+                cachedPaddleEngine = null
+                try { failed?.release() } catch (releaseError: Throwable) {
+                    Log.w("NOTE2SNAP_PADDLE", "Unable to release PaddleOCR", releaseError)
+                }
+                null
+            } finally {
+                bitmap?.recycle()
+            }
+        }
+    }
+
+    // Reorder recognized lines spatially; do not alter ML Kit's predicted words.
+    // A two-column region is used only if multiple horizontal line-pairs support it.
+    private fun formatSingleScanText(
+        visionText: com.google.mlkit.vision.text.Text,
+        imageWidth: Int,
+        imageHeight: Int
+    ): String {
+        data class OcrLine(val text: String, val left: Int, val top: Int,
+                           val right: Int, val bottom: Int)
+
+        val lines = visionText.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+            val rect = line.boundingBox ?: return@mapNotNull null
+            val value = line.text.trim()
+            if (value.isEmpty()) null else OcrLine(value, rect.left, rect.top, rect.right, rect.bottom)
+        }
+        if (lines.isEmpty()) {
+            return android.text.TextUtils.htmlEncode(visionText.text)
+                .replace("\n", "<br/>")
+        }
+
+        val width = imageWidth.coerceAtLeast(1)
+        val height = imageHeight.coerceAtLeast(1)
+        val midX = width * 0.50f
+        val leftCandidates = lines.filter { it.left < midX * 0.75f && it.right < midX * 1.1f }
+        val rightCandidates = lines.filter { it.left > midX * 0.9f }
+        val yTolerance = (height * 0.055f).toInt().coerceAtLeast(16)
+
+        val columnPairs = leftCandidates.flatMap { left ->
+            rightCandidates.filter { right ->
+                kotlin.math.abs(left.top - right.top) <= yTolerance &&
+                        right.left - left.right > width * 0.045f
+            }.map { right -> left to right }
+        }
+        val columnStart = if (columnPairs.map { it.first.top }.distinct().size >= 2 &&
+            columnPairs.map { it.second.top }.distinct().size >= 2) {
+            columnPairs.minOf { minOf(it.first.top, it.second.top) }
+        } else null
+
+        val ordered = if (columnStart != null) {
+            val before = lines.filter { it.top < columnStart - yTolerance / 2 }
+                .sortedWith(compareBy<OcrLine> { it.top }.thenBy { it.left })
+            val after = lines.filterNot { it in before }
+            val leftColumn = after.filter { it.left < midX * 0.9f }
+                .sortedWith(compareBy<OcrLine> { it.top }.thenBy { it.left })
+            val rightColumn = after.filter { it.left >= midX * 0.9f }
+                .sortedWith(compareBy<OcrLine> { it.top }.thenBy { it.left })
+            Log.d("NOTE2SNAP_LAYOUT", "Two columns: left=${leftColumn.size}, right=${rightColumn.size}")
+            before + leftColumn + rightColumn
+        } else {
+            Log.d("NOTE2SNAP_LAYOUT", "Single reading flow: ${lines.size} lines")
+            lines.sortedWith(compareBy<OcrLine> { it.top }.thenBy { it.left })
+        }
+        return ordered.joinToString("<br/>") { android.text.TextUtils.htmlEncode(it.text) }
+    }
 
     private fun hasMeaningfulRecognizedText(
         text: String
@@ -2417,9 +2721,9 @@ class ScanFragment : Fragment() {
     }
 
     /**
-     * SINGLE-image algorithm path for validation:
-     * preprocessing -> CCL -> Epoch 3 CRNN -> rule-based structuring.
-     * Batch paths are intentionally unchanged in this revision.
+     * Single Scan: one full-image ML Kit recognition pass, followed by
+     * coordinate-based reading order and a non-destructive OCR review warning.
+     * The separate CRNN implementation and Batch Scan remain unchanged.
      */
     private fun processImageUri(
         source: SingleScanSource,
@@ -2470,58 +2774,64 @@ class ScanFragment : Fragment() {
                 if (!isAdded) return@launch
                 showActualAnalysisState(AnalysisStage.DETECTING_TEXT)
 
-                val scanResult = withContext(Dispatchers.IO) {
-                    val bitmap = BitmapFactory.decodeFile(sourceFilePath)
-                        ?: error("Unable to decode whiteboard image")
 
-                    try {
-                        val pipeline = SingleScanPipelineFactory().create(safeContext.applicationContext, scanRequest)
-                        val result = try {
-                            pipeline.process(bitmap)
-                        } finally {
-                            pipeline.close()
-                        }
-                        Pair(result.structuredNote, result.recognizedLines)
-                    } finally {
-                        // Source bitmap is ours; don't recycle shared/preprocessed bitmaps here.
-                        bitmap.recycle()
-                    }
+                // Experimental PaddleOCR first; ML Kit stays as an automatic fallback.
+                // Do not change the Gallery/Camera Batch Scan implementations.
+                val paddleHtml = tryPaddleSingleScan(safeContext, sourceFilePath)
+                val visionTextAndDimensions = if (paddleHtml == null) {
+                    recognizeSingleImageWithMlKit(sourceFilePath)
+                } else null
+                val visionText = visionTextAndDimensions?.first
+                val ocrDimensions = visionTextAndDimensions?.second
+                val recognizedText = if (paddleHtml != null) {
+                    android.text.Html.fromHtml(paddleHtml, android.text.Html.FROM_HTML_MODE_LEGACY).toString()
+                } else {
+                    visionText?.text.orEmpty()
                 }
+
 
                 if (!isAdded) return@launch
                 showActualAnalysisState(AnalysisStage.CHECKING_RECOGNITION)
 
-                val structured = scanResult.first
-                val readable = RecognitionReadability.hasReadableWriting(scanResult.second)
 
-                if (!readable) {
-                    showImageQualityWarning(
-                        ImageQualityResult(
-                            isValid = false,
-                            issue = ImageQualityIssue.BOARD_NOT_CLEAR,
-                            title = "No readable writing detected",
-                            message = "The Note2Snap CRNN could not recognize enough handwriting. Try a clearer photo or a less crowded board."
-                        )
-                    )
+                if (!hasMeaningfulRecognizedText(recognizedText)) {
+                    setLoading(false)
+                    Toast.makeText(
+                        safeContext,
+                        "No readable writing detected. Try a clearer photo.",
+                        Toast.LENGTH_LONG
+                    ).show()
                     return@launch
                 }
 
                 showActualAnalysisState(AnalysisStage.STRUCTURING_NOTES)
 
-                // The rule engine supplies HTML-formatted blocks for the editor/PDF viewer.
-                val htmlContent = RecognitionReadability.htmlContent(structured)
+                val htmlContent = paddleHtml ?: formatSingleScanText(
+                    requireNotNull(visionText),
+                    imageWidth = requireNotNull(ocrDimensions).first,
+                    imageHeight = ocrDimensions.second
+                )
 
                 Log.d(
                     "NOTE2SNAP_PIPELINE",
-                    "Epoch 3 scan: ${scanResult.second.size} recognized lines, " +
-                            "${structured.blocks.size} structured blocks"
+                    "${if (paddleHtml != null) "PaddleOCR" else "ML Kit"} Single Scan: ${recognizedText.length} characters"
+                )
+
+                // ML Kit's existing review heuristic is not a PaddleOCR confidence score.
+                val reviewIssues = if (visionText != null) {
+                    findOcrIssues(visionText).distinct().take(8)
+                } else emptyList()
+                Log.d(
+                    "NOTE2SNAP_REVIEW",
+                    "Single Scan flagged ${reviewIssues.size} line(s) for review"
                 )
 
                 finishAnalyzingAndNavigate(
                     content = htmlContent,
                     imagePath = sourceFilePath,
-                    titleOverride = structured.title
+                    ocrIssues = reviewIssues
                 )
+
             } catch (error: kotlinx.coroutines.CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -3871,6 +4181,26 @@ class ScanFragment : Fragment() {
             isScanBusy = false
             liveAnalyzer?.reset()
         }
+    }
+
+    override fun onDestroy() {
+        // This scope intentionally outlives Fragment lifecycle cancellation just long
+        // enough to release native resources after any in-flight OCR has finished.
+        CoroutineScope(Dispatchers.IO).launch {
+            paddleEngineMutex.withLock {
+                paddleClosed = true
+                val engine = cachedPaddleEngine
+                cachedPaddleEngine = null
+                try { engine?.release() } catch (error: Throwable) {
+                    Log.w("NOTE2SNAP_PADDLE", "Unable to release cached PaddleOCR", error)
+                }
+            }
+        }
+        // Close only if Single Scan actually initialized this recognizer.
+        if (singleScanRecognizerDelegate.isInitialized()) {
+            singleScanRecognizer.close()
+        }
+        super.onDestroy()
     }
 
     override fun onDestroyView() {

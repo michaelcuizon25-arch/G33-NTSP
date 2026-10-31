@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "NOTE2SNAP"
 include(":app")
+include(":ppocr-sdk")

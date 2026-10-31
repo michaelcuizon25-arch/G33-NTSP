@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.note2snap"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -89,4 +89,6 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.12.2")
+
+    implementation(project(":ppocr-sdk"))
 }

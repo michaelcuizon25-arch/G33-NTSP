@@ -2471,82 +2471,54 @@ class PdfViewerActivity : AppCompatActivity() {
         return styled
     }
 
-    private fun isReviewerSectionHeader(
-        text: String
-    ): Boolean {
-        if (text.length > 72) {
-            return false
-        }
+    /**
+     * Recognizes general note headings without rewriting any OCR characters.
+     * Conservative rules reduce the risk of turning ordinary sentences into titles.
+     * The same classification is used in the on-screen reviewer and PDF export.
+     */
+    private fun isReviewerSectionHeader(text: String): Boolean {
+        val value = text.trim()
+        if (value.isBlank() || value.length > 72 ||
+            value.startsWith("•") || value.startsWith("-")
+        ) return false
 
-        if (
-            text.matches(
-                Regex(
-                    "^\\\\d+(?:\\\\.\\\\d+)*[.)]?\\\\s+.+"
-                )
-            )
-        ) {
-            return true
-        }
+        val lower = value.lowercase(Locale.ROOT)
+        val words = lower.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val numbered = Regex("^\\d+(?:\\.\\d+)*[.)]?\\s+.+")
+        if (numbered.matches(value)) return true
 
-        val lower =
-            text.lowercase(
-                Locale.getDefault()
-            )
+        // Common academic headings, not tied to a particular class or subject.
+        if (listOf("introduction", "lntroduction", "introducthon", "overview", "summary", "conclusion",
+                "objectives", "advantages", "disadvantages", "brief history",
+                "chapter ", "section ", "references")
+                .any { lower == it || lower.startsWith("$it ") }) return true
 
-        val prefixes =
-            listOf(
-                "introduction",
-                "advantages",
-                "disadvantages",
-                "brief history",
-                "what ",
-                "why ",
-                "where ",
-                "when ",
-                "how ",
-                "chapter ",
-                "section "
-            )
+        // Example patterns: "Types of ...", "Examples of ...", "Steps for ...".
+        // Preserve OCR spelling even when it is imperfect (e.g., "txanples").
+        val first = words.firstOrNull().orEmpty()
+        val topicWords = setOf("type", "types", "kind", "kinds", "example",
+            "examples", "txanples", "category", "categories", "part", "parts",
+            "feature", "features", "component", "components", "step", "steps",
+            "benefit", "benefits", "method", "methods", "application", "applications")
+        if (words.size in 3..6 && first in topicWords &&
+            words.getOrNull(1) in setOf("of", "for")) return true
 
-        return prefixes.any {
-            lower.startsWith(it)
-        } ||
-                (
-                        text.endsWith("?") &&
-                                text.length <= 55
-                        )
+        // Clearly marked labels can be section headings.
+        if (value.endsWith(":") && words.size in 1..6 &&
+            !value.contains('.') && !value.contains('?')) return true
+
+        return value.endsWith("?") && value.length <= 55 && words.size <= 9
     }
 
-    private fun isReviewerSubheading(
-        text: String
-    ): Boolean {
-        if (text.length > 52) {
-            return false
-        }
+    private fun isReviewerSubheading(text: String): Boolean {
+        val value = text.trim()
+        if (value.isBlank() || value.length > 52 ||
+            value.startsWith("•") || value.startsWith("-")) return false
 
-        if (
-            text.startsWith("•") ||
-            text.startsWith("-")
-        ) {
-            return false
-        }
-
-        // Don't bold every short Title Case OCR line. Only keep explicit labels
-        // ending in a colon or headings with a strong structural cue (uppercase
-        // multi-word label). Ordinary phrases and recognition fragments remain body text.
-        val letters = text.filter { it.isLetter() }
-        val words = text.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val words = value.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val letters = value.filter { it.isLetter() }
         val allCapsMultiWord = words.size >= 2 && letters.length >= 4 &&
                 letters.all { it.isUpperCase() }
-
-        if (text.endsWith(":")) {
-            val labelWords = text.dropLast(1).split(Regex("\\s+")).filter { it.isNotBlank() }
-            return labelWords.size >= 2 && labelWords.all { word ->
-                val wordLetters = word.filter { it.isLetter() }
-                wordLetters.length >= 2 && !wordLetters.drop(1).any { it.isUpperCase() }
-            }
-        }
-
         return allCapsMultiWord
     }
 
@@ -2725,7 +2697,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 this
             ).apply {
                 text =
-                    "Two columns • highlights • pen notes • diagrams"
+                    "Readable pages • highlights • pen notes • diagrams"
 
                 textSize =
                     10.5f
@@ -6176,74 +6148,29 @@ class PdfViewerActivity : AppCompatActivity() {
         val text: String
     )
 
-    private fun reviewerPdfBlocks(
-        plainText: String
-    ): List<ReviewerPdfBlock> {
-        val blocks =
-            mutableListOf<ReviewerPdfBlock>()
-
-        plainText
-            .replace(
-                "\r\n",
-                "\n"
-            )
-            .split("\n")
-            .forEach {
-                    rawLine ->
-
-                val line =
-                    rawLine
-                        .trim()
-
-                if (
-                    line.isBlank()
-                ) {
-                    return@forEach
-                }
-
-                val normalized =
-                    line
-                        .replace(
-                            Regex(
-                                """^[▪■□◦●○]+\s*"""
-                            ),
-                            "• "
-                        )
-
-                val type =
-                    when {
-                        isReviewerSectionHeader(
-                            normalized
-                        ) ->
-                            ReviewerPdfBlockType.SECTION
-
-                        normalized.startsWith(
-                            "•"
-                        ) ||
-                                normalized.startsWith(
-                                    "-"
-                                ) ->
-                            ReviewerPdfBlockType.BULLET
-
-                        isReviewerSubheading(
-                            normalized
-                        ) ->
-                            ReviewerPdfBlockType.SUBHEADING
-
-                        else ->
-                            ReviewerPdfBlockType.BODY
-                    }
-
-                blocks.add(
-                    ReviewerPdfBlock(
-                        type =
-                            type,
-                        text =
-                            normalized
-                    )
-                )
+    private fun reviewerPdfBlocks(plainText: String): List<ReviewerPdfBlock> {
+        val blocks = mutableListOf<ReviewerPdfBlock>()
+        var inListSection = false
+        plainText.replace("\r\n", "\n").split("\n").forEach { raw ->
+            val line = raw.trim()
+            if (line.isBlank()) return@forEach
+            // Isolated OCR bullet markers contain no actual note content.
+            if (line in setOf("•", "-", "·", "▪", "●")) return@forEach
+            val normalized = line.replace(Regex("""^[▪■□◦●○]+\s*"""), "• ")
+            val heading = isReviewerSectionHeader(normalized)
+            if (heading) {
+                val prefix = normalized.lowercase(Locale.ROOT).split(Regex("\\s+")).firstOrNull().orEmpty()
+                inListSection = prefix in setOf("type", "types", "kind", "kinds", "example", "examples", "txanples", "steps", "features", "benefits", "components")
             }
-
+            val type = when {
+                heading -> ReviewerPdfBlockType.SECTION
+                normalized.startsWith("•") || normalized.startsWith("- ") -> ReviewerPdfBlockType.BULLET
+                isReviewerSubheading(normalized) -> ReviewerPdfBlockType.SUBHEADING
+                inListSection -> ReviewerPdfBlockType.BULLET
+                else -> ReviewerPdfBlockType.BODY
+            }
+            blocks.add(ReviewerPdfBlock(type, normalized))
+        }
         return blocks
     }
 
@@ -6606,14 +6533,14 @@ class PdfViewerActivity : AppCompatActivity() {
     ) {
         syncCurrentPageContentFromRaw()
 
-        val exportPages =
-            currentPageContents
-                .toList()
-                .ifEmpty {
-                    listOf(
-                        currentRawContent
-                    )
-                }
+        // A Single Scan has one source image and must export one note, even if
+        // stale PAGE_CONTENTS entries were restored from a previously saved note.
+        // Genuine multi-image Batch Scans still export every source page.
+        val exportPages = if (currentImagePaths.size <= 1) {
+            listOf(currentRawContent)
+        } else {
+            currentPageContents.toList().ifEmpty { listOf(currentRawContent) }
+        }
 
         lifecycleScope.launch(
             Dispatchers.IO
@@ -6632,7 +6559,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     34f
 
                 val columnGap =
-                    18f
+                    22f
 
                 val footerReserve =
                     38f
@@ -6644,12 +6571,8 @@ class PdfViewerActivity : AppCompatActivity() {
                                             2f
                                     )
 
-                val columnWidth =
-                    (
-                            contentWidth -
-                                    columnGap
-                            ) /
-                            2f
+                // Two-column academic reviewer: title spans both columns.
+                val columnWidth = (contentWidth - columnGap) / 2f
 
                 val titleTypeface =
                     ResourcesCompat.getFont(
@@ -6698,7 +6621,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 val bodyPaint =
                     TextPaint().apply {
                         textSize =
-                            8.2f
+                            11.4f
 
                         color =
                             textColor
@@ -6713,7 +6636,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 val headingPaint =
                     TextPaint().apply {
                         textSize =
-                            8.3f
+                            11.4f
 
                         color =
                             "#163D79"
@@ -6729,7 +6652,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 val sectionTextPaint =
                     TextPaint().apply {
                         textSize =
-                            7.7f
+                            10.2f
 
                         color =
                             Color.WHITE
@@ -6744,7 +6667,7 @@ class PdfViewerActivity : AppCompatActivity() {
                 val metaPaint =
                     TextPaint().apply {
                         textSize =
-                            6.8f
+                            9f
 
                         color =
                             secondaryText
@@ -6940,19 +6863,12 @@ class PdfViewerActivity : AppCompatActivity() {
                                     11f
                     }
 
-                    // Thin divider between columns.
+                    // A subtle central rule makes the columns feel like a study handout.
                     canvas!!.drawLine(
-                        outerMargin +
-                                columnWidth +
-                                columnGap /
-                                2f,
+                        outerMargin + columnWidth + columnGap / 2f,
                         pageTop,
-                        outerMargin +
-                                columnWidth +
-                                columnGap /
-                                2f,
-                        pageHeight -
-                                footerReserve,
+                        outerMargin + columnWidth + columnGap / 2f,
+                        pageHeight - footerReserve,
                         rulePaint
                     )
 
@@ -6966,20 +6882,11 @@ class PdfViewerActivity : AppCompatActivity() {
                 }
 
                 fun moveToNextColumnOrPage() {
-                    if (
-                        currentColumn ==
-                        0
-                    ) {
-                        currentColumn =
-                            1
-
-                        y =
-                            pageTop
+                    if (currentColumn == 0) {
+                        currentColumn = 1
+                        y = pageTop
                     } else {
-                        startNewPdfPage(
-                            showTitle =
-                                false
-                        )
+                        startNewPdfPage(showTitle = false)
                     }
                 }
 
@@ -7204,34 +7111,35 @@ class PdfViewerActivity : AppCompatActivity() {
                             )
 
                         } else {
-                            for (
-                            block in
-                            blocks
-                            ) {
-                                val required =
-                                    reviewerBlockHeight(
-                                        block =
-                                            block,
-                                        width =
-                                            columnWidth
-                                                .toInt(),
-                                        bodyPaint =
-                                            bodyPaint,
-                                        headingPaint =
-                                            headingPaint,
-                                        sectionPaint =
-                                            sectionTextPaint
-                                    )
+                            // IMPORTANT: Traditional continuous column flow.
+                            // Never split a short note between columns for visual balance.
+                            // The right column is used ONLY when the left column is full.
+                            // Keep measured heights for genuine overflow and heading widow protection.
+                            val blockHeights = blocks.map { block ->
+                                reviewerBlockHeight(
+                                    block = block,
+                                    width = columnWidth.toInt(),
+                                    bodyPaint = bodyPaint,
+                                    headingPaint = headingPaint,
+                                    sectionPaint = sectionTextPaint
+                                ).toFloat()
+                            }
+                            for ((blockIndex, block) in blocks.withIndex()) {
+                                val required = blockHeights[blockIndex]
 
+                                // Avoid leaving a section title alone at the page bottom.
+                                val nextHeight = if (
+                                    block.type == ReviewerPdfBlockType.SECTION &&
+                                    blockIndex < blocks.lastIndex
+                                ) blockHeights[blockIndex + 1] else 0f
+                                if (y + required + nextHeight > pageHeight - footerReserve) {
+                                    moveToNextColumnOrPage()
+                                }
                                 if (
-                                    y +
-                                    required >
-                                    pageHeight -
-                                    footerReserve
+                                    y + required > pageHeight - footerReserve
                                 ) {
                                     moveToNextColumnOrPage()
                                 }
-
                                 val x =
                                     outerMargin +
                                             currentColumn *
