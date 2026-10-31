@@ -40,7 +40,7 @@ class CrnnFailureRegressionTest {
         override fun close() { closed = true }
     }
     private fun recognizer(runtime: FakeRuntime, mode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) =
-        CrnnLineRecognizer(RuntimeEnvironment.getApplication(), mode, runtime, charset)
+        CrnnLineRecognizer(RuntimeEnvironment.getApplication(), mode, runtime, charset, exportDiagnostics = true)
     private fun region(twoLines: Boolean = false): Region {
         val b = Bitmap.createBitmap(120, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }
         for (y in 8..19) for (x in 5..114) b.setPixel(x, y, Color.BLACK)

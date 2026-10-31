@@ -1,4 +1,6 @@
 package com.example.note2snap.activities
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -47,10 +49,10 @@ object ImageQualityValidator {
     ): ImageQualityResult {
 
         val bitmap =
-            decodeSampled(
+            PerformanceDiagnostics.measure(PerfStage.IMAGE_DECODE) { decodeSampled(
                 file,
                 maxDimension = 900
-            ) ?: return ImageQualityResult(
+            ) } ?: return ImageQualityResult(
                 isValid = false,
                 issue = ImageQualityIssue.BOARD_NOT_CLEAR,
                 title = "Image could not be checked",

@@ -18,6 +18,9 @@ android {
         // Opt in for evaluation: -PENABLE_OPENCV_ENHANCEMENT=true
         buildConfigField("boolean", "ENABLE_OPENCV_ENHANCEMENT",
             providers.gradleProperty("ENABLE_OPENCV_ENHANCEMENT").orElse("false").get().toBooleanStrict().toString())
+        // Research-only image/tensor/JSON exports; lightweight timings remain independent.
+        buildConfigField("boolean", "ENABLE_CRNN_DIAGNOSTIC_EXPORTS",
+            providers.gradleProperty("ENABLE_CRNN_DIAGNOSTIC_EXPORTS").orElse("false").get().toBooleanStrict().toString())
         // Independent from OpenCV and the existing CRNN preprocessing-mode selector.
         buildConfigField("boolean", "ENABLE_OFFLINE_TEXT_CORRECTION",
             providers.gradleProperty("ENABLE_OFFLINE_TEXT_CORRECTION").orElse("false").get().toBooleanStrict().toString())

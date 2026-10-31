@@ -1,4 +1,6 @@
 package com.example.note2snap.recognition
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
 
 import android.graphics.Rect
 import com.example.note2snap.ccl.Region
@@ -27,9 +29,9 @@ import kotlin.math.min
 class MlKitLineRecognizer : LineRecognizer {
 
     private val recognizer =
-        TextRecognition.getClient(
+        PerformanceDiagnostics.measure(PerfStage.MLKIT_INITIALIZATION) { TextRecognition.getClient(
             TextRecognizerOptions.DEFAULT_OPTIONS
-        )
+        ) }
 
     override suspend fun recognize(
         regions: List<Region>
@@ -49,9 +51,9 @@ class MlKitLineRecognizer : LineRecognizer {
             for (region in regions) {
 
                 recognizedLines +=
-                    recognizeRegion(
+                    PerformanceDiagnostics.measureSuspending(PerfStage.MLKIT_RECOGNITION) { recognizeRegion(
                         region
-                    )
+                    ) }
             }
 
             recognizedLines

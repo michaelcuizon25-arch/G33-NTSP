@@ -42,7 +42,7 @@ class CrnnDiagnosticsTest {
     }
 
     @Test fun recorderPreservesExactCropTensorBufferAndBlankPrediction() {
-        val d = CrnnDiagnostics(RuntimeEnvironment.getApplication())
+        val d = CrnnDiagnostics(RuntimeEnvironment.getApplication(), enabled = true)
         val b = bitmap(60, 20)
         val line = PhysicalLine(b, Rect(10, 20, 70, 40))
         val region = Region(19, Rect(8, 18, 72, 42), RegionType.TEXT, 500, b)
@@ -78,7 +78,7 @@ class CrnnDiagnosticsTest {
         val preprocessed = com.example.note2snap.preprocessing.WhiteboardPreprocessor().process(photo)
         val regions = com.example.note2snap.ccl.ConnectedComponentLabeler().label(
             preprocessed.binarizedBitmap, preprocessed.recognitionBitmap)
-        val d = CrnnDiagnostics(RuntimeEnvironment.getApplication())
+        val d = CrnnDiagnostics(RuntimeEnvironment.getApplication(), enabled = true)
         d.recordSource(photo, preprocessed, regions)
         File(d.directory, "audit-mode.json").writeText(
             "{\"mode\":\"Robolectric preprocessing audit; no model inference\"}")
@@ -99,8 +99,8 @@ class CrnnDiagnosticsTest {
     }
 
     @Test fun sessionsAreUniqueAndInferenceErrorsRetainTheirCrops() {
-        val a = CrnnDiagnostics(RuntimeEnvironment.getApplication())
-        val b = CrnnDiagnostics(RuntimeEnvironment.getApplication())
+        val a = CrnnDiagnostics(RuntimeEnvironment.getApplication(), enabled = true)
+        val b = CrnnDiagnostics(RuntimeEnvironment.getApplication(), enabled = true)
         assertNotEquals(a.directory, b.directory)
         val bitmap = bitmap(20, 20)
         val box = Rect(0, 0, 20, 20)
@@ -113,7 +113,7 @@ class CrnnDiagnosticsTest {
     }
 
     @Test fun storageFailureCannotInterruptRecognition() {
-        val d = CrnnDiagnostics(RuntimeEnvironment.getApplication())
+        val d = CrnnDiagnostics(RuntimeEnvironment.getApplication(), enabled = true)
         d.directory.deleteRecursively()
         d.directory.writeText("Simulate unwritable directory")
         val b = bitmap(20, 20)

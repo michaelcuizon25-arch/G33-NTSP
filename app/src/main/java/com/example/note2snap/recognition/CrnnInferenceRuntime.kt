@@ -1,4 +1,6 @@
 package com.example.note2snap.recognition
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
 
 import android.content.Context
 import android.util.Log
@@ -60,7 +62,7 @@ private class AndroidCrnnInterpreterAccess(private val interpreter: Interpreter)
 }
 
 internal class TensorFlowLiteCrnnRuntime internal constructor(private val interpreter: CrnnInterpreterAccess) : CrnnInferenceRuntime {
-    constructor(context: Context) : this(AndroidCrnnInterpreterAccess(Interpreter(loadCrnnModel(context))))
+    constructor(context: Context) : this(PerformanceDiagnostics.measure(PerfStage.MODEL_INITIALIZATION) { AndroidCrnnInterpreterAccess(Interpreter(loadCrnnModel(context))) })
     private var resolvedOutputShape = intArrayOf()
     private var reportedOutputShape = intArrayOf()
     private var resolvedOutputSignature = intArrayOf()
@@ -93,7 +95,7 @@ internal class TensorFlowLiteCrnnRuntime internal constructor(private val interp
         require(input.remaining() == shape.fold(4) { bytes, dimension -> bytes * dimension }) {
             "CRNN input byte count ${input.remaining()} does not match ${shape.contentToString()}"
         }
-        interpreter.invoke(input)
+        PerformanceDiagnostics.measure(PerfStage.CRNN_INFERENCE) { interpreter.invoke(input) }
         val cachedShape = interpreter.outputShape()
         val signature = interpreter.outputShapeSignature()
         val type = interpreter.outputType()
@@ -101,7 +103,7 @@ internal class TensorFlowLiteCrnnRuntime internal constructor(private val interp
         val buffer = interpreter.outputBuffer().duplicate().order(ByteOrder.nativeOrder())
         Log.i(RECOGNITION_LOG_TAG, "CRNN native output cachedShape=${cachedShape.contentToString()} " +
             "signature=${signature.contentToString()} type=$type nativeBytes=$nativeBytes bufferBytes=${buffer.remaining()}")
-        val output = readCrnnLogits(buffer, nativeBytes, cachedShape, signature, type, shape)
+        val output = PerformanceDiagnostics.measure(PerfStage.CRNN_OUTPUT_READ) { readCrnnLogits(buffer, nativeBytes, cachedShape, signature, type, shape) }
         reportedOutputShape = cachedShape.copyOf()
         resolvedOutputShape = intArrayOf(output.size, output[0].size, output[0][0].size)
         resolvedOutputSignature = signature.copyOf()

@@ -1,4 +1,11 @@
 package com.example.note2snap.activities
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfFlow
+import com.example.note2snap.diagnostics.PerfStage
+import coil.load
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import coil.request.ErrorResult
 
 import android.content.Context
 import android.content.Intent
@@ -3879,6 +3886,10 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun renderContent(
         rawContent: String
     ) {
+        val renderTiming = PerformanceDiagnostics.session(PerfFlow.VIEWER_RENDER)
+        PerformanceDiagnostics.onThread(renderTiming) {
+            renderTiming.use {
+                PerformanceDiagnostics.measure(PerfStage.VIEWER_RENDER) {
         val tvPdfContent =
             findViewById<TextView>(
                 R.id.tvPdfContent
@@ -3966,36 +3977,27 @@ class PdfViewerActivity : AppCompatActivity() {
             !sourcePath.isNullOrBlank() &&
             File(sourcePath).exists()
         ) {
-            val bitmap =
-                BitmapFactory.decodeFile(
-                    sourcePath
-                )
-
-            if (
-                bitmap != null
-            ) {
-                ivScannedImage.setImageBitmap(
-                    bitmap
-                )
-
-                ivScannedImage.visibility =
-                    View.VISIBLE
-
-                cardScannedImage.visibility =
-                    View.VISIBLE
-            } else {
-                ivScannedImage.visibility =
-                    View.GONE
-
-                cardScannedImage.visibility =
-                    View.GONE
+            ivScannedImage.visibility = View.VISIBLE
+            cardScannedImage.visibility = View.VISIBLE
+            val loading = PerformanceDiagnostics.detached(PerfFlow.VIEWER_RENDER, PerfStage.DISPLAY_IMAGE_LOAD)
+            ivScannedImage.load(File(sourcePath)) {
+                // Display only. Recognition/export continue to use the untouched original file.
+                size(ivScannedImage.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels,
+                    resources.displayMetrics.heightPixels)
+                listener(object : ImageRequest.Listener {
+                    override fun onSuccess(request: ImageRequest, result: SuccessResult) { loading.finish() }
+                    override fun onError(request: ImageRequest, result: ErrorResult) {
+                        loading.finish(false)
+                        ivScannedImage.visibility = View.GONE
+                        cardScannedImage.visibility = View.GONE
+                    }
+                    override fun onCancel(request: ImageRequest) { loading.finish(false) }
+                })
             }
         } else {
-            ivScannedImage?.visibility =
-                View.GONE
-
-            cardScannedImage?.visibility =
-                View.GONE
+            ivScannedImage?.load(null) // Cancel an outstanding display request before hiding it.
+            ivScannedImage?.visibility = View.GONE
+            cardScannedImage?.visibility = View.GONE
         }
 
         updateSourceThumbnailStrip()
@@ -4115,6 +4117,10 @@ class PdfViewerActivity : AppCompatActivity() {
         }
 
         updatePageIndicator()
+
+                }
+            }
+        }
     }
 
     private fun renderStructuredTableIfDetected(

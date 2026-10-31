@@ -1,4 +1,6 @@
 package com.example.note2snap.recognition
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
 
 import android.content.Context
 import android.util.Log
@@ -13,7 +15,7 @@ data class LineTextCorrection(val lineIndex: Int, val sourceRegionId: Int, val r
 internal fun configuredTextCorrector(context: Context, enabled: Boolean): OfflineTextCorrector? {
     if (!enabled) return null
     return try {
-        BundledTextCorrector.load(context.applicationContext)
+        PerformanceDiagnostics.measure(PerfStage.CORRECTOR_INITIALIZATION) { BundledTextCorrector.load(context.applicationContext) }
     } catch (error: CancellationException) {
         throw error
     } catch (error: Exception) {

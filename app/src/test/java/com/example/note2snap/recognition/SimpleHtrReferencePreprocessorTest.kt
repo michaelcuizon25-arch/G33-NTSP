@@ -84,7 +84,7 @@ class SimpleHtrReferencePreprocessorTest {
     }
 
     @Test fun diagnosticsIdentifyReferenceAndFallbackPerLine() {
-        val diagnostics = CrnnDiagnostics(RuntimeEnvironment.getApplication())
+        val diagnostics = CrnnDiagnostics(RuntimeEnvironment.getApplication(), enabled = true)
         for (w in listOf(200, 900)) {
             val bitmap = Bitmap.createBitmap(w, 32, Bitmap.Config.ARGB_8888)
             val box = Rect(0, 0, w, 32)

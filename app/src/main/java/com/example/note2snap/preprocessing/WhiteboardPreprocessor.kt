@@ -1,11 +1,10 @@
 package com.example.note2snap.preprocessing
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.util.Log
 import com.example.note2snap.BuildConfig
-import kotlinx.coroutines.CancellationException
-import kotlin.math.max
 
 /**
  * Downsamples, converts to grayscale, and applies adaptive thresholding.
@@ -16,80 +15,65 @@ class WhiteboardPreprocessor(
     private val enhancer: WhiteboardEnhancer = OpenCvWhiteboardEnhancer()
 ) {
     fun process(source: Bitmap): PreprocessingResult {
-        val original = downscale(source, MAX_SOURCE_DIMENSION)
-        val start = System.nanoTime()
-        val enhancement = if (!enableOpenCvEnhancement) WhiteboardEnhancement(original, false, "disabled") else try {
-            enhancer.enhance(original).also {
-                require(!it.bitmap.isRecycled && it.bitmap.width == original.width && it.bitmap.height == original.height) {
-                    "Enhancement must preserve the CCL/recognition coordinate space"
-                }
-            }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            Log.w("NOTE2SNAP_PIPELINE", "OpenCV enhancement failed; using original", error)
-            WhiteboardEnhancement(original, false, error.javaClass.simpleName)
-        } catch (error: LinkageError) {
-            Log.w("NOTE2SNAP_PIPELINE", "OpenCV native library unavailable; using original", error)
-            WhiteboardEnhancement(original, false, "native_library_unavailable")
-        }
-        val elapsedMs = if (enableOpenCvEnhancement) (System.nanoTime() - start) / 1_000_000 else 0
-        val recognitionBitmap = enhancement.bitmap
-        Log.i("NOTE2SNAP_PIPELINE", "OpenCV requested=$enableOpenCvEnhancement applied=${enhancement.applied} " +
-            "reason=${enhancement.reason} elapsedMs=$elapsedMs")
+        val prepared = WhiteboardImagePreparation(enableOpenCvEnhancement, enhancer).prepare(source)
+        val original = prepared.original
+        val recognitionBitmap = prepared.recognition
         val width = recognitionBitmap.width
         val height = recognitionBitmap.height
-        val sourcePixels = IntArray(width * height)
-        recognitionBitmap.getPixels(sourcePixels, 0, width, 0, 0, width, height)
+        val binary = PerformanceDiagnostics.measure(PerfStage.ADAPTIVE_THRESHOLD) {
+            val sourcePixels = IntArray(width * height)
+            recognitionBitmap.getPixels(sourcePixels, 0, width, 0, 0, width, height)
 
-        val gray = IntArray(sourcePixels.size)
-        for (i in sourcePixels.indices) {
-            val pixel = sourcePixels[i]
-            gray[i] = (Color.red(pixel) * 299 + Color.green(pixel) * 587 + Color.blue(pixel) * 114) / 1000
-        }
-
-        val integral = LongArray((width + 1) * (height + 1))
-        for (y in 1..height) {
-            var rowSum = 0L
-            for (x in 1..width) {
-                rowSum += gray[(y - 1) * width + (x - 1)]
-                integral[y * (width + 1) + x] = integral[(y - 1) * (width + 1) + x] + rowSum
+            val gray = IntArray(sourcePixels.size)
+            for (i in sourcePixels.indices) {
+                val pixel = sourcePixels[i]
+                gray[i] = (Color.red(pixel) * 299 + Color.green(pixel) * 587 + Color.blue(pixel) * 114) / 1000
             }
-        }
 
-        val binaryPixels = IntArray(gray.size)
-        for (y in 0 until height) {
-            val top = (y - WINDOW_RADIUS).coerceAtLeast(0)
-            val bottom = (y + WINDOW_RADIUS).coerceAtMost(height - 1)
-            for (x in 0 until width) {
-                val left = (x - WINDOW_RADIUS).coerceAtLeast(0)
-                val right = (x + WINDOW_RADIUS).coerceAtMost(width - 1)
-                val area = (right - left + 1) * (bottom - top + 1)
-                val sum = rectangleSum(integral, width + 1, left, top, right, bottom)
-                val localMean = sum.toFloat() / area
-                val isInk = gray[y * width + x] < localMean - THRESHOLD_OFFSET
-                binaryPixels[y * width + x] = if (isInk) Color.WHITE else Color.BLACK
+            val integral = LongArray((width + 1) * (height + 1))
+            for (y in 1..height) {
+                var rowSum = 0L
+                for (x in 1..width) {
+                    rowSum += gray[(y - 1) * width + (x - 1)]
+                    integral[y * (width + 1) + x] = integral[(y - 1) * (width + 1) + x] + rowSum
+                }
             }
-        }
 
-        // Preserve thin handwriting strokes. The previous filter removed pixels
-        // with fewer than two neighbours, which can break character endpoints
-        // and small marks (for example dots, commas, and the thin parts of letters).
-        removeIsolatedNoise(binaryPixels, width, height)
-        clearImageBorder(
-            pixels = binaryPixels,
-            width = width,
-            height = height
-        )
-        val binary = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        binary.setPixels(binaryPixels, 0, width, 0, 0, width, height)
+            val binaryPixels = IntArray(gray.size)
+            for (y in 0 until height) {
+                val top = (y - WINDOW_RADIUS).coerceAtLeast(0)
+                val bottom = (y + WINDOW_RADIUS).coerceAtMost(height - 1)
+                for (x in 0 until width) {
+                    val left = (x - WINDOW_RADIUS).coerceAtLeast(0)
+                    val right = (x + WINDOW_RADIUS).coerceAtMost(width - 1)
+                    val area = (right - left + 1) * (bottom - top + 1)
+                    val sum = rectangleSum(integral, width + 1, left, top, right, bottom)
+                    val localMean = sum.toFloat() / area
+                    val isInk = gray[y * width + x] < localMean - THRESHOLD_OFFSET
+                    binaryPixels[y * width + x] = if (isInk) Color.WHITE else Color.BLACK
+                }
+            }
+
+            // Preserve thin handwriting strokes. The previous filter removed pixels
+            // with fewer than two neighbours, which can break character endpoints
+            // and small marks (for example dots, commas, and the thin parts of letters).
+            removeIsolatedNoise(binaryPixels, width, height)
+            clearImageBorder(
+                pixels = binaryPixels,
+                width = width,
+                height = height
+            )
+            val binary = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            binary.setPixels(binaryPixels, 0, width, 0, 0, width, height)
+            binary
+        }
 
         return PreprocessingResult(binary, recognitionBitmap, width, height,
             originalRecognitionBitmap = original,
             enhancementRequested = enableOpenCvEnhancement,
-            enhancementApplied = enhancement.applied,
-            enhancementReason = enhancement.reason,
-            enhancementElapsedMs = elapsedMs)
+            enhancementApplied = prepared.applied,
+            enhancementReason = prepared.reason,
+            enhancementElapsedMs = prepared.elapsedMs)
     }
 
     private fun clearImageBorder(
@@ -169,20 +153,7 @@ class WhiteboardPreprocessor(
         }
     }
 
-    private fun downscale(bitmap: Bitmap, maximumSide: Int): Bitmap {
-        val largestSide = max(bitmap.width, bitmap.height)
-        if (largestSide <= maximumSide) return bitmap
-        val scale = maximumSide.toFloat() / largestSide
-        return Bitmap.createScaledBitmap(
-            bitmap,
-            max(1, (bitmap.width * scale).toInt()),
-            max(1, (bitmap.height * scale).toInt()),
-            true
-        )
-    }
-
     private companion object {
-        const val MAX_SOURCE_DIMENSION = 1800
         const val WINDOW_RADIUS = 12
         // A slightly lower offset keeps faint marker strokes while still
         // separating dark writing from the whiteboard background.

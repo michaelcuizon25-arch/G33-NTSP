@@ -109,7 +109,7 @@ class OfflineCorrectionPipelineTest {
     }
 
     @Test fun correctionDiagnosticsPreserveRawTextSuggestionsAndEvidence() {
-        val diagnostics = CrnnDiagnostics(RuntimeEnvironment.getApplication())
+        val diagnostics = CrnnDiagnostics(RuntimeEnvironment.getApplication(), enabled = true)
         diagnostics.recordCorrections(true, correctRecognizedLines(raw, bundledCorrectorForTest()))
         val report = JSONObject(File(diagnostics.directory, "text-corrections.json").readText())
         assertTrue(report.getBoolean("enabled"))

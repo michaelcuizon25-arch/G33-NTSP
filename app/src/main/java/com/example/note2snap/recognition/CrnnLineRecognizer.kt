@@ -1,5 +1,9 @@
 package com.example.note2snap.recognition
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
+import com.example.note2snap.diagnostics.PerfMetric
 
+import com.example.note2snap.BuildConfig
 import android.content.Context
 import android.util.Log
 import com.example.note2snap.ccl.Region
@@ -38,7 +42,8 @@ class CrnnLineRecognizer internal constructor(
     private val context: Context,
     preprocessingMode: CrnnPreprocessingMode,
     private val runtime: CrnnInferenceRuntime,
-    private val charset: List<String>
+    private val charset: List<String>,
+    exportDiagnostics: Boolean = BuildConfig.ENABLE_CRNN_DIAGNOSTIC_EXPORTS
 ) : LineRecognizer {
     @JvmOverloads
     constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
@@ -48,7 +53,7 @@ class CrnnLineRecognizer internal constructor(
         private const val CTC_BLANK_INDEX = 79
     }
 
-    internal val diagnostics = CrnnDiagnostics(context)
+    internal val diagnostics = CrnnDiagnostics(context, exportDiagnostics)
     private val inputPreprocessor = CrnnPreprocessing(preprocessingMode)
 
     init {
@@ -73,7 +78,7 @@ class CrnnLineRecognizer internal constructor(
      */
     override suspend fun recognize(
         regions: List<Region>
-    ): List<RecognizedLine> {
+    ): List<RecognizedLine> = PerformanceDiagnostics.measureSuspending(PerfStage.CRNN_RECOGNITION) {
 
         val recognizedLines = mutableListOf<RecognizedLine>()
         var physicalCount = 0
@@ -83,14 +88,15 @@ class CrnnLineRecognizer internal constructor(
         var firstFailure: Exception? = null
         Log.i(RECOGNITION_LOG_TAG, "CRNN received textRegions=${regions.size}")
         for (region in regions) {
-            val physicalLines = lineSegmenter.splitIntoPhysicalLines(region)
+            val physicalLines = PerformanceDiagnostics.measure(PerfStage.SEGMENTATION) { lineSegmenter.splitIntoPhysicalLines(region) }
+            PerformanceDiagnostics.metric(PerfMetric.PHYSICAL_LINES, physicalLines.size.toLong(), add = true)
             physicalCount += physicalLines.size
             Log.i(RECOGNITION_LOG_TAG, "Segmentation region=${region.id} box=${region.boundingBox} physicalLines=${physicalLines.size}")
             for (line in physicalLines) {
                 var stage = "preprocessing"
                 var diagnosticId: Int? = null
                 try {
-                    val prepared = inputPreprocessor.prepare(line.bitmap)
+                    val prepared = PerformanceDiagnostics.measure(PerfStage.CRNN_PREPROCESSING) { inputPreprocessor.prepare(line.bitmap) }
                     val input = prepared.input
                     diagnosticId = diagnostics.beginLine(region, line, input, prepared)
                     Log.d(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId region=${region.id} box=${line.boundingBox} " +
@@ -106,8 +112,8 @@ class CrnnLineRecognizer internal constructor(
                             cachedOutputShape = runtime.cachedOutputShape)
                     }
                     stage = "decoding"
-                    val rawText = decodeCtc(output)
-                    val confidence = calculateConfidence(output)
+                    val rawText = PerformanceDiagnostics.measure(PerfStage.CTC_DECODE) { decodeCtc(output) }
+                    val confidence = PerformanceDiagnostics.measure(PerfStage.CRNN_CONFIDENCE) { calculateConfidence(output) }
                     val text = rawText.trim().replace(Regex("\\s+"), " ")
                     diagnostics.completeLine(diagnosticId, rawText, text, confidence, output)
                     successfulCount++
@@ -141,7 +147,7 @@ class CrnnLineRecognizer internal constructor(
                 "successful=$successfulCount blank=$blankCount failed=$failedCount recognized=${recognizedLines.size}")
         if (firstFailure != null && recognizedLines.isEmpty())
             throw CrnnRecognitionFailure(failedCount, physicalCount, firstFailure)
-        return recognizedLines
+        recognizedLines
     }
 
     /**
@@ -313,6 +319,6 @@ class CrnnLineRecognizer internal constructor(
 
     override fun close() {
 
-        runtime.close()
+        try { runtime.close() } finally { diagnostics.flush() }
     }
 }

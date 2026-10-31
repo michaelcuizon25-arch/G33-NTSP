@@ -1,4 +1,11 @@
 package com.example.note2snap.activities
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
+import com.example.note2snap.diagnostics.PerfFlow
+import com.example.note2snap.diagnostics.PerfMetric
+import com.example.note2snap.preprocessing.GuideCropGeometry
+import com.example.note2snap.recognition.BatchRecognitionFeatures
+import com.example.note2snap.recognition.BatchImageInput
 
 import android.Manifest
 import com.example.note2snap.tutorial.TutorialStep
@@ -417,6 +424,7 @@ class ScanFragment : Fragment() {
 
         btnProcessCameraBatch
             ?.setOnClickListener {
+                if (isSavingCameraPage) return@setOnClickListener
                 hapticScan(
                     btnProcessCameraBatch,
                     strong =
@@ -648,6 +656,9 @@ class ScanFragment : Fragment() {
     }
 
     private fun runSampleWhiteboardDemo() {
+        val preparation = PerformanceDiagnostics.session(PerfFlow.TUTORIAL_PREPARATION)
+        PerformanceDiagnostics.onThread(preparation) {
+            preparation.use {
         val safeContext =
             context ?: return
 
@@ -659,10 +670,10 @@ class ScanFragment : Fragment() {
 
         try {
             val sampleBitmap =
-                BitmapFactory.decodeResource(
+                PerformanceDiagnostics.measure(PerfStage.IMAGE_DECODE) { BitmapFactory.decodeResource(
                     safeContext.resources,
                     R.drawable.sample_whiteboard_demo
-                )
+                ) }
 
             if (sampleBitmap == null) {
                 Toast.makeText(
@@ -675,11 +686,11 @@ class ScanFragment : Fragment() {
 
             file.outputStream()
                 .use { output ->
-                    sampleBitmap.compress(
+                    PerformanceDiagnostics.measure(PerfStage.IMAGE_ENCODE) { sampleBitmap.compress(
                         Bitmap.CompressFormat.PNG,
                         100,
                         output
-                    )
+                    ) }
                 }
 
             sampleBitmap.recycle()
@@ -715,6 +726,9 @@ class ScanFragment : Fragment() {
                 Toast.LENGTH_SHORT
             ).show()
         }
+
+            }
+        }
     }
 
     private fun showImageQualityWarning(
@@ -749,11 +763,14 @@ class ScanFragment : Fragment() {
     private fun validateImageBeforeOcr(
         imagePath: String
     ): ImageQualityResult {
+        PerformanceDiagnostics.measure(PerfStage.QUALITY_CHECK) {
         return ImageQualityValidator.validate(
             File(
                 imagePath
             )
         )
+
+        }
     }
 
     private fun handleScanExit() {
@@ -1263,6 +1280,8 @@ class ScanFragment : Fragment() {
             ?.isEnabled =
             false
 
+        val captureOwner = viewLifecycleOwner
+        val captureTiming = PerformanceDiagnostics.detached(PerfFlow.CAMERA_CAPTURE, PerfStage.CAPTURE_WAIT)
         capture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(
@@ -1275,6 +1294,9 @@ class ScanFragment : Fragment() {
                     exc:
                     ImageCaptureException
                 ) {
+                    captureTiming.finish(false)
+                    photoFile.delete()
+                    if (viewLifecycleOwnerLiveData.value !== captureOwner) return
                     isSavingCameraPage =
                         false
 
@@ -1306,113 +1328,54 @@ class ScanFragment : Fragment() {
                     output:
                     ImageCapture.OutputFileResults
                 ) {
-                    isSavingCameraPage =
-                        false
-
-                    view
-                        ?.findViewById<View>(
-                            R.id.btnCapture
-                        )
-                        ?.isEnabled =
-                        true
-
-                    if (!isAdded) {
+                    captureTiming.finish()
+                    if (!isAdded || view == null || viewLifecycleOwnerLiveData.value !== captureOwner) {
+                        if (viewLifecycleOwnerLiveData.value === captureOwner) isSavingCameraPage = false
+                        photoFile.delete()
                         return
                     }
-
-                    /*
-                     * Preserve the ORIGINAL camera behavior:
-                     * 1. crop exactly to the visible landscape guide
-                     * 2. run the SAME image-quality validation
-                     * 3. show the SAME custom warning dialog if the image
-                     *    is too blurry, too dark, too bright, or has glare
-                     *
-                     * The only change is that a valid page is queued instead
-                     * of immediately starting OCR.
-                     */
-                    val preparedPath =
-                        cropImageToVisibleGuideFrame(
-                            imageFile =
-                                photoFile
-                        ) ?: photoFile.absolutePath
-
-                    val qualityResult =
-                        validateImageBeforeOcr(
-                            preparedPath
-                        )
-
-                    if (
-                        !qualityResult.isValid
-                    ) {
-                        runCatching {
-                            File(
-                                preparedPath
-                            ).delete()
-                        }
-
-                        if (
-                            preparedPath !=
-                            photoFile.absolutePath
-                        ) {
-                            runCatching {
-                                photoFile.delete()
+                    val geometry = snapshotGuideGeometry()
+                    val batchAtCapture = isCameraBatchMode
+                    val preparation = PerformanceDiagnostics.session(PerfFlow.CAMERA_PREPARATION)
+                    captureOwner.lifecycleScope.launch(PerformanceDiagnostics.context(preparation)) {
+                        var handedOff = false
+                        val croppedFile = File(photoFile.parentFile, photoFile.nameWithoutExtension + "_guide_crop.jpg")
+                        try {
+                            val prepared = CameraPagePreparer(::cropImageToVisibleGuideFrame, ::validateImageBeforeOcr)
+                                .prepare(photoFile, geometry)
+                            if (!isAdded || view == null || viewLifecycleOwnerLiveData.value !== captureOwner) return@launch
+                            if (!prepared.quality.isValid) {
+                                showImageQualityWarning(prepared.quality)
+                                return@launch
+                            }
+                            if (prepared.path != photoFile.absolutePath) photoFile.delete()
+                            if (batchAtCapture) {
+                                capturedCameraBatchPaths.add(prepared.path)
+                                renderCapturedCameraBatch()
+                                Toast.makeText(safeContext, if (capturedCameraBatchPaths.size == 1)
+                                    "Page 1 ready. Capture another or tap Process."
+                                    else "Page ${capturedCameraBatchPaths.size} ready.", Toast.LENGTH_SHORT).show()
+                            } else {
+                                processImageUri(source = SingleScanSource.CAMERA,
+                                    rawUri = Uri.fromFile(File(prepared.path)), rawFilePath = prepared.path,
+                                    cropToGuide = false, validateQuality = false) // This exact file just passed the existing gate.
+                            }
+                            handedOff = true
+                        } catch (error: kotlinx.coroutines.CancellationException) {
+                            throw error
+                        } catch (error: Exception) {
+                            Log.e("ScanFragment", "Camera preparation failed", error)
+                            if (isAdded) Toast.makeText(safeContext, "Failed to prepare image", Toast.LENGTH_SHORT).show()
+                        } finally {
+                            if (!handedOff) withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) {
+                                photoFile.delete(); croppedFile.delete()
+                            }
+                            if (viewLifecycleOwnerLiveData.value === captureOwner) {
+                                isSavingCameraPage = false
+                                view?.findViewById<View>(R.id.btnCapture)?.isEnabled = true
                             }
                         }
-
-                        showImageQualityWarning(
-                            qualityResult
-                        )
-
-                        return
-                    }
-
-                    if (
-                        preparedPath !=
-                        photoFile.absolutePath
-                    ) {
-                        runCatching {
-                            photoFile.delete()
-                        }
-                    }
-
-                    if (
-                        isCameraBatchMode
-                    ) {
-                        capturedCameraBatchPaths.add(
-                            preparedPath
-                        )
-
-                        renderCapturedCameraBatch()
-
-                        Toast.makeText(
-                            safeContext,
-                            if (
-                                capturedCameraBatchPaths.size ==
-                                1
-                            ) {
-                                "Page 1 ready. Capture another or tap Process."
-                            } else {
-                                "Page ${capturedCameraBatchPaths.size} ready."
-                            },
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        // Normal single-capture behavior:
-                        // valid 4:3 crop -> quality check -> process immediately.
-                        processImageUri(
-                            source = SingleScanSource.CAMERA,
-                            rawUri =
-                                Uri.fromFile(
-                                    File(
-                                        preparedPath
-                                    )
-                                ),
-                            rawFilePath =
-                                preparedPath,
-                            cropToGuide =
-                                false
-                        )
-                    }
+                    }.invokeOnCompletion { preparation.close() }
                 }
             }
         )
@@ -1809,15 +1772,19 @@ class ScanFragment : Fragment() {
             true
         )
 
+        val performance = PerformanceDiagnostics.session(PerfFlow.CAMERA_BATCH)
         lifecycleScope.launch(
-            Dispatchers.IO
+            Dispatchers.IO + PerformanceDiagnostics.context(performance)
         ) {
+            PerformanceDiagnostics.metric(PerfMetric.BATCH_INPUT_PAGES, paths.size.toLong())
             val recognizer =
-                TextRecognition.getClient(
+                PerformanceDiagnostics.measure(PerfStage.MLKIT_INITIALIZATION) { TextRecognition.getClient(
                     TextRecognizerOptions
                         .DEFAULT_OPTIONS
-                )
+                ) }
 
+            val features = BatchRecognitionFeatures.configured(safeContext)
+            val originalOcrPages = mutableListOf<String>()
             val pageContents =
                 mutableListOf<String>()
 
@@ -1834,6 +1801,9 @@ class ScanFragment : Fragment() {
                     path
                 ) in paths.withIndex()
                 ) {
+                    val pageTiming = PerformanceDiagnostics.current()?.begin(PerfStage.BATCH_PAGE)
+                    var pageCompleted = true
+                    try {
                     val sourceFile =
                         File(
                             path
@@ -1871,13 +1841,13 @@ class ScanFragment : Fragment() {
                     }
 
                     val image =
-                        InputImage
+                        PerformanceDiagnostics.measure(PerfStage.IMAGE_DECODE) { InputImage
                             .fromFilePath(
                                 safeContext,
                                 Uri.fromFile(
                                     sourceFile
                                 )
-                            )
+                            ) }
 
                     withContext(
                         Dispatchers.Main
@@ -1892,11 +1862,13 @@ class ScanFragment : Fragment() {
                         }
                     }
 
+                    val preparedInput = features.prepare(image, ownsOriginal = true)
                     val visionText =
-                        recognizeBatchImage(
+                        PerformanceDiagnostics.measureSuspending(PerfStage.MLKIT_RECOGNITION) { recognizeBatchImage(
                             recognizer,
-                            image
-                        )
+                            preparedInput.image,
+                            preparedInput
+                        ) }
 
                     withContext(
                         Dispatchers.Main
@@ -1941,15 +1913,16 @@ class ScanFragment : Fragment() {
                         }
                     )
 
+                    val correctedText = features.correct(extractedText)
                     val diagramHtml =
                         detectDiagramHtml(
                             path
                         )
 
                     val pageContent =
-                        buildString {
+                        PerformanceDiagnostics.measure(PerfStage.BATCH_ASSEMBLY) { buildString {
                             append(
-                                extractedText
+                                correctedText.correctedText
                             )
 
                             if (
@@ -1964,11 +1937,18 @@ class ScanFragment : Fragment() {
                                     diagramHtml
                                 )
                             }
-                        }
+                        } }
 
+                    originalOcrPages.add(extractedText)
                     pageContents.add(
                         pageContent
                     )
+                    PerformanceDiagnostics.metric(PerfMetric.BATCH_ACCEPTED_PAGES, pageContents.size.toLong())
+
+                    } catch (error: Throwable) {
+                        pageCompleted = false
+                        throw error
+                    } finally { pageTiming?.finish(pageCompleted) }
                 }
 
                 withContext(
@@ -2030,6 +2010,7 @@ class ScanFragment : Fragment() {
                     renderCapturedCameraBatch()
 
                     finishAnalyzingAndNavigate(
+                        originalOcrPages = originalOcrPages,
                         content =
                             combinedContent,
 
@@ -2096,7 +2077,7 @@ class ScanFragment : Fragment() {
             } finally {
                 recognizer.close()
             }
-        }
+        }.invokeOnCompletion { performance.close() }
     }
 
     /**
@@ -2116,14 +2097,18 @@ class ScanFragment : Fragment() {
 
         setLoading(true)
 
+        val performance = PerformanceDiagnostics.session(PerfFlow.GALLERY_BATCH)
         lifecycleScope.launch(
-            Dispatchers.IO
+            Dispatchers.IO + PerformanceDiagnostics.context(performance)
         ) {
+            PerformanceDiagnostics.metric(PerfMetric.BATCH_INPUT_PAGES, uris.size.toLong())
             val recognizer =
-                TextRecognition.getClient(
+                PerformanceDiagnostics.measure(PerfStage.MLKIT_INITIALIZATION) { TextRecognition.getClient(
                     TextRecognizerOptions.DEFAULT_OPTIONS
-                )
+                ) }
 
+            val features = BatchRecognitionFeatures.configured(safeContext)
+            val originalOcrPages = mutableListOf<String>()
             val pageContents =
                 mutableListOf<String>()
 
@@ -2143,12 +2128,15 @@ class ScanFragment : Fragment() {
                     uri
                 ) in uris.withIndex()
                 ) {
+                    val pageTiming = PerformanceDiagnostics.current()?.begin(PerfStage.BATCH_PAGE)
+                    var pageCompleted = true
+                    try {
 
                     val cachedPath =
-                        copyUriToCache(
+                        PerformanceDiagnostics.measure(PerfStage.URI_COPY) { copyUriToCache(
                             safeContext,
                             uri
-                        ) ?: continue
+                        ) } ?: continue
 
                     if (
                         primaryImagePath == null
@@ -2175,12 +2163,12 @@ class ScanFragment : Fragment() {
                     // Gallery uploads are not blocked by the image-quality check.
 
                     val image =
-                        InputImage.fromFilePath(
+                        PerformanceDiagnostics.measure(PerfStage.IMAGE_DECODE) { InputImage.fromFilePath(
                             safeContext,
                             Uri.fromFile(
                                 sourceFile
                             )
-                        )
+                        ) }
 
                     withContext(
                         Dispatchers.Main
@@ -2192,11 +2180,13 @@ class ScanFragment : Fragment() {
                         }
                     }
 
+                    val preparedInput = features.prepare(image, ownsOriginal = true)
                     val visionText =
-                        recognizeBatchImage(
+                        PerformanceDiagnostics.measureSuspending(PerfStage.MLKIT_RECOGNITION) { recognizeBatchImage(
                             recognizer,
-                            image
-                        )
+                            preparedInput.image,
+                            preparedInput
+                        ) }
 
                     withContext(
                         Dispatchers.Main
@@ -2248,15 +2238,16 @@ class ScanFragment : Fragment() {
                         }
                     )
 
+                    val correctedText = features.correct(extractedText)
                     val diagramHtml =
                         detectDiagramHtml(
                             cachedPath
                         )
 
                     val pageContent =
-                        buildString {
+                        PerformanceDiagnostics.measure(PerfStage.BATCH_ASSEMBLY) { buildString {
                             append(
-                                extractedText
+                                correctedText.correctedText
                             )
 
                             if (
@@ -2270,11 +2261,18 @@ class ScanFragment : Fragment() {
                                     diagramHtml
                                 )
                             }
-                        }
+                        } }
 
+                    originalOcrPages.add(extractedText)
                     pageContents.add(
                         pageContent
                     )
+                    PerformanceDiagnostics.metric(PerfMetric.BATCH_ACCEPTED_PAGES, pageContents.size.toLong())
+
+                    } catch (error: Throwable) {
+                        pageCompleted = false
+                        throw error
+                    } finally { pageTiming?.finish(pageCompleted) }
                 }
 
                 withContext(
@@ -2313,6 +2311,7 @@ class ScanFragment : Fragment() {
                         )
 
                     finishAnalyzingAndNavigate(
+                        originalOcrPages = originalOcrPages,
                         content =
                             combinedContent,
                         imagePath =
@@ -2358,7 +2357,7 @@ class ScanFragment : Fragment() {
             } finally {
                 recognizer.close()
             }
-        }
+        }.invokeOnCompletion { performance.close() }
     }
 
     /**
@@ -2366,16 +2365,18 @@ class ScanFragment : Fragment() {
      */
     private suspend fun recognizeBatchImage(
         recognizer: com.google.mlkit.vision.text.TextRecognizer,
-        image: InputImage
+        image: InputImage,
+        prepared: BatchImageInput? = null
     ): com.google.mlkit.vision.text.Text =
         suspendCancellableCoroutine {
                 continuation ->
 
-            recognizer
-                .process(
-                    image
-                )
-                .addOnSuccessListener {
+            val task = try { recognizer.process(image) } catch (error: Throwable) {
+                prepared?.close()
+                throw error
+            }
+            prepared?.releaseAfter(task)
+            task.addOnSuccessListener {
                         result ->
 
                     if (
@@ -2430,14 +2431,20 @@ class ScanFragment : Fragment() {
     ) {
         val safeContext = context ?: return
         val scanRequest = SingleScanPreprocessingSettings(safeContext).snapshot(source)
+        val guideGeometry = if (cropToGuide) snapshotGuideGeometry() else null
         setLoading(true)
 
-        lifecycleScope.launch {
+        val performance = PerformanceDiagnostics.session(when (source) {
+            SingleScanSource.CAMERA -> PerfFlow.SINGLE_CAMERA
+            SingleScanSource.GALLERY -> PerfFlow.SINGLE_GALLERY
+            SingleScanSource.TUTORIAL -> PerfFlow.TUTORIAL
+        })
+        lifecycleScope.launch(PerformanceDiagnostics.context(performance)) {
             try {
                 // File and quality checks are performed off the UI thread.
                 val sourceFilePath = withContext(Dispatchers.IO) {
                     val filePath = rawFilePath ?: if (rawUri.scheme == "content") {
-                        copyUriToCache(safeContext, rawUri)
+                        PerformanceDiagnostics.measure(PerfStage.URI_COPY) { copyUriToCache(safeContext, rawUri) }
                     } else {
                         rawUri.path
                     }
@@ -2445,7 +2452,7 @@ class ScanFragment : Fragment() {
                     if (filePath == null) {
                         null
                     } else if (cropToGuide) {
-                        cropImageToVisibleGuideFrame(File(filePath)) ?: filePath
+                        cropImageToVisibleGuideFrame(File(filePath), guideGeometry) ?: filePath
                     } else {
                         filePath
                     }
@@ -2471,11 +2478,11 @@ class ScanFragment : Fragment() {
                 showActualAnalysisState(AnalysisStage.DETECTING_TEXT)
 
                 val scanResult = withContext(Dispatchers.IO) {
-                    val bitmap = BitmapFactory.decodeFile(sourceFilePath)
+                    val bitmap = PerformanceDiagnostics.measure(PerfStage.IMAGE_DECODE) { BitmapFactory.decodeFile(sourceFilePath) }
                         ?: error("Unable to decode whiteboard image")
 
                     try {
-                        val pipeline = SingleScanPipelineFactory().create(safeContext.applicationContext, scanRequest)
+                        val pipeline = PerformanceDiagnostics.measure(PerfStage.PIPELINE_INITIALIZATION) { SingleScanPipelineFactory().create(safeContext.applicationContext, scanRequest) }
                         val result = try {
                             pipeline.process(bitmap)
                         } finally {
@@ -2519,6 +2526,7 @@ class ScanFragment : Fragment() {
 
                 finishAnalyzingAndNavigate(
                     content = htmlContent,
+                    originalOcrPages = listOf(scanResult.second.joinToString("\n") { it.text }),
                     imagePath = sourceFilePath,
                     titleOverride = structured.title
                 )
@@ -2535,12 +2543,13 @@ class ScanFragment : Fragment() {
                     ).show()
                 }
             }
-        }
+        }.invokeOnCompletion { performance.close() }
     }
 
     private fun detectDiagramHtml(
         imagePath: String
     ): String {
+        PerformanceDiagnostics.measure(PerfStage.DIAGRAM_PROCESSING) {
 
         val source =
             decodeBitmapForDiagramDetection(
@@ -2554,11 +2563,11 @@ class ScanFragment : Fragment() {
 
         return try {
             val regions =
-                ConnectedComponentLabeler()
+                PerformanceDiagnostics.measure(PerfStage.CCL) { ConnectedComponentLabeler()
                     .label(
                         binary,
                         source
-                    )
+                    ) }
                     .filter {
                         it.type ==
                                 RegionType.NON_TEXT
@@ -2598,11 +2607,11 @@ class ScanFragment : Fragment() {
                             )
 
                         FileOutputStream(file).use { stream ->
-                            region.croppedBitmap.compress(
+                            PerformanceDiagnostics.measure(PerfStage.DIAGRAM_EXPORT) { region.croppedBitmap.compress(
                                 Bitmap.CompressFormat.PNG,
                                 100,
                                 stream
-                            )
+                            ) }
                         }
 
                         "<p><img src='file://${file.absolutePath}' alt='Detected whiteboard diagram'/></p>"
@@ -2635,11 +2644,14 @@ class ScanFragment : Fragment() {
                 source.recycle()
             }
         }
+
+        }
     }
 
     private fun decodeBitmapForDiagramDetection(
         imagePath: String
     ): Bitmap? {
+        PerformanceDiagnostics.measure(PerfStage.IMAGE_DECODE) {
 
         val bounds =
             BitmapFactory.Options().apply {
@@ -2672,11 +2684,14 @@ class ScanFragment : Fragment() {
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
         )
+
+        }
     }
 
     private fun createBinaryForDiagramDetection(
         source: Bitmap
     ): Bitmap {
+        PerformanceDiagnostics.measure(PerfStage.DIAGRAM_THRESHOLD) {
 
         val width = source.width
         val height = source.height
@@ -2742,6 +2757,8 @@ class ScanFragment : Fragment() {
                 width,
                 height
             )
+        }
+
         }
     }
 
@@ -2844,146 +2861,32 @@ class ScanFragment : Fragment() {
      * outside the visible PreviewView. The scale/offset math below accounts
      * for that before computing the crop rectangle.
      */
+    private fun snapshotGuideGeometry(): GuideCropGeometry? {
+        if (!::viewFinder.isInitialized || !::viewFrame.isInitialized ||
+            viewFinder.width <= 0 || viewFinder.height <= 0 || viewFrame.width <= 0 || viewFrame.height <= 0) return null
+        return GuideCropGeometry(viewFinder.width, viewFinder.height,
+            viewFrame.left - viewFinder.left, viewFrame.top - viewFinder.top, viewFrame.width, viewFrame.height)
+    }
+
     private fun cropImageToVisibleGuideFrame(
-        imageFile: File
+        imageFile: File,
+        geometry: GuideCropGeometry?
     ): String? {
+        PerformanceDiagnostics.measure(PerfStage.GUIDE_CROP) {
 
         return try {
 
-            if (
-                !::viewFinder.isInitialized ||
-                !::viewFrame.isInitialized ||
-                viewFinder.width <= 0 ||
-                viewFinder.height <= 0 ||
-                viewFrame.width <= 0 ||
-                viewFrame.height <= 0
-            ) {
-                Log.w(
-                    "ScanFragment",
-                    "Guide frame is not measured yet"
-                )
-                return null
-            }
-
+            if (geometry == null) return null
             val uprightBitmap =
                 decodeBitmapUpright(
                     imageFile
                 ) ?: return null
 
-            val previewWidth =
-                viewFinder.width.toFloat()
-
-            val previewHeight =
-                viewFinder.height.toFloat()
-
-            val imageWidth =
-                uprightBitmap.width.toFloat()
-
-            val imageHeight =
-                uprightBitmap.height.toFloat()
-
-            // PreviewView default / configured behavior: FILL_CENTER.
-            // Scale until the whole PreviewView is filled.
-            val scale =
-                maxOf(
-                    previewWidth / imageWidth,
-                    previewHeight / imageHeight
-                )
-
-            val displayedImageWidth =
-                imageWidth * scale
-
-            val displayedImageHeight =
-                imageHeight * scale
-
-            // Amount of scaled image that sits outside PreviewView.
-            val overflowX =
-                (displayedImageWidth - previewWidth) / 2f
-
-            val overflowY =
-                (displayedImageHeight - previewHeight) / 2f
-
-            // viewFrame and viewFinder are siblings in the same parent.
-            val frameLeftInPreview =
-                (viewFrame.left - viewFinder.left).toFloat()
-
-            val frameTopInPreview =
-                (viewFrame.top - viewFinder.top).toFloat()
-
-            val frameRightInPreview =
-                frameLeftInPreview +
-                        viewFrame.width.toFloat()
-
-            val frameBottomInPreview =
-                frameTopInPreview +
-                        viewFrame.height.toFloat()
-
-            // Convert visible PreviewView coordinates back into bitmap pixels.
-            var cropLeft =
-                ((frameLeftInPreview + overflowX) / scale)
-                    .toInt()
-
-            var cropTop =
-                ((frameTopInPreview + overflowY) / scale)
-                    .toInt()
-
-            var cropRight =
-                ((frameRightInPreview + overflowX) / scale)
-                    .toInt()
-
-            var cropBottom =
-                ((frameBottomInPreview + overflowY) / scale)
-                    .toInt()
-
-            // Clamp safely inside the actual upright bitmap.
-            cropLeft =
-                cropLeft.coerceIn(
-                    0,
-                    uprightBitmap.width - 1
-                )
-
-            cropTop =
-                cropTop.coerceIn(
-                    0,
-                    uprightBitmap.height - 1
-                )
-
-            cropRight =
-                cropRight.coerceIn(
-                    cropLeft + 1,
-                    uprightBitmap.width
-                )
-
-            cropBottom =
-                cropBottom.coerceIn(
-                    cropTop + 1,
-                    uprightBitmap.height
-                )
-
-            val cropWidth =
-                cropRight - cropLeft
-
-            val cropHeight =
-                cropBottom - cropTop
-
-            Log.d(
-                "ScanFragment",
-                "Guide crop bitmap=${uprightBitmap.width}x${uprightBitmap.height}, " +
-                        "preview=${viewFinder.width}x${viewFinder.height}, " +
-                        "frame=(${viewFrame.left},${viewFrame.top}) " +
-                        "${viewFrame.width}x${viewFrame.height}, " +
-                        "crop=($cropLeft,$cropTop) ${cropWidth}x${cropHeight}"
-            )
-
-            val cropped =
-                Bitmap.createBitmap(
-                    uprightBitmap,
-                    cropLeft,
-                    cropTop,
-                    cropWidth,
-                    cropHeight
-                )
-
+            var ownedCrop: Bitmap? = null
+            try {
+            val bounds = geometry.bounds(uprightBitmap.width, uprightBitmap.height)
+            val cropped = Bitmap.createBitmap(uprightBitmap, bounds.left, bounds.top, bounds.width(), bounds.height())
+                .also { ownedCrop = it }
             val outputFile =
                 File(
                     imageFile.parentFile,
@@ -2995,25 +2898,18 @@ class ScanFragment : Fragment() {
                 outputFile
             ).use { output ->
 
-                cropped.compress(
+                PerformanceDiagnostics.measure(PerfStage.IMAGE_ENCODE) { cropped.compress(
                     Bitmap.CompressFormat.JPEG,
                     95,
                     output
-                )
-            }
-
-            if (
-                cropped !== uprightBitmap &&
-                !uprightBitmap.isRecycled
-            ) {
-                uprightBitmap.recycle()
-            }
-
-            if (!cropped.isRecycled) {
-                cropped.recycle()
+                ) }
             }
 
             outputFile.absolutePath
+            } finally {
+                ownedCrop?.let { if (it !== uprightBitmap && !it.isRecycled) it.recycle() }
+                if (!uprightBitmap.isRecycled) uprightBitmap.recycle()
+            }
 
         } catch (e: Exception) {
 
@@ -3025,6 +2921,8 @@ class ScanFragment : Fragment() {
 
             null
         }
+
+        }
     }
 
     /**
@@ -3035,11 +2933,12 @@ class ScanFragment : Fragment() {
     private fun decodeBitmapUpright(
         imageFile: File
     ): Bitmap? {
+        PerformanceDiagnostics.measure(PerfStage.EXIF_DECODE_ROTATE) {
 
         val bitmap =
-            BitmapFactory.decodeFile(
+            PerformanceDiagnostics.measure(PerfStage.IMAGE_DECODE) { BitmapFactory.decodeFile(
                 imageFile.absolutePath
-            ) ?: return null
+            ) } ?: return null
 
         return try {
 
@@ -3140,6 +3039,8 @@ class ScanFragment : Fragment() {
 
             bitmap
         }
+
+        }
     }
 
     private fun copyUriToCache(context: Context, contentUri: Uri): String? {
@@ -3239,6 +3140,7 @@ class ScanFragment : Fragment() {
 
     private fun navigateToPdfViewer(
         content: String,
+        originalOcrPages: List<String> = emptyList(),
         imagePath: String,
         sourceImagePaths: List<String> = listOf(imagePath),
         pageContents: List<String> = listOf(content),
@@ -3301,8 +3203,9 @@ class ScanFragment : Fragment() {
         // IMPORTANT:
         // A successful scan is added to HISTORY immediately.
         // It is NOT added to Notes here.
+        val navigationTiming = PerformanceDiagnostics.session(PerfFlow.NAVIGATION)
         lifecycleScope.launch(
-            Dispatchers.IO
+            Dispatchers.IO + PerformanceDiagnostics.context(navigationTiming)
         ) {
             val dao =
                 AppDatabase
@@ -3310,12 +3213,12 @@ class ScanFragment : Fragment() {
                     .appDao()
 
             val existingHistory =
-                dao.getScanHistoryByPath(
+                PerformanceDiagnostics.measureSuspending(PerfStage.HISTORY_ACCESS) { dao.getScanHistoryByPath(
                     imagePath
-                )
+                ) }
 
             if (existingHistory == null) {
-                dao.insertScanHistory(
+                PerformanceDiagnostics.measureSuspending(PerfStage.HISTORY_ACCESS) { dao.insertScanHistory(
                     ScanHistory(
                         title = defaultTitle,
                         imagePath = imagePath,
@@ -3324,21 +3227,21 @@ class ScanFragment : Fragment() {
                         timestamp = now,
                         date = historyDate
                     )
-                )
+                ) }
             } else if (
                 existingHistory.sourceImagePathsJson !=
                 sourcePathsJson ||
                 existingHistory.pageContentsJson !=
                 pageContentsJson
             ) {
-                dao.updateScanHistory(
+                PerformanceDiagnostics.measureSuspending(PerfStage.HISTORY_ACCESS) { dao.updateScanHistory(
                     existingHistory.copy(
                         sourceImagePathsJson =
                             sourcePathsJson,
                         pageContentsJson =
                             pageContentsJson
                     )
-                )
+                ) }
             }
 
             withContext(
@@ -3354,6 +3257,7 @@ class ScanFragment : Fragment() {
                         PdfViewerActivity::class.java
                     ).apply {
 
+                        putStringArrayListExtra("ORIGINAL_OCR_PAGES", ArrayList(originalOcrPages))
                         // Still UNSAVED as a Note.
                         putExtra(
                             "NOTE_ID",
@@ -3402,7 +3306,7 @@ class ScanFragment : Fragment() {
                     intent
                 )
             }
-        }
+        }.invokeOnCompletion { navigationTiming.close() }
     }
 
     private fun setLoading(isLoading: Boolean) {
@@ -3493,13 +3397,16 @@ class ScanFragment : Fragment() {
 
     private fun finishAnalyzingAndNavigate(
         content: String,
+        originalOcrPages: List<String> = emptyList(),
         imagePath: String,
         sourceImagePaths: List<String> = listOf(imagePath),
         pageContents: List<String> = listOf(content),
         ocrIssues: List<String> = emptyList(),
         titleOverride: String? = null
     ) {
-        view?.post {
+        val queueTiming = PerformanceDiagnostics.detached(PerfFlow.NAVIGATION, PerfStage.UI_QUEUE_WAIT)
+        val posted = view?.post {
+            queueTiming.finish()
             if (!isAdded) return@post
 
             showActualAnalysisState(
@@ -3511,6 +3418,7 @@ class ScanFragment : Fragment() {
             setLoading(false)
 
             navigateToPdfViewer(
+                originalOcrPages = originalOcrPages,
                 content = content,
                 imagePath = imagePath,
                 sourceImagePaths = sourceImagePaths,
@@ -3519,6 +3427,7 @@ class ScanFragment : Fragment() {
                 titleOverride = titleOverride
             )
         }
+        if (posted != true) queueTiming.finish(false)
     }
 
     private enum class AnalysisStage {
@@ -3874,6 +3783,7 @@ class ScanFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        isSavingCameraPage = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ::viewFinder.isInitialized) {
             viewFinder.setRenderEffect(null)
             controlPanelView?.setRenderEffect(null)

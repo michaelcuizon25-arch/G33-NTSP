@@ -1,4 +1,8 @@
 package com.example.note2snap.recognition
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
+import com.example.note2snap.diagnostics.PerfFlow
+import com.example.note2snap.diagnostics.PerfMetric
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -68,23 +72,26 @@ class WhiteboardRecognitionPipeline(
 
     suspend fun process(
         photo: Bitmap
-    ): RecognitionPipelineResult {
+    ): RecognitionPipelineResult = PerformanceDiagnostics.withSession(PerfFlow.PIPELINE) {
 
+        PerformanceDiagnostics.metric(PerfMetric.SOURCE_WIDTH, photo.width.toLong())
+        PerformanceDiagnostics.metric(PerfMetric.SOURCE_HEIGHT, photo.height.toLong())
+        PerformanceDiagnostics.metric(PerfMetric.CORRECTION_ENABLED, if (textCorrector != null) 1 else 0)
         Log.i(RECOGNITION_LOG_TAG, "Scan source=${photo.width}x${photo.height}")
 
         val preprocessed =
-            preprocessor.process(
+            PerformanceDiagnostics.measure(PerfStage.PREPROCESSING) { preprocessor.process(
                 photo
-            )
+            ) }
 
         val regions =
-            labeler.label(
+            PerformanceDiagnostics.measure(PerfStage.CCL) { labeler.label(
                 binary =
                     preprocessed.binarizedBitmap,
 
                 recognitionBitmap =
                     preprocessed.recognitionBitmap
-            )
+            ) }
 
         Log.i(RECOGNITION_LOG_TAG, "Preprocessing recognition=${preprocessed.recognitionBitmap.width}x${preprocessed.recognitionBitmap.height} " +
             "binary=${preprocessed.binarizedBitmap.width}x${preprocessed.binarizedBitmap.height}")
@@ -103,14 +110,16 @@ class WhiteboardRecognitionPipeline(
 
         Log.i(RECOGNITION_LOG_TAG, "CCL totalRegions=${regions.size} textRegions=${textRegions.size} nonTextRegions=${diagramRegions.size}")
 
+        PerformanceDiagnostics.metric(PerfMetric.TEXT_REGIONS, textRegions.size.toLong())
+        PerformanceDiagnostics.metric(PerfMetric.VISUAL_REGIONS, diagramRegions.size.toLong())
         (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordSource(photo, preprocessed, regions)
 
         val recognizedLines =
-            lineRecognizer.recognize(
+            PerformanceDiagnostics.measureSuspending(PerfStage.RECOGNITION) { lineRecognizer.recognize(
                 textRegions
-            )
+            ) }
 
-        val corrections = textCorrector?.let { correctRecognizedLines(recognizedLines, it) }.orEmpty()
+        val corrections = textCorrector?.let { PerformanceDiagnostics.measure(PerfStage.OFFLINE_CORRECTION) { correctRecognizedLines(recognizedLines, it) } }.orEmpty()
         val correctedLines = if (textCorrector == null) recognizedLines else recognizedLines.mapIndexed { index, line ->
             val text = corrections[index].result.correctedText
             if (text == line.text) line else line.copy(text = text)
@@ -120,15 +129,15 @@ class WhiteboardRecognitionPipeline(
             "changedLines=${corrections.count { it.result.originalText != it.result.correctedText }}")
 
         val structuredNote =
-            structurer.structure(
+            PerformanceDiagnostics.measure(PerfStage.STRUCTURING) { structurer.structure(
                 correctedLines
-            )
+            ) }
 
         (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordStructured(structuredNote)
         Log.i(RECOGNITION_LOG_TAG, "Structuring recognizedLines=${recognizedLines.size} blocks=${structuredNote.blocks.size} " +
             "readable=${RecognitionReadability.hasReadableWriting(recognizedLines)} title=${org.json.JSONObject.quote(structuredNote.title)}")
 
-        return RecognitionPipelineResult(
+        RecognitionPipelineResult(
             structuredNote =
                 structuredNote,
 

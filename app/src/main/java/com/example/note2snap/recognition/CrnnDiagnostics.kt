@@ -1,5 +1,8 @@
 package com.example.note2snap.recognition
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
 
+import com.example.note2snap.BuildConfig
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -19,19 +22,20 @@ import java.util.UUID
 import kotlin.math.roundToInt
 
 /** Observational only: diagnostic failures must never change recognition results. */
-internal class CrnnDiagnostics(context: Context) {
+internal class CrnnDiagnostics(context: Context, val enabled: Boolean = BuildConfig.ENABLE_CRNN_DIAGNOSTIC_EXPORTS) {
     private val root = File(context.getExternalFilesDir(null) ?: context.cacheDir, "crnn-diagnostics")
     var directory = File(root, "${System.currentTimeMillis()}-${UUID.randomUUID()}")
         private set
     private var sourceRecorded = false
     private val records = linkedMapOf<Int, JSONObject>()
     private var sequence = 0
+    private var reviewDirty = false
+    private val assetHashes = mutableMapOf<String, String>()
 
     init {
         safely {
             check(directory.mkdirs() || directory.isDirectory)
             Log.i(TAG, "Diagnostic session: ${directory.absolutePath}")
-            writeReview()
         }
     }
 
@@ -40,7 +44,7 @@ internal class CrnnDiagnostics(context: Context) {
                     outputShapeStage: String = "Before inference; dynamic output tensor deliberately unqueried",
                     inputSignature: IntArray = inputShape, outputSignature: IntArray = outputShape,
                     cachedOutputShape: IntArray = outputShape) = safely {
-        fun hashAsset(name: String): String {
+        fun hashAsset(name: String): String = assetHashes.getOrPut(name) {
             val digest = MessageDigest.getInstance("SHA-256")
             context.assets.open(name).use { stream ->
                 val bytes = ByteArray(8192)
@@ -50,7 +54,7 @@ internal class CrnnDiagnostics(context: Context) {
                     count = stream.read(bytes)
                 }
             }
-            return digest.digest().joinToString("") { "%02x".format(it) }
+            digest.digest().joinToString("") { "%02x".format(it) }
         }
         writeJson("model.json", JSONObject()
             .put("modelAsset", model).put("modelSha256", hashAsset(model))
@@ -71,6 +75,7 @@ internal class CrnnDiagnostics(context: Context) {
 
     fun recordSource(photo: Bitmap, preprocessed: PreprocessingResult, regions: List<Region>) = safely {
         if (sourceRecorded || records.isNotEmpty()) {
+            flushReview()
             val modelMetadata = File(directory, "model.json").takeIf { it.exists() }?.readText()
             directory = File(root, "${System.currentTimeMillis()}-${UUID.randomUUID()}")
             check(directory.mkdirs() || directory.isDirectory)
@@ -78,7 +83,7 @@ internal class CrnnDiagnostics(context: Context) {
             sequence = 0
             if (modelMetadata != null) File(directory, "model.json").writeText(modelMetadata)
             Log.i(TAG, "Diagnostic session: ${directory.absolutePath}")
-            writeReview()
+            reviewDirty = false
         }
         sourceRecorded = true
         saveBitmap("source.png", photo)
@@ -173,6 +178,7 @@ internal class CrnnDiagnostics(context: Context) {
 
     fun recordRecognitionSummary(summary: JSONObject) = safely {
         writeJson("recognition-summary.json", summary)
+        flushReview()
     }
 
     fun recordCorrections(enabled: Boolean, corrections: List<LineTextCorrection>) = safely {
@@ -207,8 +213,16 @@ internal class CrnnDiagnostics(context: Context) {
 
     private fun persist(id: Int) {
         writeJson("line-%04d.json".format(id), records.getValue(id))
+        reviewDirty = true
+    }
+
+    fun flush() = safely { flushReview() }
+
+    private fun flushReview() {
+        if (!reviewDirty) return
         File(directory, "lines.jsonl").writeText(records.values.joinToString("\n", postfix = "\n") { it.toString() })
         writeReview()
+        reviewDirty = false
     }
 
     private fun writeReview() {
@@ -253,7 +267,8 @@ internal class CrnnDiagnostics(context: Context) {
     private fun box(rect: Rect) = JSONObject().put("left", rect.left).put("top", rect.top)
         .put("right", rect.right).put("bottom", rect.bottom)
     private inline fun safely(action: () -> Unit) {
-        try { action() } catch (error: Exception) { Log.w(TAG, "Diagnostic write failed; recognition continues", error) }
+        if (!enabled) return
+        try { PerformanceDiagnostics.measure(PerfStage.DIAGNOSTIC_IO) { action() } } catch (error: Exception) { Log.w(TAG, "Diagnostic write failed; recognition continues", error) }
     }
     private companion object { const val TAG = "CRNN_DIAGNOSTICS" }
 }
