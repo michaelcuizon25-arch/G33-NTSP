@@ -3,6 +3,8 @@ package com.example.note2snap.recognition
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import com.example.note2snap.BuildConfig
+import com.example.note2snap.correction.OfflineTextCorrector
 import com.example.note2snap.ccl.ConnectedComponentLabeler
 import com.example.note2snap.ccl.Region
 import com.example.note2snap.ccl.RegionType
@@ -13,7 +15,10 @@ import com.example.note2snap.structuring.PipelineTextStructurer
 data class RecognitionPipelineResult(
     val structuredNote: StructuredNote,
     val recognizedLines: List<RecognizedLine>,
-    val diagramRegions: List<Region>
+    val diagramRegions: List<Region>,
+    // recognizedLines remains the original engine output for existing callers.
+    val correctedLines: List<RecognizedLine> = recognizedLines,
+    val textCorrections: List<LineTextCorrection> = emptyList()
 )
 
 /**
@@ -23,14 +28,16 @@ data class RecognitionPipelineResult(
  * photo
  * -> preprocessing
  * -> CCL
- * -> CRNN OCR
+ * -> CRNN OCR / CTC decoding
+ * -> optional offline text correction
  * -> structuring
  *
  * Tests can inject a fake LineRecognizer
  * without requiring Android Context.
  */
 class WhiteboardRecognitionPipeline(
-    private val lineRecognizer: LineRecognizer
+    private val lineRecognizer: LineRecognizer,
+    private val textCorrector: OfflineTextCorrector? = null
 ) {
 
     /**
@@ -40,12 +47,15 @@ class WhiteboardRecognitionPipeline(
      * the CRNN/TFLite recognizer.
      */
     @JvmOverloads
-    constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
-        this(context, preprocessingMode, { appContext, mode -> CrnnLineRecognizer(appContext, mode) })
+    constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY,
+                enableTextCorrection: Boolean = BuildConfig.ENABLE_OFFLINE_TEXT_CORRECTION) :
+        this(context, preprocessingMode, enableTextCorrection, { appContext, mode -> CrnnLineRecognizer(appContext, mode) })
 
     internal constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY,
+                         enableTextCorrection: Boolean = BuildConfig.ENABLE_OFFLINE_TEXT_CORRECTION,
                          recognizerFactory: (Context, CrnnPreprocessingMode) -> LineRecognizer) :
-        this(recognizerFactory(context.applicationContext, preprocessingMode))
+        this(recognizerFactory(context.applicationContext, preprocessingMode),
+            configuredTextCorrector(context, enableTextCorrection))
 
     private val preprocessor =
         WhiteboardPreprocessor()
@@ -100,9 +110,18 @@ class WhiteboardRecognitionPipeline(
                 textRegions
             )
 
+        val corrections = textCorrector?.let { correctRecognizedLines(recognizedLines, it) }.orEmpty()
+        val correctedLines = if (textCorrector == null) recognizedLines else recognizedLines.mapIndexed { index, line ->
+            val text = corrections[index].result.correctedText
+            if (text == line.text) line else line.copy(text = text)
+        }
+        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordCorrections(textCorrector != null, corrections)
+        Log.i(RECOGNITION_LOG_TAG, "Offline correction enabled=${textCorrector != null} " +
+            "changedLines=${corrections.count { it.result.originalText != it.result.correctedText }}")
+
         val structuredNote =
             structurer.structure(
-                recognizedLines
+                correctedLines
             )
 
         (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordStructured(structuredNote)
@@ -117,7 +136,9 @@ class WhiteboardRecognitionPipeline(
                 recognizedLines,
 
             diagramRegions =
-                diagramRegions
+                diagramRegions,
+            correctedLines = correctedLines,
+            textCorrections = corrections
         )
     }
 

@@ -41,6 +41,6 @@ internal class SingleScanPipelineFactory(
 ) {
     fun create(context: Context, request: SingleScanRequest): WhiteboardRecognitionPipeline {
         Log.i(RECOGNITION_LOG_TAG, "Single scan source=${request.source} preprocessing=${request.mode}")
-        return WhiteboardRecognitionPipeline(context, request.mode, recognizerFactory)
+        return WhiteboardRecognitionPipeline(context, request.mode, recognizerFactory = recognizerFactory)
     }
 }

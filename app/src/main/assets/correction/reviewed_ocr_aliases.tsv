@@ -1,0 +1,27 @@
+# Locally authored, reviewed OCR/misspelling pairs, not learned frequencies.
+# Nonword<TAB>vocabulary word. Similarity alone never authorizes replacement.
+algorithrn	algorithm
+algorlthm	algorithm
+algoritm	algorithm
+applicatlon	application
+cornputer	computer
+computcr	computer
+compuer	computer
+definltion	definition
+defintion	definition
+developrnent	development
+deveopment	development
+encapsulatlon	encapsulation
+functlon	function
+functon	function
+handwritlng	handwriting
+implementatlon	implementation
+inheritanee	inheritance
+normalizatlon	normalization
+polymorphisrn	polymorphism
+recognitlon	recognition
+recurslon	recursion
+recusion	recursion
+segmentatlon	segmentation
+structurlng	structuring
+varlable	variable

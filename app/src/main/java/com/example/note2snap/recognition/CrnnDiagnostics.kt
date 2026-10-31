@@ -175,6 +175,27 @@ internal class CrnnDiagnostics(context: Context) {
         writeJson("recognition-summary.json", summary)
     }
 
+    fun recordCorrections(enabled: Boolean, corrections: List<LineTextCorrection>) = safely {
+        val lines = JSONArray()
+        for (line in corrections) {
+            val result = line.result
+            val suggestions = JSONArray()
+            for (change in result.suggestedCorrections) {
+                suggestions.put(JSONObject().put("start", change.start).put("endExclusive", change.endExclusive)
+                    .put("original", change.original).put("replacement", change.replacement)
+                    .put("applied", change.applied).put("evidence", change.evidence.source.name)
+                    .put("editDistance", change.evidence.editDistance).put("reason", change.evidence.reason))
+            }
+            lines.put(JSONObject().put("lineIndex", line.lineIndex).put("sourceRegionId", line.sourceRegionId)
+                .put("originalText", result.originalText).put("correctedText", result.correctedText)
+                .put("skippedReason", result.skippedReason ?: JSONObject.NULL).put("suggestions", suggestions))
+        }
+        writeJson("text-corrections.json", JSONObject().put("enabled", enabled)
+            .put("offsetEncoding", "UTF-16, original line, end exclusive")
+            .put("confidence", "No calibrated correction probability is available")
+            .put("lines", lines))
+    }
+
     fun recordStructured(note: StructuredNote) = safely {
         val blocks = JSONArray()
         note.blocks.forEach { block ->
