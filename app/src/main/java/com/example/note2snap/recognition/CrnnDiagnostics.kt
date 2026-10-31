@@ -83,6 +83,9 @@ internal class CrnnDiagnostics(context: Context) {
         sourceRecorded = true
         saveBitmap("source.png", photo)
         saveBitmap("recognition.png", preprocessed.recognitionBitmap)
+        if (preprocessed.enhancementRequested) {
+            saveBitmap("recognition-original.png", preprocessed.originalRecognitionBitmap)
+        }
         saveBitmap("ccl-binary.png", preprocessed.binarizedBitmap)
         val regionJson = JSONArray()
         regions.forEach { region ->
@@ -98,6 +101,12 @@ internal class CrnnDiagnostics(context: Context) {
             .put("coordinateSpace", "recognition.png pixels; right/bottom exclusive")
             .put("sourceScaleX", photo.width.toDouble() / preprocessed.recognitionBitmap.width)
             .put("sourceScaleY", photo.height.toDouble() / preprocessed.recognitionBitmap.height)
+            .put("enhancement", JSONObject()
+                .put("requested", preprocessed.enhancementRequested)
+                .put("applied", preprocessed.enhancementApplied)
+                .put("reason", preprocessed.enhancementReason ?: JSONObject.NULL)
+                .put("elapsedMs", preprocessed.enhancementElapsedMs)
+                .put("perspectiveApplied", false))
             .put("regions", regionJson))
     }
 
@@ -164,6 +173,27 @@ internal class CrnnDiagnostics(context: Context) {
 
     fun recordRecognitionSummary(summary: JSONObject) = safely {
         writeJson("recognition-summary.json", summary)
+    }
+
+    fun recordCorrections(enabled: Boolean, corrections: List<LineTextCorrection>) = safely {
+        val lines = JSONArray()
+        for (line in corrections) {
+            val result = line.result
+            val suggestions = JSONArray()
+            for (change in result.suggestedCorrections) {
+                suggestions.put(JSONObject().put("start", change.start).put("endExclusive", change.endExclusive)
+                    .put("original", change.original).put("replacement", change.replacement)
+                    .put("applied", change.applied).put("evidence", change.evidence.source.name)
+                    .put("editDistance", change.evidence.editDistance).put("reason", change.evidence.reason))
+            }
+            lines.put(JSONObject().put("lineIndex", line.lineIndex).put("sourceRegionId", line.sourceRegionId)
+                .put("originalText", result.originalText).put("correctedText", result.correctedText)
+                .put("skippedReason", result.skippedReason ?: JSONObject.NULL).put("suggestions", suggestions))
+        }
+        writeJson("text-corrections.json", JSONObject().put("enabled", enabled)
+            .put("offsetEncoding", "UTF-16, original line, end exclusive")
+            .put("confidence", "No calibrated correction probability is available")
+            .put("lines", lines))
     }
 
     fun recordStructured(note: StructuredNote) = safely {

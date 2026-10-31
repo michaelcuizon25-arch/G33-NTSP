@@ -2,15 +2,41 @@ package com.example.note2snap.preprocessing
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.util.Log
+import com.example.note2snap.BuildConfig
+import kotlinx.coroutines.CancellationException
 import kotlin.math.max
 
 /**
  * Downsamples, converts to grayscale, and applies adaptive thresholding.
  * The binary output uses white foreground ink on a black background for CCL.
  */
-class WhiteboardPreprocessor {
+class WhiteboardPreprocessor(
+    private val enableOpenCvEnhancement: Boolean = BuildConfig.ENABLE_OPENCV_ENHANCEMENT,
+    private val enhancer: WhiteboardEnhancer = OpenCvWhiteboardEnhancer()
+) {
     fun process(source: Bitmap): PreprocessingResult {
-        val recognitionBitmap = downscale(source, MAX_SOURCE_DIMENSION)
+        val original = downscale(source, MAX_SOURCE_DIMENSION)
+        val start = System.nanoTime()
+        val enhancement = if (!enableOpenCvEnhancement) WhiteboardEnhancement(original, false, "disabled") else try {
+            enhancer.enhance(original).also {
+                require(!it.bitmap.isRecycled && it.bitmap.width == original.width && it.bitmap.height == original.height) {
+                    "Enhancement must preserve the CCL/recognition coordinate space"
+                }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w("NOTE2SNAP_PIPELINE", "OpenCV enhancement failed; using original", error)
+            WhiteboardEnhancement(original, false, error.javaClass.simpleName)
+        } catch (error: LinkageError) {
+            Log.w("NOTE2SNAP_PIPELINE", "OpenCV native library unavailable; using original", error)
+            WhiteboardEnhancement(original, false, "native_library_unavailable")
+        }
+        val elapsedMs = if (enableOpenCvEnhancement) (System.nanoTime() - start) / 1_000_000 else 0
+        val recognitionBitmap = enhancement.bitmap
+        Log.i("NOTE2SNAP_PIPELINE", "OpenCV requested=$enableOpenCvEnhancement applied=${enhancement.applied} " +
+            "reason=${enhancement.reason} elapsedMs=$elapsedMs")
         val width = recognitionBitmap.width
         val height = recognitionBitmap.height
         val sourcePixels = IntArray(width * height)
@@ -58,7 +84,12 @@ class WhiteboardPreprocessor {
         val binary = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         binary.setPixels(binaryPixels, 0, width, 0, 0, width, height)
 
-        return PreprocessingResult(binary, recognitionBitmap, width, height)
+        return PreprocessingResult(binary, recognitionBitmap, width, height,
+            originalRecognitionBitmap = original,
+            enhancementRequested = enableOpenCvEnhancement,
+            enhancementApplied = enhancement.applied,
+            enhancementReason = enhancement.reason,
+            enhancementElapsedMs = elapsedMs)
     }
 
     private fun clearImageBorder(

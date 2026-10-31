@@ -1,0 +1,21 @@
+# Captured Stage 1 host CRNN/Flex output, unchanged Kotlin CTC decoder.
+# Source: board_test_5.jpg title and controlled variants; one manually identified title.
+# Model SHA256: f19c3b00c2507869a545a5475b1499f8b31c4717969225e5bc3f092369f02ab1
+# Host OpenCV 4.12.0, TensorFlow CPU/Flex 2.16.1. Not Android JNI validation.
+# fixture<TAB>CRNN mode<TAB>OpenCV enabled<TAB>ground truth<TAB>raw prediction
+title-clear	LEGACY	false	Mobile Application Development	AobiIe ApplicationDeveopment
+title-clear	SIMPLE_HTR_REFERENCE	false	Mobile Application Development	Mobile Application Development
+title-clear	LEGACY	true	Mobile Application Development	AobiIe Application Deveopment
+title-clear	SIMPLE_HTR_REFERENCE	true	Mobile Application Development	Mobile Application Development
+title-faint	LEGACY	false	Mobile Application Development	
+title-faint	SIMPLE_HTR_REFERENCE	false	Mobile Application Development	MObIeApPlicationDeveIoPrent
+title-faint	LEGACY	true	Mobile Application Development	
+title-faint	SIMPLE_HTR_REFERENCE	true	Mobile Application Development	MObile Application Development
+title-uneven-lighting	LEGACY	false	Mobile Application Development	Mobile Application Deveopment
+title-uneven-lighting	SIMPLE_HTR_REFERENCE	false	Mobile Application Development	obile Application Development
+title-uneven-lighting	LEGACY	true	Mobile Application Development	Mobile Application Deveopment
+title-uneven-lighting	SIMPLE_HTR_REFERENCE	true	Mobile Application Development	Mobile Application Development
+title-half-resolution	LEGACY	false	Mobile Application Development	obiIeAppIcaonDeveopmest
+title-half-resolution	SIMPLE_HTR_REFERENCE	false	Mobile Application Development	Mobile Application Development
+title-half-resolution	LEGACY	true	Mobile Application Development	obIeAppicaonDeveopmest
+title-half-resolution	SIMPLE_HTR_REFERENCE	true	Mobile Application Development	Mobile Application Development
