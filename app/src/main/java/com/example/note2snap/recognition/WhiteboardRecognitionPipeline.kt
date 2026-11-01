@@ -32,7 +32,7 @@ data class RecognitionPipelineResult(
  * photo
  * -> preprocessing
  * -> CCL
- * -> CRNN OCR / CTC decoding
+ * -> configured single-scan recognizer / CTC decoding
  * -> optional offline text correction
  * -> structuring
  *
@@ -48,12 +48,12 @@ class WhiteboardRecognitionPipeline(
      * Real-app constructor.
      *
      * Passing Context automatically enables
-     * the CRNN/TFLite recognizer.
+     * the configured single-scan recognizer (CRNN by default).
      */
     @JvmOverloads
     constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY,
                 enableTextCorrection: Boolean = BuildConfig.ENABLE_OFFLINE_TEXT_CORRECTION) :
-        this(context, preprocessingMode, enableTextCorrection, { appContext, mode -> CrnnLineRecognizer(appContext, mode) })
+        this(context, preprocessingMode, enableTextCorrection, { appContext, mode -> configuredSingleScanRecognizer(appContext, mode) })
 
     internal constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY,
                          enableTextCorrection: Boolean = BuildConfig.ENABLE_OFFLINE_TEXT_CORRECTION,

@@ -44,7 +44,8 @@ class CrnnLineRecognizer internal constructor(
     private val runtime: CrnnInferenceRuntime,
     private val charset: List<String>,
     exportDiagnostics: Boolean = BuildConfig.ENABLE_CRNN_DIAGNOSTIC_EXPORTS,
-    private val comparison: CrnnLineComparison? = null
+    private val comparison: CrnnLineComparison? = null,
+    private val physicalLineProvider: ((Region) -> List<PhysicalLine>)? = null
 ) : LineRecognizer {
     @JvmOverloads
     constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
@@ -90,8 +91,8 @@ class CrnnLineRecognizer internal constructor(
         var firstFailure: Exception? = null
         Log.i(RECOGNITION_LOG_TAG, "CRNN received textRegions=${regions.size}")
         for (region in regions) {
-            val physicalLines = PerformanceDiagnostics.measure(PerfStage.SEGMENTATION) { lineSegmenter.splitIntoPhysicalLines(region) }
-            PerformanceDiagnostics.metric(PerfMetric.PHYSICAL_LINES, physicalLines.size.toLong(), add = true)
+            val physicalLines = physicalLineProvider?.invoke(region) ?: PerformanceDiagnostics.measure(PerfStage.SEGMENTATION) { lineSegmenter.splitIntoPhysicalLines(region) }
+            if (physicalLineProvider == null) PerformanceDiagnostics.metric(PerfMetric.PHYSICAL_LINES, physicalLines.size.toLong(), add = true)
             physicalCount += physicalLines.size
             Log.i(RECOGNITION_LOG_TAG, "Segmentation region=${region.id} box=${region.boundingBox} physicalLines=${physicalLines.size}")
             for (line in physicalLines) {

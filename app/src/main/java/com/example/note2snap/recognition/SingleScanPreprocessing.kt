@@ -37,7 +37,7 @@ internal class SingleScanPreprocessingSettings internal constructor(
 /** Shared by Single Camera/Gallery; never used by either ML Kit Batch path. */
 internal class SingleScanPipelineFactory(
     private val recognizerFactory: (Context, CrnnPreprocessingMode) -> LineRecognizer =
-        { context, mode -> CrnnLineRecognizer(context, mode) }
+        { context, mode -> configuredSingleScanRecognizer(context, mode) }
 ) {
     fun create(context: Context, request: SingleScanRequest): WhiteboardRecognitionPipeline {
         Log.i(RECOGNITION_LOG_TAG, "Single scan source=${request.source} preprocessing=${request.mode}")

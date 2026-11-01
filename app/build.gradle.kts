@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -18,7 +20,12 @@ android {
         // Opt in for evaluation: -PENABLE_OPENCV_ENHANCEMENT=true
         buildConfigField("boolean", "ENABLE_OPENCV_ENHANCEMENT",
             providers.gradleProperty("ENABLE_OPENCV_ENHANCEMENT").orElse("false").get().toBooleanStrict().toString())
-        // Experimental comparison only: CRNN remains the sole source of single-scan note text.
+        val singleScanMode = providers.gradleProperty("SINGLE_SCAN_RECOGNITION_MODE").orElse("CRNN_ONLY").get()
+        require(singleScanMode in setOf("CRNN_ONLY", "PADDLE_PRIMARY_WITH_CRNN_FALLBACK")) {
+            "Unsupported SINGLE_SCAN_RECOGNITION_MODE: $singleScanMode"
+        }
+        buildConfigField("String", "SINGLE_SCAN_RECOGNITION_MODE", "\"$singleScanMode\"")
+        // Optional shadow comparison in CRNN_ONLY mode; independent from primary selection.
         buildConfigField("boolean", "ENABLE_PADDLE_OCR",
             providers.gradleProperty("ENABLE_PADDLE_OCR").orElse("false").get().toBooleanStrict().toString())
         // Research-only image/tensor/JSON exports; lightweight timings remain independent.
@@ -57,6 +64,21 @@ android {
         buildConfig = true
     }
 }
+
+// Fail before packaging if a Windows checkout/editor changed the byte-verified vocabulary.
+val verifyPaddleDictionary by tasks.registering {
+    val dictionary = layout.projectDirectory.file("src/main/assets/ocr/paddle/ppocrv5_en_dict.txt")
+    inputs.file(dictionary)
+    doLast {
+        val expected = "e025a66d31f327ba0c232e03f407ae8d105e1e709e7ccb3f408aa778c24e70d6"
+        val actual = MessageDigest.getInstance("SHA-256").digest(dictionary.asFile.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        check(actual == expected) {
+            "Paddle dictionary bytes changed: expected $expected, got $actual. Restore official UTF-8/LF bytes using .gitattributes; do not replace the pinned hash."
+        }
+    }
+}
+tasks.named("preBuild").configure { dependsOn(verifyPaddleDictionary) }
 
 // Explicitly forces KAPT and Kotlin tasks to use JVM 17
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
