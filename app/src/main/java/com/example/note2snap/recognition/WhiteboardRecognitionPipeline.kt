@@ -114,6 +114,7 @@ class WhiteboardRecognitionPipeline(
         PerformanceDiagnostics.metric(PerfMetric.VISUAL_REGIONS, diagramRegions.size.toLong())
         (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordSource(photo, preprocessed, regions)
 
+        (lineRecognizer as? CrnnLineRecognizer)?.recordEvaluationSource(photo, preprocessed.recognitionBitmap, regions)
         val recognizedLines =
             PerformanceDiagnostics.measureSuspending(PerfStage.RECOGNITION) { lineRecognizer.recognize(
                 textRegions

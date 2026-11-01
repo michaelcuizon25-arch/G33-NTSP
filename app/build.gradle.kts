@@ -25,6 +25,11 @@ android {
             "Unsupported SINGLE_SCAN_RECOGNITION_MODE: $singleScanMode"
         }
         buildConfigField("String", "SINGLE_SCAN_RECOGNITION_MODE", "\"$singleScanMode\"")
+        val evaluationExports = providers.gradleProperty("ENABLE_OCR_EVALUATION_EXPORTS").orElse("false").get().toBooleanStrict()
+        require(!evaluationExports || (singleScanMode == "CRNN_ONLY" && providers.gradleProperty("ENABLE_PADDLE_OCR").orElse("false").get().toBooleanStrict())) {
+            "Evaluation exports require CRNN_ONLY and ENABLE_PADDLE_OCR=true"
+        }
+        buildConfigField("boolean", "ENABLE_OCR_EVALUATION_EXPORTS", evaluationExports.toString())
         // Optional shadow comparison in CRNN_ONLY mode; independent from primary selection.
         buildConfigField("boolean", "ENABLE_PADDLE_OCR",
             providers.gradleProperty("ENABLE_PADDLE_OCR").orElse("false").get().toBooleanStrict().toString())

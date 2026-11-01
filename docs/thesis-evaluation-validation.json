@@ -1,0 +1,21 @@
+{
+  "scope": "Host preparation only; no gallery photo/screenshot or paired phone records supplied",
+  "unitTests": {
+    "passed": 133,
+    "failed": 14,
+    "skipped": 1
+  },
+  "newFailures": [],
+  "pythonTestsPassed": 18,
+  "defaultApkAssembly": {
+    "assembleDebug": true,
+    "assembleRelease": true,
+    "assembleDebugAndroidTest": true
+  },
+  "evaluationEnabledBuild": "passed",
+  "evaluationExportRegression": "passed with injected predictions; not measured OCR accuracy",
+  "deviceValidation": "not executed; adb devices empty",
+  "defaultsRestored": true,
+  "productionPrimaryAndSegmentationUnchanged": true,
+  "accuracyResults": "pending manually verified data"
+}

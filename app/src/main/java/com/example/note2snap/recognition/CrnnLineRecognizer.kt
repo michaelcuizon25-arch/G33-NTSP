@@ -50,7 +50,7 @@ class CrnnLineRecognizer internal constructor(
     @JvmOverloads
     constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
             this(context, preprocessingMode, TensorFlowLiteCrnnRuntime(context), loadCrnnCharset(context),
-                comparison = if (BuildConfig.ENABLE_PADDLE_OCR) PaddleOcrComparison(context) else null)
+                comparison = if (BuildConfig.ENABLE_PADDLE_OCR) PaddleOcrComparison(context, preprocessingMode) else null)
 
     companion object {
         private const val CTC_BLANK_INDEX = 79
@@ -71,6 +71,10 @@ class CrnnLineRecognizer internal constructor(
             cachedOutputShape = runtime.cachedOutputShape)
     }
 
+    internal fun recordEvaluationSource(photo: android.graphics.Bitmap, recognition: android.graphics.Bitmap, regions: List<Region>) {
+        try { comparison?.source(photo, recognition, regions) }
+        catch (error: Exception) { Log.w("PADDLE_COMPARISON", "Evaluation source export failed", error) }
+    }
     private val lineSegmenter = PhysicalLineSegmenter()
 
     /**
@@ -93,6 +97,8 @@ class CrnnLineRecognizer internal constructor(
         for (region in regions) {
             val physicalLines = physicalLineProvider?.invoke(region) ?: PerformanceDiagnostics.measure(PerfStage.SEGMENTATION) { lineSegmenter.splitIntoPhysicalLines(region) }
             if (physicalLineProvider == null) PerformanceDiagnostics.metric(PerfMetric.PHYSICAL_LINES, physicalLines.size.toLong(), add = true)
+            if (physicalLines.isEmpty()) try { comparison?.skipped(region) }
+                catch (error: Exception) { Log.w("PADDLE_COMPARISON", "Evaluation event export failed", error) }
             physicalCount += physicalLines.size
             Log.i(RECOGNITION_LOG_TAG, "Segmentation region=${region.id} box=${region.boundingBox} physicalLines=${physicalLines.size}")
             for (line in physicalLines) {
@@ -140,6 +146,9 @@ class CrnnLineRecognizer internal constructor(
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
+                    try { comparison?.failed(line.bitmap,region.id,line.boundingBox,error) }
+                    catch (cancel: CancellationException) { throw cancel }
+                    catch (secondary: Exception) { Log.w("PADDLE_COMPARISON", "Failed-line comparison unavailable",secondary) }
                     failedCount++
                     if (firstFailure == null) firstFailure = error
                     diagnosticId?.let { diagnostics.failLine(it, error, stage) }
