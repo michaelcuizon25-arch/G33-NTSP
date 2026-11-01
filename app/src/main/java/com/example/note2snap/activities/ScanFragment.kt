@@ -2108,198 +2108,160 @@ class ScanFragment : Fragment() {
      * - Diagram detection uses the existing lightweight CCL path.
      * - Only one PdfViewerActivity is opened after the whole batch finishes.
      */
-    private fun processBatchImages(
-        uris: List<Uri>
-    ) {
-        val safeContext =
-            context ?: return
+
+    private fun processBatchImages(uris: List<Uri>) {
+        val safeContext = context ?: return
+
+        if (uris.isEmpty()) return
+
+        val scanRequest =
+            SingleScanPreprocessingSettings(safeContext)
+                .snapshot(SingleScanSource.GALLERY)
 
         setLoading(true)
 
-        lifecycleScope.launch(
-            Dispatchers.IO
-        ) {
-            val recognizer =
-                TextRecognition.getClient(
-                    TextRecognizerOptions.DEFAULT_OPTIONS
-                )
+        lifecycleScope.launch(Dispatchers.IO) {
+            val pageContents = mutableListOf<String>()
+            val batchSourcePaths = mutableListOf<String>()
+            val reviewIssues = mutableListOf<String>()
 
-            val pageContents =
-                mutableListOf<String>()
-
-            val reviewIssues =
-                mutableListOf<String>()
-
-            val batchSourcePaths =
-                mutableListOf<String>()
-
-            var primaryImagePath: String? =
-                null
+            var primaryImagePath: String? = null
 
             try {
-                for (
-                (
-                    index,
-                    uri
-                ) in uris.withIndex()
-                ) {
+                // Use the SAME pipeline configuration as single-image scanning.
+                val pipeline = SingleScanPipelineFactory()
+                    .create(safeContext.applicationContext, scanRequest)
 
-                    val cachedPath =
-                        copyUriToCache(
+                try {
+                    for ((index, uri) in uris.withIndex()) {
+
+                        val cachedPath = copyUriToCache(
                             safeContext,
                             uri
-                        ) ?: continue
+                        )
 
-                    if (
-                        primaryImagePath == null
-                    ) {
-                        primaryImagePath =
-                            cachedPath
-                    }
-
-                    withContext(
-                        Dispatchers.Main
-                    ) {
-                        if (isAdded) {
-                            showActualAnalysisState(
-                                AnalysisStage.PREPARING_IMAGE
+                        if (cachedPath == null) {
+                            reviewIssues.add(
+                                "Page ${index + 1}: Unable to load image."
                             )
+                            continue
                         }
-                    }
 
-                    val sourceFile =
-                        File(
-                            cachedPath
-                        )
-
-                    // Gallery uploads are not blocked by the image-quality check.
-
-                    val image =
-                        InputImage.fromFilePath(
-                            safeContext,
-                            Uri.fromFile(
-                                sourceFile
-                            )
-                        )
-
-                    withContext(
-                        Dispatchers.Main
-                    ) {
-                        if (isAdded) {
-                            showActualAnalysisState(
-                                AnalysisStage.DETECTING_TEXT
-                            )
+                        if (primaryImagePath == null) {
+                            primaryImagePath = cachedPath
                         }
-                    }
 
-                    val visionText =
-                        recognizeBatchImage(
-                            recognizer,
-                            image
-                        )
-
-                    withContext(
-                        Dispatchers.Main
-                    ) {
-                        if (isAdded) {
-                            showActualAnalysisState(
-                                AnalysisStage.CHECKING_RECOGNITION
-                            )
-                        }
-                    }
-
-                    val pageNumber =
-                        index + 1
-
-                    val extractedText =
-                        visionText.text
-
-                    if (
-                        !hasMeaningfulRecognizedText(
-                            extractedText
-                        )
-                    ) {
-                        reviewIssues.add(
-                            "Page $pageNumber: No readable writing detected; page was skipped."
-                        )
-
-                        continue
-                    }
-
-                    batchSourcePaths.add(
-                        cachedPath
-                    )
-
-                    if (
-                        primaryImagePath == null
-                    ) {
-                        primaryImagePath =
-                            cachedPath
-                    }
-
-                    val pageIssues =
-                        findOcrIssues(
-                            visionText
-                        )
-
-                    reviewIssues.addAll(
-                        pageIssues.map {
-                            "Page $pageNumber: $it"
-                        }
-                    )
-
-                    val diagramHtml =
-                        detectDiagramHtml(
-                            cachedPath
-                        )
-
-                    val pageContent =
-                        buildString {
-                            append(
-                                extractedText
-                            )
-
-                            if (
-                                diagramHtml.isNotBlank()
-                            ) {
-                                append(
-                                    "<br/><br/><b>Detected Diagram</b><br/>"
+                        withContext(Dispatchers.Main) {
+                            if (isAdded) {
+                                showActualAnalysisState(
+                                    AnalysisStage.PREPARING_IMAGE
                                 )
 
-                                append(
-                                    diagramHtml
-                                )
+                                view?.findViewById<TextView>(
+                                    R.id.tvCameraBatchProgress
+                                )?.apply {
+                                    visibility = View.VISIBLE
+                                    text = "Processing ${index + 1} of ${uris.size}"
+                                }
                             }
                         }
 
-                    pageContents.add(
-                        pageContent
-                    )
+                        val bitmap = BitmapFactory.decodeFile(cachedPath)
+
+                        if (bitmap == null) {
+                            reviewIssues.add(
+                                "Page ${index + 1}: Unable to decode image."
+                            )
+                            continue
+                        }
+
+                        try {
+                            withContext(Dispatchers.Main) {
+                                if (isAdded) {
+                                    showActualAnalysisState(
+                                        AnalysisStage.DETECTING_TEXT
+                                    )
+                                }
+                            }
+
+                            // SAME CRNN recognition used by single-image scanning.
+                            val result = pipeline.process(bitmap)
+
+                            withContext(Dispatchers.Main) {
+                                if (isAdded) {
+                                    showActualAnalysisState(
+                                        AnalysisStage.CHECKING_RECOGNITION
+                                    )
+                                }
+                            }
+
+                            val readable =
+                                RecognitionReadability.hasReadableWriting(
+                                    result.recognizedLines
+                                )
+
+                            if (!readable) {
+                                reviewIssues.add(
+                                    "Page ${index + 1}: No readable writing detected."
+                                )
+                                continue
+                            }
+
+                            // Use the same structured HTML output as single scanning.
+                            val extractedText =
+                                RecognitionReadability.htmlContent(
+                                    result.structuredNote
+                                )
+
+                            val diagramHtml =
+                                detectDiagramHtml(cachedPath)
+
+                            val pageContent = buildString {
+                                append(extractedText)
+
+                                if (diagramHtml.isNotBlank()) {
+                                    append(
+                                        "<br/><br/><b>Detected Diagram</b><br/>"
+                                    )
+                                    append(diagramHtml)
+                                }
+                            }
+
+                            batchSourcePaths.add(cachedPath)
+                            pageContents.add(pageContent)
+
+                            Log.i(
+                                "NOTE2SNAP_BATCH",
+                                "Page ${index + 1}: " +
+                                        "CRNN lines=${result.recognizedLines.size}, " +
+                                        "blocks=${result.structuredNote.blocks.size}"
+                            )
+
+                        } finally {
+                            if (!bitmap.isRecycled) {
+                                bitmap.recycle()
+                            }
+                        }
+                    }
+                } finally {
+                    pipeline.close()
                 }
 
-                withContext(
-                    Dispatchers.Main
-                ) {
-                    if (
-                        !isAdded
-                    ) {
-                        return@withContext
-                    }
+                withContext(Dispatchers.Main) {
+                    if (!isAdded) return@withContext
 
-                    if (
-                        pageContents.isEmpty() ||
-                        primaryImagePath == null
-                    ) {
-                        setLoading(
-                            false
+                    view?.findViewById<TextView>(
+                        R.id.tvCameraBatchProgress
+                    )?.visibility = View.GONE
+
+                    if (pageContents.isEmpty() || primaryImagePath == null) {
+                        setLoading(false)
+
+                        WarningDialog(requireContext()).show(
+                            title = "No readable writing detected",
+                            message = "Note2Snap could not recognize readable handwriting in the selected images. Try clearer whiteboard photos.",
+                            primaryText = "Try again"
                         )
-
-                        Toast.makeText(
-                            safeContext,
-                            "Failed to process selected images",
-                            Toast.LENGTH_SHORT
-                        ).show()
-
                         return@withContext
                     }
 
@@ -2307,59 +2269,49 @@ class ScanFragment : Fragment() {
                         AnalysisStage.STRUCTURING_NOTES
                     )
 
-                    val combinedContent =
-                        pageContents.joinToString(
-                            "<br/><br/><hr/><br/><br/>"
-                        )
+                    val combinedContent = pageContents.joinToString(
+                        "<br/><br/><hr/><br/><br/>"
+                    )
 
                     finishAnalyzingAndNavigate(
-                        content =
-                            combinedContent,
-                        imagePath =
-                            primaryImagePath,
-                        sourceImagePaths =
-                            batchSourcePaths,
-                        pageContents =
-                            pageContents,
-                        ocrIssues =
-                            reviewIssues
-                                .distinct()
-                                .take(12),
-                        titleOverride =
-                            null
+                        content = combinedContent,
+                        imagePath = primaryImagePath,
+                        sourceImagePaths = batchSourcePaths,
+                        pageContents = pageContents,
+                        ocrIssues = reviewIssues.distinct().take(12),
+                        titleOverride = null
                     )
                 }
 
-            } catch (
-                error: Exception
-            ) {
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+
+            } catch (error: Exception) {
                 Log.e(
-                    "ScanFragment",
-                    "Batch scan failed",
+                    "NOTE2SNAP_BATCH",
+                    "CRNN batch processing failed",
                     error
                 )
 
-                withContext(
-                    Dispatchers.Main
-                ) {
+                withContext(Dispatchers.Main) {
                     if (isAdded) {
-                        setLoading(
-                            false
-                        )
+                        view?.findViewById<TextView>(
+                            R.id.tvCameraBatchProgress
+                        )?.visibility = View.GONE
 
-                        Toast.makeText(
-                            safeContext,
-                            "Batch scan failed",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        setLoading(false)
+
+                        WarningDialog(requireContext()).show(
+                            title = "Batch processing failed",
+                            message = "An error occurred while recognizing the selected images. Please try again.",
+                            primaryText = "Got it"
+                        )
                     }
                 }
-
-            } finally {
-                recognizer.close()
             }
         }
     }
+
 
     /**
      * Suspends until ML Kit finishes recognizing one batch page.
