@@ -1,0 +1,17 @@
+{
+  "app/build/outputs/apk/debug/app-debug.apk": {
+    "beforeBytes": 251424610,
+    "afterBytes": 277108747,
+    "deltaBytes": 25684137
+  },
+  "app/build/outputs/apk/release/app-release-unsigned.apk": {
+    "beforeBytes": 210999638,
+    "afterBytes": 246587595,
+    "deltaBytes": 35587957
+  },
+  "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk": {
+    "beforeBytes": 8577357,
+    "afterBytes": 8929806,
+    "deltaBytes": 352449
+  }
+}

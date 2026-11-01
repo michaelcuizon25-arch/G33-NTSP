@@ -43,11 +43,13 @@ class CrnnLineRecognizer internal constructor(
     preprocessingMode: CrnnPreprocessingMode,
     private val runtime: CrnnInferenceRuntime,
     private val charset: List<String>,
-    exportDiagnostics: Boolean = BuildConfig.ENABLE_CRNN_DIAGNOSTIC_EXPORTS
+    exportDiagnostics: Boolean = BuildConfig.ENABLE_CRNN_DIAGNOSTIC_EXPORTS,
+    private val comparison: CrnnLineComparison? = null
 ) : LineRecognizer {
     @JvmOverloads
     constructor(context: Context, preprocessingMode: CrnnPreprocessingMode = CrnnPreprocessingMode.LEGACY) :
-            this(context, preprocessingMode, TensorFlowLiteCrnnRuntime(context), loadCrnnCharset(context))
+            this(context, preprocessingMode, TensorFlowLiteCrnnRuntime(context), loadCrnnCharset(context),
+                comparison = if (BuildConfig.ENABLE_PADDLE_OCR) PaddleOcrComparison(context) else null)
 
     companion object {
         private const val CTC_BLANK_INDEX = 79
@@ -96,14 +98,18 @@ class CrnnLineRecognizer internal constructor(
                 var stage = "preprocessing"
                 var diagnosticId: Int? = null
                 try {
+                    val comparisonStart = if (comparison != null) System.nanoTime() else 0L
                     val prepared = PerformanceDiagnostics.measure(PerfStage.CRNN_PREPROCESSING) { inputPreprocessor.prepare(line.bitmap) }
+                    val comparisonPrepared = if (comparison != null) System.nanoTime() else 0L
                     val input = prepared.input
                     diagnosticId = diagnostics.beginLine(region, line, input, prepared)
                     Log.d(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId region=${region.id} box=${line.boundingBox} " +
                             "crop=${line.bitmap.width}x${line.bitmap.height} requested=${prepared.requestedMode} " +
                             "actual=${prepared.actualMode} referenceWidth=${prepared.referenceWidth} fallback=${prepared.fallbackReason}")
                     stage = "inference"
+                    val comparisonInvokeStart = if (comparison != null) System.nanoTime() else 0L
                     val output = runtime.run(input)
+                    val comparisonInvoked = if (comparison != null) System.nanoTime() else 0L
                     if (successfulCount == 0) {
                         diagnostics.recordModel(context, CrnnModelAssets.MODEL, CrnnModelAssets.CHARSET, charset,
                             runtime.inputShape, runtime.outputShape, runtime.inputType, runtime.outputType,
@@ -112,12 +118,22 @@ class CrnnLineRecognizer internal constructor(
                             cachedOutputShape = runtime.cachedOutputShape)
                     }
                     stage = "decoding"
+                    val comparisonDecodeStart = if (comparison != null) System.nanoTime() else 0L
                     val rawText = PerformanceDiagnostics.measure(PerfStage.CTC_DECODE) { decodeCtc(output) }
+                    val comparisonDecoded = if (comparison != null) System.nanoTime() else 0L
                     val confidence = PerformanceDiagnostics.measure(PerfStage.CRNN_CONFIDENCE) { calculateConfidence(output) }
                     val text = rawText.trim().replace(Regex("\\s+"), " ")
                     diagnostics.completeLine(diagnosticId, rawText, text, confidence, output)
                     successfulCount++
                     Log.i(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId predicted=${JSONObject.quote(text)} blank=${text.isBlank()}")
+                    // Exact physical-line bitmap; comparison cannot select or alter CRNN note text.
+                    try {
+                        comparison?.compare(line.bitmap, region.id, line.boundingBox, rawText,
+                            comparisonPrepared - comparisonStart, comparisonInvoked - comparisonInvokeStart,
+                            comparisonDecoded - comparisonDecodeStart)
+                    } catch (error: CancellationException) { throw error
+                    } catch (error: Exception) { Log.w("PADDLE_COMPARISON", "Comparison failed; CRNN result retained", error)
+                    } catch (error: LinkageError) { Log.w("PADDLE_COMPARISON", "Comparison native runtime unavailable", error) }
                     if (text.isBlank()) blankCount++
                     else recognizedLines.add(RecognizedLine(region.id, line.boundingBox, text, confidence))
                 } catch (error: CancellationException) {
@@ -319,6 +335,12 @@ class CrnnLineRecognizer internal constructor(
 
     override fun close() {
 
-        try { runtime.close() } finally { diagnostics.flush() }
+        try { runtime.close() } finally {
+            try { diagnostics.flush() } finally {
+                try { comparison?.close() }
+                catch (error: Exception) { Log.w("PADDLE_COMPARISON", "Comparison close failed", error) }
+                catch (error: LinkageError) { Log.w("PADDLE_COMPARISON", "Comparison native close unavailable", error) }
+            }
+        }
     }
 }

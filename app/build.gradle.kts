@@ -18,6 +18,9 @@ android {
         // Opt in for evaluation: -PENABLE_OPENCV_ENHANCEMENT=true
         buildConfigField("boolean", "ENABLE_OPENCV_ENHANCEMENT",
             providers.gradleProperty("ENABLE_OPENCV_ENHANCEMENT").orElse("false").get().toBooleanStrict().toString())
+        // Experimental comparison only: CRNN remains the sole source of single-scan note text.
+        buildConfigField("boolean", "ENABLE_PADDLE_OCR",
+            providers.gradleProperty("ENABLE_PADDLE_OCR").orElse("false").get().toBooleanStrict().toString())
         // Research-only image/tensor/JSON exports; lightweight timings remain independent.
         buildConfigField("boolean", "ENABLE_CRNN_DIAGNOSTIC_EXPORTS",
             providers.gradleProperty("ENABLE_CRNN_DIAGNOSTIC_EXPORTS").orElse("false").get().toBooleanStrict().toString())
@@ -61,6 +64,8 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).conf
 }
 
 dependencies {
+    // Bundled CPU inference only; no runtime model downloads.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
     // Official OpenCV Android AAR; native processing is entirely on-device.
     implementation("org.opencv:opencv:4.12.0")
     implementation("com.airbnb.android:lottie:6.4.0")

@@ -1,0 +1,30 @@
+{
+  "scope": "One manually labeled title, four derived variants, enhancement ON/OFF. CRNN text is historical captured output from checked-in TSV, not fresh Android inference. Not a general handwriting benchmark.",
+  "CRNN_LEGACY": {
+    "cases": 8,
+    "characterErrors": 89,
+    "referenceCharacters": 240,
+    "CER": 0.37083333333333335,
+    "wordErrors": 19,
+    "referenceWords": 24,
+    "WER": 0.7916666666666666
+  },
+  "CRNN_SIMPLE_HTR_REFERENCE": {
+    "cases": 8,
+    "characterErrors": 11,
+    "referenceCharacters": 240,
+    "CER": 0.04583333333333333,
+    "wordErrors": 5,
+    "referenceWords": 24,
+    "WER": 0.20833333333333334
+  },
+  "Paddle_ONNX": {
+    "cases": 8,
+    "characterErrors": 1,
+    "referenceCharacters": 240,
+    "CER": 0.004166666666666667,
+    "wordErrors": 2,
+    "referenceWords": 24,
+    "WER": 0.08333333333333333
+  }
+}

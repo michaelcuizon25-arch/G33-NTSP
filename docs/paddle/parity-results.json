@@ -1,0 +1,242 @@
+{
+  "passed": true,
+  "paddle": "3.2.2",
+  "onnxruntime": "1.22.0",
+  "source_commit": "dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf",
+  "onnx_sha256": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+  "onnx_bytes": 7843511,
+  "onnx_init_ms": 91.5252969998619,
+  "results": [
+    {
+      "name": "blank",
+      "input_shape": [
+        1,
+        3,
+        48,
+        320
+      ],
+      "output_shape": [
+        1,
+        40,
+        438
+      ],
+      "paddle_text": "EMPY",
+      "onnx_text": "EMPY",
+      "max_abs_difference": 6.020069122314453e-06,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.41954400012400583,
+      "onnx_first_invoke_ms": 59.5473480000237
+    },
+    {
+      "name": "title-clear-original",
+      "input_shape": [
+        1,
+        3,
+        48,
+        517
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "Mobile Application Development",
+      "onnx_text": "Mobile Application Development",
+      "max_abs_difference": 1.7583370208740234e-05,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.24408899980699061,
+      "onnx_first_invoke_ms": 35.06478400004198
+    },
+    {
+      "name": "title-clear-enhanced",
+      "input_shape": [
+        1,
+        3,
+        48,
+        517
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "Mobile Application Development",
+      "onnx_text": "Mobile Application Development",
+      "max_abs_difference": 4.827976226806641e-06,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.3560980001111602,
+      "onnx_first_invoke_ms": 52.21183399999063
+    },
+    {
+      "name": "title-faint-original",
+      "input_shape": [
+        1,
+        3,
+        48,
+        517
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "Mobile Application Development",
+      "onnx_text": "Mobile Application Development",
+      "max_abs_difference": 3.874301910400391e-06,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.24931600000854814,
+      "onnx_first_invoke_ms": 63.17389500009085
+    },
+    {
+      "name": "title-faint-enhanced",
+      "input_shape": [
+        1,
+        3,
+        48,
+        517
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "Mobile Application Development",
+      "onnx_text": "Mobile Application Development",
+      "max_abs_difference": 5.21540641784668e-06,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.25684799993541674,
+      "onnx_first_invoke_ms": 61.37908400000924
+    },
+    {
+      "name": "title-uneven-lighting-original",
+      "input_shape": [
+        1,
+        3,
+        48,
+        517
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "Mobile Application Development",
+      "onnx_text": "Mobile Application Development",
+      "max_abs_difference": 6.198883056640625e-06,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.26663200014809263,
+      "onnx_first_invoke_ms": 28.90174799995293
+    },
+    {
+      "name": "title-uneven-lighting-enhanced",
+      "input_shape": [
+        1,
+        3,
+        48,
+        517
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "Mobile Application Development",
+      "onnx_text": "Mobile Application Development",
+      "max_abs_difference": 8.52346420288086e-06,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.19882099991264113,
+      "onnx_first_invoke_ms": 28.716907999978503
+    },
+    {
+      "name": "title-half-resolution-original",
+      "input_shape": [
+        1,
+        3,
+        48,
+        518
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "Mobile Application Development",
+      "onnx_text": "Mobile Application Development",
+      "max_abs_difference": 1.1444091796875e-05,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.1649590001306933,
+      "onnx_first_invoke_ms": 61.84872399990127
+    },
+    {
+      "name": "title-half-resolution-enhanced",
+      "input_shape": [
+        1,
+        3,
+        48,
+        518
+      ],
+      "output_shape": [
+        1,
+        65,
+        438
+      ],
+      "paddle_text": "MobileApplication Development",
+      "onnx_text": "MobileApplication Development",
+      "max_abs_difference": 1.1742115020751953e-05,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.2941650000138907,
+      "onnx_first_invoke_ms": 30.795727999930023
+    },
+    {
+      "name": "narrow",
+      "input_shape": [
+        1,
+        3,
+        48,
+        320
+      ],
+      "output_shape": [
+        1,
+        40,
+        438
+      ],
+      "paddle_text": "",
+      "onnx_text": "",
+      "max_abs_difference": 1.2516975402832031e-06,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 0.07126700006665487,
+      "onnx_first_invoke_ms": 55.66053799998372
+    },
+    {
+      "name": "wide",
+      "input_shape": [
+        1,
+        3,
+        48,
+        1280
+      ],
+      "output_shape": [
+        1,
+        160,
+        438
+      ],
+      "paddle_text": "EY",
+      "onnx_text": "EY",
+      "max_abs_difference": 2.1636486053466797e-05,
+      "numeric_parity": true,
+      "text_parity": true,
+      "preprocessing_ms": 5.619496000008439,
+      "onnx_first_invoke_ms": 140.8729449999555
+    }
+  ]
+}

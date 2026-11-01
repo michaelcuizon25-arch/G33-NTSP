@@ -1,0 +1,55 @@
+{
+  "model": "en_PP-OCRv5_mobile_rec",
+  "source": "https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0/en_PP-OCRv5_mobile_rec_infer.tar",
+  "archiveSha256": "e595b4cf2ffad19fbb5a61ba345d63939577a3ab8717b6e5995642590c9101b4",
+  "provenance": "User-supplied official archive; dictionary and training configuration byte-identical to pinned official source. No independently retrieved publisher checksum or signature for binary weights.",
+  "sourceCommit": "dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf",
+  "license": "Apache-2.0; supplied model distributed with PaddleOCR; upstream archive contains no separate license file",
+  "conversion": {
+    "paddle": "3.2.2",
+    "paddle2onnx": "2.1.0",
+    "onnx": "1.17.0",
+    "opset": 17,
+    "optimization": "None"
+  },
+  "input": {
+    "name": "x",
+    "dtype": "float32",
+    "shape": [
+      "N",
+      3,
+      48,
+      "W"
+    ],
+    "layout": "NCHW",
+    "color": "BGR",
+    "normalization": "(pixel / 255 - 0.5) / 0.5",
+    "padding": "zero after normalization, right only",
+    "width": "official batch-one inference: int(48 * max(320/48, sourceWidth/sourceHeight)); ceil resized width capped to padded width",
+    "supportedWidth": [
+      320,
+      3200
+    ]
+  },
+  "output": {
+    "shape": [
+      "N",
+      "T",
+      438
+    ],
+    "blankIndex": 0,
+    "spaceIndex": 437,
+    "decoder": "greedy CTC; duplicate removal before blank removal; preserve spaces"
+  },
+  "sha256": {
+    "PaddleOCR-LICENSE.txt": "3840c5c0c61c294264d2dd77b8777be6ddd90121ef4e0e64abcd22edea581d6e",
+    "inference.yml": "27e91d0582f40168aa218303c76e184bc78fa7a5d105aad0cfbad8458b441067",
+    "en_PP-OCRv5_mobile_rec.onnx": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+    "ppocrv5_en_dict.txt": "e025a66d31f327ba0c232e03f407ae8d105e1e709e7ccb3f408aa778c24e70d6"
+  },
+  "originalArtifacts": {
+    "inference.yml": "27e91d0582f40168aa218303c76e184bc78fa7a5d105aad0cfbad8458b441067",
+    "inference.pdiparams": "3ec8a97ed6cefe8568d3e2ee90bb193299b566a7661aa4fd52d224b96b59f66b",
+    "inference.json": "fd1b6ec722ea841a72d3ba43e527df1d1066d5d7808e0503ee3eec7265188753"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "sourceCommit": "dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf",
+  "modelSha256": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+  "fixtures": [
+    {
+      "name": "color",
+      "inputShape": [
+        1,
+        3,
+        48,
+        320
+      ],
+      "outputShape": [
+        1,
+        40,
+        438
+      ],
+      "text": "."
+    },
+    {
+      "name": "narrow",
+      "inputShape": [
+        1,
+        3,
+        48,
+        320
+      ],
+      "outputShape": [
+        1,
+        40,
+        438
+      ],
+      "text": ""
+    },
+    {
+      "name": "fractional",
+      "inputShape": [
+        1,
+        3,
+        48,
+        517
+      ],
+      "outputShape": [
+        1,
+        65,
+        438
+      ],
+      "text": "Mobile Application Development"
+    },
+    {
+      "name": "wide_blank",
+      "inputShape": [
+        1,
+        3,
+        48,
+        1280
+      ],
+      "outputShape": [
+        1,
+        160,
+        438
+      ],
+      "text": "EY"
+    }
+  ]
+}

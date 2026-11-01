@@ -1,0 +1,23 @@
+{
+  "scope": "x86_64 host ONNX CPU, one thread, clear title crop; not Android measurements or whole pipeline",
+  "warmups": 3,
+  "runs": 20,
+  "inputShape": [
+    1,
+    3,
+    48,
+    517
+  ],
+  "outputShape": [
+    1,
+    65,
+    438
+  ],
+  "coldSessionMs": 67.562921,
+  "medianInferenceMs": 29.061222,
+  "p95InferenceMs": 32.26955295,
+  "medianPreprocessingMs": 0.219832,
+  "rssBeforeSessionBytes": 70819840,
+  "rssAfterSessionBytes": 106532864,
+  "rssAfterRepeatedInferenceBytes": 120070144
+}
