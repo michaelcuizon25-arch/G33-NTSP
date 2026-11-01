@@ -1,0 +1,18 @@
+{
+  "scope": "Synthetic host regressions only; reported phone region dimensions/boxes not supplied",
+  "unitTests": {
+    "passed": 139,
+    "failed": 14,
+    "skipped": 1
+  },
+  "newFailures": [],
+  "geometryRegressionsPassed": 6,
+  "pythonTestsPassed": 18,
+  "apkAssembly": {
+    "assembleDebug": true,
+    "assembleRelease": true,
+    "assembleDebugAndroidTest": true
+  },
+  "modelsAndHashesUnchanged": true,
+  "deviceValidation": "not performed; exact reported crops still require geometry confirmation"
+}

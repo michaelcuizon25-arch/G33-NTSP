@@ -167,6 +167,7 @@ class ConnectedComponentLabeler {
         val textCandidates =
             components.filter { component ->
 
+                !SideBorderGeometry.isClearFragment(component.box, imageWidth, imageHeight, medianTextHeight) &&
                 looksLikeTextComponent(
                     component = component,
                     medianTextHeight = medianTextHeight,

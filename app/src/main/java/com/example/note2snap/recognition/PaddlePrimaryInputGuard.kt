@@ -30,7 +30,8 @@ internal object PaddlePrimaryInputGuard {
         }
         if (ink < 6) return "isolated_mark"
         val inkWidth = right - left + 1; val inkHeight = bottom - top + 1
-        if ((inkHeight <= 2 && inkWidth > inkHeight * 15) || (inkWidth <= 2 && inkHeight > inkWidth * 15))
+        // A vertical stem alone is ambiguous (I/l/1); CCL has global side-edge geometry.
+        if (inkHeight <= 2 && inkWidth > inkHeight * 15)
             return "thin_separator"
         // Low-amplitude noise spread over almost every row/column, not localized faint strokes.
         if (high - low <= 12 && ink.toDouble() / gray.size > 0.25 &&
