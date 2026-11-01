@@ -1,0 +1,2 @@
+# Runtime verifies these exact official UTF-8 bytes; Windows checkout must not add CRs.
+/app/src/main/assets/ocr/paddle/ppocrv5_en_dict.txt text eol=lf

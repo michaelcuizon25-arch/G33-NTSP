@@ -22,6 +22,23 @@ class PaddleRecognitionDeviceTest {
         return FloatArray(bytes.size / 4).also { ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(it) }
     }
 
+    /** Isolates actual APK dictionary loading from native model initialization. */
+    @Test fun dictionaryIntegrityAndCharacterOrderMatchOfficialAsset() {
+        val context = instrumentation.targetContext
+        val bytes = PaddleModelAssets.verifiedBytes(context, PaddleModelAssets.DICTIONARY,
+            PaddleModelAssets.DICTIONARY_SHA256)
+        assertEquals(1416, bytes.size)
+        assertFalse("Dictionary must retain official LF line endings", bytes.contains(13.toByte()))
+        assertFalse("Dictionary must not acquire a UTF-8 BOM",
+            bytes.take(3) == listOf(0xef.toByte(), 0xbb.toByte(), 0xbf.toByte()))
+        val characters = PaddleModelAssets.characters(context)
+        assertEquals(438, characters.size)
+        assertEquals("", characters.first())
+        assertEquals("0", characters[1])
+        assertEquals("☺", characters[436])
+        assertEquals(" ", characters.last())
+    }
+
     @Test fun nativePreprocessingInferenceAndRepeatedCloseMatchOfficialReferences(): Unit = runBlocking {
         val context = instrumentation.targetContext
         val manifest = assets.open("paddle_reference/manifest.json").use { JSONObject(it.bufferedReader().readText()) }
