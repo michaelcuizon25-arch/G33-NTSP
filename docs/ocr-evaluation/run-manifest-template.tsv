@@ -1,0 +1,1 @@
+run_id	device_model	android_version	abi	app_commit	workflow	image_id	category	crnn_mode	paddle_flag	opencv_flag	correction_flag	diagnostic_exports	airplane_mode	wifi_off	mobile_data_off	process_cold_or_repeated	expected_physical_lines	observed_comparison_lines	quality_gate_result	ccl_or_segmentation_issue	jsonl_files	perf_log	memory_before	memory_after	notes

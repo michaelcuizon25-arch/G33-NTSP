@@ -1,0 +1,12 @@
+planned_sample_id	category	writing_prompt_not_ground_truth	recommended_repetitions	capture_notes
+clear-01	clear	Mobile Application Development	5	Write on board; save camera original and import same saved file in gallery
+blank-01	blank	[leave board completely empty]	5	Record quality rejection/zero CCL lines separately from recognition errors
+blank-02	blank	[erase writing and leave faint smudges]	5	Do not transcribe smudges as invented text
+faint-01	faint	Database transactions preserve consistency.	5	Use faint strokes; retain actual photographed reference
+cursive-01	cursive	Concurrent processes share limited resources.	5	Natural joined handwriting; transcribe from source rather than this prompt
+numbers-01	numbers	0 1 2 3 4 5 6 7 8 9 10.25 -42 2026	5	Keep decimal points minus signs and spacing in manual reference
+formulas-01	formulas	F = ma; x² + y² = r²; O(n log n)	5	Write actual symbols; no automatic ASCII substitution during scoring
+computer-science-01	computer_science	algorithm recursion polymorphism deadlock SQL HTTP	5	Keep capitalization and abbreviations exactly as written
+computer-science-02	computer_science	binary search tree; time complexity O(log n)	5	Include multiple text-line lengths
+mixed-01	diagram	[draw boxes arrows and a graph with no labels]	5	Expected textual reference is empty only after manual inspection
+mixed-02	other	[combine two labeled boxes with handwritten explanation]	5	Transcribe each physical line; log expected lines and preserved diagram

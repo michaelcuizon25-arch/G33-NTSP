@@ -1,0 +1,42 @@
+{
+  "scope": "Preparation on host; adb devices empty; no Android execution results",
+  "baseline": {
+    "passed": 122,
+    "failed": 14,
+    "skipped": 1
+  },
+  "current": {
+    "passed": 122,
+    "failed": 14,
+    "skipped": 1
+  },
+  "newFailures": [],
+  "existingFailures": [
+    "com.example.note2snap.recognition.CrnnDiagnosticsTest.extractedPreprocessingMatchesPreviousImplementationByteForByte",
+    "com.example.note2snap.recognition.CrnnDiagnosticsTest.photoFixturePreprocessingAuditWithoutInference",
+    "com.example.note2snap.recognition.CrnnFailureRegressionTest.titleOnlyRecognitionRemainsReadableAndProducesEscapedEditorContent",
+    "com.example.note2snap.recognition.MlKitRecognitionPipelineTest.testRecognitionFromWhiteboardImage",
+    "com.example.note2snap.structuring.PipelineTextStructurerTest.testMultipleRecognizedLinesFromSameRegion",
+    "com.example.note2snap.structuring.WhiteboardRulesRegressionTest.definitionsDoNotMergeEvenWhenPreviousEndsWithConnector",
+    "com.example.note2snap.structuring.WhiteboardRulesRegressionTest.headingIsNotConsumedAsSentenceContinuation",
+    "com.example.note2snap.structuring.WhiteboardRulesRegressionTest.numberedSectionsAndMathKeepTheirTypes",
+    "com.example.note2snap.structuring.WhiteboardRulesRegressionTest.titleAndExplicitBulletsAgreeAcrossEntryPoints",
+    "com.example.note2snap.structuring.WhiteboardRulesRegressionTest.uppercaseEquationIsMathAndNumberedDefinitionIsAListItem",
+    "com.example.note2snap.structuring.WhiteboardRulesRegressionTest.wrappedDefinitionStillJoinsItsContinuation",
+    "com.example.note2snap.utils.ReviewerGroupingTest.doesNotDuplicateAnExistingTopicHeading",
+    "com.example.note2snap.utils.WhiteboardRuleEngineTest.testBasicNoteFormatting",
+    "com.example.note2snap.utils.WhiteboardRuleEngineTest.testWhiteboardStructuring"
+  ],
+  "toolingTests": {
+    "passed": 12,
+    "failed": 0,
+    "data": "Synthetic records, not OCR output"
+  },
+  "apkAssembly": {
+    "assembleDebug": true,
+    "assembleRelease": true,
+    "assembleDebugAndroidTest": true
+  },
+  "deviceTests": "Compiled only; no device attached",
+  "productionSourceChanges": false
+}
