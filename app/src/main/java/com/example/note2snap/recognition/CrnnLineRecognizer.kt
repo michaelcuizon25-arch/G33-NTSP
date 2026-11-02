@@ -57,6 +57,7 @@ class CrnnLineRecognizer internal constructor(
     }
 
     internal val diagnostics = CrnnDiagnostics(context, exportDiagnostics)
+    internal var researchRawPrediction: ((String) -> Unit)? = null
     private val inputPreprocessor = CrnnPreprocessing(preprocessingMode)
 
     init {
@@ -127,12 +128,15 @@ class CrnnLineRecognizer internal constructor(
                     stage = "decoding"
                     val comparisonDecodeStart = if (comparison != null) System.nanoTime() else 0L
                     val rawText = PerformanceDiagnostics.measure(PerfStage.CTC_DECODE) { decodeCtc(output) }
+                    try { researchRawPrediction?.invoke(rawText) }
+                    catch (_: Exception) { }
+                    catch (_: LinkageError) { }
                     val comparisonDecoded = if (comparison != null) System.nanoTime() else 0L
                     val confidence = PerformanceDiagnostics.measure(PerfStage.CRNN_CONFIDENCE) { calculateConfidence(output) }
                     val text = rawText.trim().replace(Regex("\\s+"), " ")
                     diagnostics.completeLine(diagnosticId, rawText, text, confidence, output)
                     successfulCount++
-                    Log.i(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId predicted=${JSONObject.quote(text)} blank=${text.isBlank()}")
+                    Log.i(RECOGNITION_LOG_TAG, "CRNN line=$diagnosticId blank=${text.isBlank()}")
                     // Exact physical-line bitmap; comparison cannot select or alter CRNN note text.
                     try {
                         comparison?.compare(line.bitmap, region.id, line.boundingBox, rawText,

@@ -193,7 +193,101 @@ class PaddlePrimaryRecognitionTest {
         val charset = File("src/main/assets/ocr/note2snap_crnn_v2_epoch03_charlist.txt").readText().trimEnd('\r', '\n').map { it.toString() }
         val engine = CrnnLineRecognizer(RuntimeEnvironment.getApplication(), CrnnPreprocessingMode.LEGACY, runtime, charset,
             physicalLineProvider = { listOf(PhysicalLine(it.croppedBitmap, it.boundingBox)) })
+        var rawFallback: String? = null
+        engine.researchRawPrediction = { rawFallback = it; error("Research observer failed") }
         try { assertTrue(engine.recognize(listOf(input)).isEmpty()) } finally { engine.close() }
+        assertEquals("", rawFallback)
         assertEquals(1, invokes)
+    }
+
+    @Test fun researchExportsPreservePrimaryFallbackAndCorrectionResults() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val photo = javaClass.classLoader!!.getResourceAsStream("board_test_5.jpg").use { BitmapFactory.decodeStream(it) }
+        val original = photo.copy(Bitmap.Config.ARGB_8888, false)
+        val root = File(context.cacheDir, "primary-parity-" + java.util.UUID.randomUUID())
+        for (prediction in listOf("cornputer", "")) {
+            suspend fun scan(writer: PrimaryOcrDiagnostics?): Pair<RecognitionPipelineResult, Pair<Int, Int>> {
+                var fallbacks = 0
+                val runtime = Runtime { output(prediction) }
+                val engine = PaddlePrimaryLineRecognizer({ paddle(runtime) }, {
+                    object : LineRecognizer {
+                        override suspend fun recognize(regions: List<Region>): List<RecognizedLine> {
+                            fallbacks++
+                            val region = regions.single()
+                            return listOf(RecognizedLine(region.id, region.boundingBox, "cornputer", 0.1f))
+                        }
+                        override fun close() {}
+                    }
+                }, writer)
+                val pipeline = WhiteboardRecognitionPipeline(engine, bundledCorrectorForTest())
+                val result = try { pipeline.process(photo) } finally { pipeline.close() }
+                return result to (runtime.calls to fallbacks)
+            }
+            val off = scan(null)
+            val writer = PrimaryOcrDiagnostics(context, enabled = true, root = root)
+            val on = scan(writer)
+            assertEquals(off.first.recognizedLines, on.first.recognizedLines)
+            assertEquals(off.first.correctedLines, on.first.correctedLines)
+            assertEquals(off.first.structuredNote, on.first.structuredNote)
+            assertEquals(off.second, on.second)
+            assertEquals(off.first.diagramRegions.map { it.boundingBox }, on.first.diagramRegions.map { it.boundingBox })
+            assertTrue(photo.sameAs(original))
+            val report = org.json.JSONObject(File(writer.directory, "scan.json").readText())
+            assertEquals("completed", report.getString("status"))
+            assertTrue(report.getBoolean("correctionExecuted"))
+            assertTrue(report.getJSONArray("filterDecisions").length() > 0)
+            val outputs = report.getJSONArray("outputs")
+            assertEquals(on.first.recognizedLines.size, outputs.length())
+            for (i in 0 until outputs.length()) {
+                assertEquals("cornputer", outputs.getJSONObject(i).getString("rawText"))
+                assertEquals("computer", outputs.getJSONObject(i).getString("correctedText"))
+                assertTrue(outputs.getJSONObject(i).getJSONArray("suggestions").getJSONObject(0).getBoolean("applied"))
+            }
+            val rows = report.getJSONArray("lines")
+            val selected = (0 until rows.length()).map { rows.getJSONObject(it) }.filter { it.has("outputIndices") }
+            assertEquals(outputs.length(), selected.size)
+            assertEquals(if (prediction.isEmpty()) "crnn_fallback" else "paddle", selected.first().getString("selectedEngine"))
+            assertEquals(prediction, selected.first().getString("paddleRawText"))
+            assertEquals(0, selected.first().getJSONArray("outputIndices").getInt(0))
+            assertTrue(File(writer.directory, selected.first().getString("crop")).exists())
+            if (prediction.isEmpty()) assertEquals("cornputer", selected.first().getString("crnnRawText"))
+            else assertFalse(selected.first().has("crnnRawText"))
+        }
+        root.deleteRecursively()
+        photo.recycle(); original.recycle()
+    }
+
+    @Test fun disabledAndUnavailableResearchExportsCannotChangeRecognition() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val root = File(context.cacheDir, "primary-disabled-" + java.util.UUID.randomUUID())
+        val disabled = PrimaryOcrDiagnostics(context, enabled = false, root = root)
+        disabled.begin(handwriting(), false)
+        assertFalse(root.exists())
+        assertNull(disabled.directory)
+        // A file where a directory is expected simulates storage failure.
+        root.writeText("blocked")
+        val broken = PrimaryOcrDiagnostics(context, enabled = true, root = root)
+        broken.begin(handwriting(), true)
+        val engine = PaddlePrimaryLineRecognizer({ paddle(Runtime { output("I") }) },
+            { error("Diagnostics failure must not trigger fallback") }, broken)
+        try { assertEquals("I", engine.recognize(listOf(region())).single().text) }
+        finally { engine.close(); root.delete() }
+    }
+
+    @Test fun cclResearchObserverCannotMutateBoxesOrChangeFiltering() {
+        val image = javaClass.classLoader!!.getResourceAsStream("board_test_5.jpg").use { BitmapFactory.decodeStream(it) }
+        val prepared = com.example.note2snap.preprocessing.WhiteboardPreprocessor().process(image)
+        val labeler = com.example.note2snap.ccl.ConnectedComponentLabeler()
+        val expected = labeler.label(prepared.binarizedBitmap, prepared.recognitionBitmap)
+        var calls = 0
+        val observed = labeler.label(prepared.binarizedBitmap, prepared.recognitionBitmap) { _, box, _, _ ->
+            calls++
+            box.setEmpty()
+            throw IllegalStateException("Writer failed")
+        }
+        assertTrue(calls > 0)
+        assertEquals(expected.map { it.boundingBox to it.type }, observed.map { it.boundingBox to it.type })
+        expected.zip(observed).forEach { (a, b) -> assertTrue(a.croppedBitmap.sameAs(b.croppedBitmap)) }
+        image.recycle()
     }
 }

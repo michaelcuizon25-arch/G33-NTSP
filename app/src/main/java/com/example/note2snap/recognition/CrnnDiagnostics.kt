@@ -167,7 +167,7 @@ internal class CrnnDiagnostics(context: Context, val enabled: Boolean = BuildCon
             .put("outputTensor", "$prefix-output.f32").put("status", "recognized")
             .put("outputBufferShape", JSONArray(listOf(output.size, output[0].size, output[0][0].size)))
         persist(id)
-        Log.i(TAG, "line=$id region=${record.getInt("sourceRegionId")} box=${record.getJSONObject("box")} predicted=${JSONObject.quote(text)}")
+        Log.i(TAG, "line=$id region=${record.getInt("sourceRegionId")} box=${record.getJSONObject("box")}")
     }
 
     fun failLine(id: Int, error: Exception, stage: String = "inference") = safely {

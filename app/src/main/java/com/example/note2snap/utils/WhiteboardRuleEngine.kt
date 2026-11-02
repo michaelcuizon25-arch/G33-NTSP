@@ -877,6 +877,11 @@ object WhiteboardRuleEngine {
         if (prevText.isEmpty() || curText.isEmpty()) return false
         if (isRepetitiveNoise(prevText) || isRepetitiveNoise(curText)) return false
         if (isMergeBreaker(curText)) return false
+        // Apply the existing short all-caps heading boundary on both sides.
+        // An explicit connector still permits a genuinely wrapped sentence.
+        val previousIsAllCapsHeading = prevText.length in 3..45 &&
+                prevText == prevText.uppercase() && prevText.any { it.isLetter() }
+        if (previousIsAllCapsHeading && !endsMidSentence(prevText)) return false
         if (".!?:;".contains(prevText.last())) return false
 
         // Wrapped lines sit directly under each other.

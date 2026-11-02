@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "scanId": "de955184-ef71-46e6-a1f3-e6bc42184109",
+  "status": "completed",
+  "sourceWidth": 755,
+  "sourceHeight": 70,
+  "recognitionMode": "PADDLE_PRIMARY_WITH_CRNN_FALLBACK",
+  "correctionRequested": true,
+  "correctionLoaded": true,
+  "openCvRequested": false,
+  "borderFilterRevision": "side-border-587e0e6",
+  "coordinateSpace": "recognition image; right\/bottom exclusive",
+  "lines": [
+    {
+      "lineId": 1,
+      "regionId": 7,
+      "box": [
+        0,
+        0,
+        755,
+        70
+      ],
+      "cropWidth": 755,
+      "cropHeight": 70,
+      "crop": "line-1.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "Mobile Application Development",
+      "paddleElapsedNs": 810071250,
+      "paddleFailure": null,
+      "outputIndices": [
+        0
+      ]
+    }
+  ],
+  "filterDecisions": [
+    {
+      "stage": "primary_region",
+      "regionId": 7,
+      "box": [
+        0,
+        0,
+        755,
+        70
+      ],
+      "reason": "accepted"
+    }
+  ],
+  "decodedSourcePngSha256": "78aac285c8637882625c8bfaecfeb9d4992a20773226db746b495a02bd2619e0",
+  "modelSha256": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+  "dictionarySha256": "e025a66d31f327ba0c232e03f407ae8d105e1e709e7ccb3f408aa778c24e70d6",
+  "recognitionWidth": 755,
+  "recognitionHeight": 70,
+  "regions": [
+    {
+      "regionId": 7,
+      "box": [
+        0,
+        0,
+        755,
+        70
+      ],
+      "type": "TEXT",
+      "pixelArea": 1000
+    }
+  ],
+  "outputs": [
+    {
+      "outputIndex": 0,
+      "regionId": 7,
+      "box": [
+        0,
+        0,
+        755,
+        70
+      ],
+      "rawText": "Mobile Application Development",
+      "correctedText": "Mobile Application Development",
+      "correctionSkippedReason": null,
+      "suggestions": []
+    }
+  ],
+  "correctionExecuted": true,
+  "structuredNote": {
+    "title": "Untitled Scan",
+    "blocks": [
+      {
+        "rawText": "Mobile Application Development",
+        "formattedText": "Mobile Application Development",
+        "type": "REGULAR_TEXT",
+        "box": [
+          0,
+          0,
+          755,
+          70
+        ]
+      }
+    ]
+  }
+}

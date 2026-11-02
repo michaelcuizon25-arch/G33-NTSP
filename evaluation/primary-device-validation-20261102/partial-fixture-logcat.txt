@@ -1,0 +1,52 @@
+1793591712: I/PADDLE_PRIMARY: region=7 engine=skip reason=uniform_blank
+1793591712: I/PADDLE_PRIMARY: region=7 engine=skip reason=uniform_blank
+1793591712: I/PADDLE_PRIMARY: region=7 engine=skip reason=uniform_low_contrast_noise
+1793591712: I/PADDLE_PRIMARY: region=7 engine=skip reason=isolated_mark
+1793591712: I/PADDLE_PRIMARY: region=7 engine=skip reason=empty_frame
+1793591714: I/PADDLE_PRIMARY: region=7 engine=paddle reason=usable_text
+1793591715: I/PADDLE_PRIMARY: region=7 engine=paddle reason=usable_text
+1793591716: I/NOTE2SNAP_PIPELINE: Single scan recognitionMode=PADDLE_PRIMARY_WITH_CRNN_FALLBACK correctionRequested=true primaryExports=true borderFilter=side-border-587e0e6
+1793591718: I/NOTE2SNAP_PIPELINE: Scan source=4032x3024
+1793591718: I/NOTE2SNAP_PIPELINE: OpenCV requested=false applied=false reason=disabled elapsedMs=0
+1793591720: I/NOTE2SNAP_PIPELINE: Preprocessing recognition=1800x1350 binary=1800x1350
+1793591720: I/NOTE2SNAP_PIPELINE: CCL totalRegions=15 textRegions=14 nonTextRegions=1
+1793591721: I/PADDLE_PRIMARY: region=100001 engine=paddle reason=usable_text
+1793591721: I/PADDLE_PRIMARY: region=100003 engine=crnn_fallback reason=unusable_output
+1793591721: I/NOTE2SNAP_PIPELINE: CRNN runtime input=[1, 512, 32] signature=[1, 512, 32] FLOAT32 output(before inference)=[] UNRESOLVED_BEFORE_INFERENCE
+1793591721: I/NOTE2SNAP_PIPELINE: CRNN charset count=79, characters= !"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+1793591721: I/NOTE2SNAP_PIPELINE: CRNN received textRegions=1
+1793591721: I/NOTE2SNAP_PIPELINE: Segmentation region=100003 box=Rect(1696, 396 - 1769, 431) physicalLines=1
+1793591721: D/NOTE2SNAP_PIPELINE: CRNN line=0 region=100003 box=Rect(1696, 396 - 1769, 431) crop=73x35 requested=LEGACY actual=LEGACY referenceWidth=null fallback=null
+1793591721: D/NOTE2SNAP_PIPELINE: CRNN invoke bytes=65536 position=0 order=LITTLE_ENDIAN input=[1, 512, 32] output(before)=[]
+1793591722: I/NOTE2SNAP_PERF: {"kind":"LINE_INFERENCE","session":1,"flow":"PIPELINE","elapsedNs":731803801,"startedNs":0,"stage":"CRNN_INFERENCE","count":1,"maxNs":0,"failures":0,"mainThreadStarts":0}
+1793591722: I/NOTE2SNAP_PIPELINE: CRNN native output cachedShape=[1, 128, 80] signature=[-1, -1, 80] type=FLOAT32 nativeBytes=40960 bufferBytes=40960
+1793591722: I/NOTE2SNAP_PIPELINE: CRNN invoke completed cachedTensorShape=[1, 128, 80] signature=[-1, -1, 80] nativeBytes=40960 resolvedOutput=[1, 128, 80]
+1793591723: I/NOTE2SNAP_PIPELINE: CRNN line=0 blank=true
+1793591723: I/NOTE2SNAP_PIPELINE: CRNN summary status=all_predictions_blank textRegions=1 physicalLines=1 successful=1 blank=1 failed=0 recognized=0
+1793591724: I/PADDLE_PRIMARY: region=100004 engine=crnn_fallback reason=unusable_output
+1793591724: I/NOTE2SNAP_PIPELINE: CRNN received textRegions=1
+1793591724: I/NOTE2SNAP_PIPELINE: Segmentation region=100004 box=Rect(1641, 423 - 1768, 450) physicalLines=1
+1793591724: D/NOTE2SNAP_PIPELINE: CRNN line=1 region=100004 box=Rect(1641, 423 - 1768, 450) crop=127x27 requested=LEGACY actual=LEGACY referenceWidth=null fallback=null
+1793591724: D/NOTE2SNAP_PIPELINE: CRNN invoke bytes=65536 position=0 order=LITTLE_ENDIAN input=[1, 512, 32] output(before)=[1, 128, 80]
+1793591724: I/NOTE2SNAP_PERF: {"kind":"LINE_INFERENCE","session":1,"flow":"PIPELINE","elapsedNs":732052917,"startedNs":0,"stage":"CRNN_INFERENCE","count":2,"maxNs":0,"failures":0,"mainThreadStarts":0}
+1793591724: I/NOTE2SNAP_PIPELINE: CRNN native output cachedShape=[1, 128, 80] signature=[-1, -1, 80] type=FLOAT32 nativeBytes=40960 bufferBytes=40960
+1793591724: I/NOTE2SNAP_PIPELINE: CRNN invoke completed cachedTensorShape=[1, 128, 80] signature=[-1, -1, 80] nativeBytes=40960 resolvedOutput=[1, 128, 80]
+1793591725: I/NOTE2SNAP_PIPELINE: CRNN line=1 blank=true
+1793591725: I/NOTE2SNAP_PIPELINE: CRNN summary status=all_predictions_blank textRegions=1 physicalLines=1 successful=1 blank=1 failed=0 recognized=0
+1793591725: I/PADDLE_PRIMARY: region=100005 engine=paddle reason=usable_text
+1793591726: I/PADDLE_PRIMARY: region=100006 engine=paddle reason=usable_text
+1793591729: I/PADDLE_PRIMARY: region=100007 engine=crnn_fallback reason=unusable_output
+1793591729: I/NOTE2SNAP_PIPELINE: CRNN received textRegions=1
+1793591729: I/NOTE2SNAP_PIPELINE: Segmentation region=100007 box=Rect(1653, 464 - 1767, 499) physicalLines=1
+1793591729: D/NOTE2SNAP_PIPELINE: CRNN line=2 region=100007 box=Rect(1653, 464 - 1767, 499) crop=114x35 requested=LEGACY actual=LEGACY referenceWidth=null fallback=null
+1793591729: D/NOTE2SNAP_PIPELINE: CRNN invoke bytes=65536 position=0 order=LITTLE_ENDIAN input=[1, 512, 32] output(before)=[1, 128, 80]
+1793591731: I/NOTE2SNAP_PERF: {"kind":"LINE_INFERENCE","session":1,"flow":"PIPELINE","elapsedNs":2504656613,"startedNs":0,"stage":"CRNN_INFERENCE","count":3,"maxNs":0,"failures":0,"mainThreadStarts":0}
+1793591731: I/NOTE2SNAP_PIPELINE: CRNN native output cachedShape=[1, 128, 80] signature=[-1, -1, 80] type=FLOAT32 nativeBytes=40960 bufferBytes=40960
+1793591731: I/NOTE2SNAP_PIPELINE: CRNN invoke completed cachedTensorShape=[1, 128, 80] signature=[-1, -1, 80] nativeBytes=40960 resolvedOutput=[1, 128, 80]
+1793591732: I/NOTE2SNAP_PIPELINE: CRNN line=2 blank=true
+1793591732: I/NOTE2SNAP_PIPELINE: CRNN summary status=all_predictions_blank textRegions=1 physicalLines=1 successful=1 blank=1 failed=0 recognized=0
+1793591733: I/PADDLE_PRIMARY: region=100008 engine=crnn_fallback reason=unusable_output
+1793591733: I/NOTE2SNAP_PIPELINE: CRNN received textRegions=1
+1793591733: I/NOTE2SNAP_PIPELINE: Segmentation region=100008 box=Rect(1716, 484 - 1769, 512) physicalLines=1
+1793591733: D/NOTE2SNAP_PIPELINE: CRNN line=3 region=100008 box=Rect(1716, 484 - 1769, 512) crop=53x28 requested=LEGACY actual=LEGACY referenceWidth=null fallback=null
+1793591733: D/NOTE2SNAP_PIPELINE: CRNN invoke bytes=65536 position=0 order=LITTLE_ENDIAN input=[1, 512, 32] output(before)=[1, 128, 80]

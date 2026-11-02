@@ -124,4 +124,18 @@ class DictionaryTextCorrectorTest {
         assertEquals("function", corrector.correct(raw).correctedText)
         // This is why automatic correction stays opt-in and raw text is retained.
     }
+
+    @Test fun historicalPangramPredictionsAndNarrowGlyphsAreNotInventedOrDeleted() {
+        for (text in listOf(
+            "The quck brown fo jumps ver e",
+            "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+            "he k os",
+            "I", "l", "1"
+        )) {
+            val result = corrector.correct(text)
+            assertEquals(text, result.originalText)
+            assertEquals(text, result.correctedText)
+            assertTrue(result.suggestedCorrections.none { it.applied })
+        }
+    }
 }

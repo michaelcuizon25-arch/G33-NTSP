@@ -1,0 +1,110 @@
+{
+  "date": "2026-11-02",
+  "branch": "feature/ocr-accuracy-improvements",
+  "head": "587e0e6",
+  "initialWorkingTree": "clean",
+  "device": "5f4c58c6",
+  "installedBefore": {
+    "preservedApk": "installed-before-primary-diagnostics.apk",
+    "mode": "PADDLE_PRIMARY_WITH_CRNN_FALLBACK",
+    "offlineCorrection": true,
+    "primaryResearchExports": "not present before this change",
+    "openCv": false,
+    "crnnDiagnosticExports": false,
+    "pairedEvaluationExports": false,
+    "cclInvokesSideBorderGeometry": true,
+    "modelBytes": 7843511,
+    "modelSha256": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+    "dictionaryBytes": 1416,
+    "dictionarySha256": "e025a66d31f327ba0c232e03f407ae8d105e1e709e7ccb3f408aa778c24e70d6"
+  },
+  "installedNow": {
+    "mode": "PADDLE_PRIMARY_WITH_CRNN_FALLBACK",
+    "offlineCorrection": true,
+    "primaryResearchExports": true,
+    "installedWith": "adb -s 5f4c58c6 install -r",
+    "dataCleared": false,
+    "uninstalled": false,
+    "deviceSettingsChanged": false
+  },
+  "validation": {
+    "focusedUnit": {
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0
+    },
+    "fullUnit": {
+      "passed": 142,
+      "failed": 14,
+      "skipped": 1,
+      "note": "Failure count agrees with the checked-in baseline; no separate untouched baseline was run in this session. Full run preceded the final pangram regression; that regression and final raw-observer assertion passed in the last focused run."
+    },
+    "debugBuild": "passed",
+    "androidTestBuild": "passed",
+    "dictionaryPreBuildCheck": "passed",
+    "finalDeviceTests": {
+      "passed": 6,
+      "failed": 0,
+      "skipped": 1,
+      "runnerSeconds": 9.279,
+      "skippedTest": "configuredResearchPipelineRecordsActualCorrectionExecution; now separately gated by runFullPrimaryFixture=true",
+      "nativePaddlePreprocessingInferenceCtcParity": "passed",
+      "dictionaryIntegrity": "passed",
+      "researchCorrectionExport": "passed"
+    },
+    "fullFixtureAttempt": {
+      "status": "incomplete",
+      "timeoutSeconds": 180,
+      "completedTestsBeforeTimeout": 3,
+      "lastEvent": "CRNN invoke on physical line 7, 53x28 crop; no completion",
+      "processStoppedWithoutDataClear": true,
+      "scanId": "acb94c11-befa-47af-b6d3-2d797ea6c49f"
+    },
+    "gitDiffCheck": "passed"
+  },
+  "verifiedFixes": [
+    "Opt-in primary research diagnostics and observational-failure isolation",
+    "Recognized text removed from ordinary CRNN/pipeline logs",
+    "Instrumentation golden-tensor loader corrected for AAPT's decompressed .f32 packaging; manifest-shape regression added"
+  ],
+  "recognitionAlgorithmChanged": false,
+  "modelsDictionariesCtcChanged": false,
+  "correction": {
+    "vocabularyEntries": 542,
+    "reviewedAliases": 25,
+    "historicalPangramReplay": "all supplied strings unchanged; unit-tested, not a new OCR run",
+    "completedDeviceFixture": "correction requested, loaded and executed; output unchanged",
+    "historicalPhoneScanExecution": "unverified"
+  },
+  "evidence": {
+    "root": "evaluation/primary-device-validation-20261102",
+    "missingHistoricalFolder": "evaluation/run01/records",
+    "missingDevicePairedFolder": "files/paddle-comparisons",
+    "originalFourSentenceImage": "not identified",
+    "falseI": "Verified on separate board_test_5.jpg frame/reflection crop; exact cause of user's three I entries not established",
+    "filterDecision": "No threshold change or I/l/1 blacklist"
+  },
+  "filesModified": [
+    "app/build.gradle.kts",
+    "app/src/main/java/com/example/note2snap/ccl/ConnectedComponentLabeler.kt",
+    "app/src/main/java/com/example/note2snap/recognition/CrnnDiagnostics.kt",
+    "app/src/main/java/com/example/note2snap/recognition/CrnnLineRecognizer.kt",
+    "app/src/main/java/com/example/note2snap/recognition/PaddlePrimaryLineRecognizer.kt",
+    "app/src/main/java/com/example/note2snap/recognition/PrimaryOcrDiagnostics.kt",
+    "app/src/main/java/com/example/note2snap/recognition/SingleScanRecognitionMode.kt",
+    "app/src/main/java/com/example/note2snap/recognition/WhiteboardRecognitionPipeline.kt",
+    "app/src/test/java/com/example/note2snap/recognition/PaddlePrimaryRecognitionTest.kt",
+    "app/src/test/java/com/example/note2snap/correction/DictionaryTextCorrectorTest.kt",
+    "app/src/androidTest/java/com/example/note2snap/recognition/PaddleRecognitionDeviceTest.kt",
+    "app/src/androidTest/java/com/example/note2snap/recognition/PrimaryOcrDiagnosticsDeviceTest.kt",
+    "tools/InspectOcrApk.java",
+    "docs/PRIMARY_OCR_DIAGNOSTICS.md",
+    "docs/primary-ocr-diagnostics-validation.json"
+  ],
+  "remaining": [
+    "Original image and historical records required for exact four-line attribution and accuracy comparison",
+    "Native CRNN invocation stall on full fixture remains unresolved",
+    "Original three extra I entries and note editing/saving not validated"
+  ],
+  "gitActions": "No commit, push, merge, reset, stash or discard performed"
+}

@@ -74,82 +74,94 @@ class WhiteboardRecognitionPipeline(
         photo: Bitmap
     ): RecognitionPipelineResult = PerformanceDiagnostics.withSession(PerfFlow.PIPELINE) {
 
-        PerformanceDiagnostics.metric(PerfMetric.SOURCE_WIDTH, photo.width.toLong())
-        PerformanceDiagnostics.metric(PerfMetric.SOURCE_HEIGHT, photo.height.toLong())
-        PerformanceDiagnostics.metric(PerfMetric.CORRECTION_ENABLED, if (textCorrector != null) 1 else 0)
-        Log.i(RECOGNITION_LOG_TAG, "Scan source=${photo.width}x${photo.height}")
+        val research = (lineRecognizer as? PaddlePrimaryLineRecognizer)?.diagnostics
+        research?.begin(photo, textCorrector != null)
+        try {
+            PerformanceDiagnostics.metric(PerfMetric.SOURCE_WIDTH, photo.width.toLong())
+            PerformanceDiagnostics.metric(PerfMetric.SOURCE_HEIGHT, photo.height.toLong())
+            PerformanceDiagnostics.metric(PerfMetric.CORRECTION_ENABLED, if (textCorrector != null) 1 else 0)
+            Log.i(RECOGNITION_LOG_TAG, "Scan source=${photo.width}x${photo.height}")
 
-        val preprocessed =
-            PerformanceDiagnostics.measure(PerfStage.PREPROCESSING) { preprocessor.process(
-                photo
-            ) }
+            val preprocessed =
+                PerformanceDiagnostics.measure(PerfStage.PREPROCESSING) { preprocessor.process(
+                    photo
+                ) }
 
-        val regions =
-            PerformanceDiagnostics.measure(PerfStage.CCL) { labeler.label(
-                binary =
-                    preprocessed.binarizedBitmap,
+            val regions =
+                PerformanceDiagnostics.measure(PerfStage.CCL) { labeler.label(
+                    binary =
+                        preprocessed.binarizedBitmap,
 
-                recognitionBitmap =
-                    preprocessed.recognitionBitmap
-            ) }
+                    recognitionBitmap =
+                        preprocessed.recognitionBitmap,
+                    researchDecision = research?.let { writer -> { stage, box, accepted, median ->
+                        writer.component(stage, box, accepted, median)
+                    } }
+                ) }
+            research?.source(preprocessed.recognitionBitmap, regions)
 
-        Log.i(RECOGNITION_LOG_TAG, "Preprocessing recognition=${preprocessed.recognitionBitmap.width}x${preprocessed.recognitionBitmap.height} " +
-            "binary=${preprocessed.binarizedBitmap.width}x${preprocessed.binarizedBitmap.height}")
+            Log.i(RECOGNITION_LOG_TAG, "Preprocessing recognition=${preprocessed.recognitionBitmap.width}x${preprocessed.recognitionBitmap.height} " +
+                "binary=${preprocessed.binarizedBitmap.width}x${preprocessed.binarizedBitmap.height}")
 
-        val textRegions =
-            regions.filter {
-                it.type ==
-                        RegionType.TEXT
+            val textRegions =
+                regions.filter {
+                    it.type ==
+                            RegionType.TEXT
+                }
+
+            val diagramRegions =
+                regions.filter {
+                    it.type ==
+                            RegionType.NON_TEXT
+                }
+
+            Log.i(RECOGNITION_LOG_TAG, "CCL totalRegions=${regions.size} textRegions=${textRegions.size} nonTextRegions=${diagramRegions.size}")
+
+            PerformanceDiagnostics.metric(PerfMetric.TEXT_REGIONS, textRegions.size.toLong())
+            PerformanceDiagnostics.metric(PerfMetric.VISUAL_REGIONS, diagramRegions.size.toLong())
+            (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordSource(photo, preprocessed, regions)
+
+            (lineRecognizer as? CrnnLineRecognizer)?.recordEvaluationSource(photo, preprocessed.recognitionBitmap, regions)
+            val recognizedLines =
+                PerformanceDiagnostics.measureSuspending(PerfStage.RECOGNITION) { lineRecognizer.recognize(
+                    textRegions
+                ) }
+
+            val corrections = textCorrector?.let { PerformanceDiagnostics.measure(PerfStage.OFFLINE_CORRECTION) { correctRecognizedLines(recognizedLines, it) } }.orEmpty()
+            val correctedLines = if (textCorrector == null) recognizedLines else recognizedLines.mapIndexed { index, line ->
+                val text = corrections[index].result.correctedText
+                if (text == line.text) line else line.copy(text = text)
             }
+            (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordCorrections(textCorrector != null, corrections)
+            Log.i(RECOGNITION_LOG_TAG, "Offline correction enabled=${textCorrector != null} " +
+                "changedLines=${corrections.count { it.result.originalText != it.result.correctedText }}")
 
-        val diagramRegions =
-            regions.filter {
-                it.type ==
-                        RegionType.NON_TEXT
-            }
+            val structuredNote =
+                PerformanceDiagnostics.measure(PerfStage.STRUCTURING) { structurer.structure(
+                    correctedLines
+                ) }
 
-        Log.i(RECOGNITION_LOG_TAG, "CCL totalRegions=${regions.size} textRegions=${textRegions.size} nonTextRegions=${diagramRegions.size}")
+            (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordStructured(structuredNote)
+            Log.i(RECOGNITION_LOG_TAG, "Structuring recognizedLines=${recognizedLines.size} blocks=${structuredNote.blocks.size} " +
+                "readable=${RecognitionReadability.hasReadableWriting(recognizedLines)}")
+            research?.finish(recognizedLines, correctedLines, corrections, structuredNote)
 
-        PerformanceDiagnostics.metric(PerfMetric.TEXT_REGIONS, textRegions.size.toLong())
-        PerformanceDiagnostics.metric(PerfMetric.VISUAL_REGIONS, diagramRegions.size.toLong())
-        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordSource(photo, preprocessed, regions)
+            RecognitionPipelineResult(
+                structuredNote =
+                    structuredNote,
 
-        (lineRecognizer as? CrnnLineRecognizer)?.recordEvaluationSource(photo, preprocessed.recognitionBitmap, regions)
-        val recognizedLines =
-            PerformanceDiagnostics.measureSuspending(PerfStage.RECOGNITION) { lineRecognizer.recognize(
-                textRegions
-            ) }
+                recognizedLines =
+                    recognizedLines,
 
-        val corrections = textCorrector?.let { PerformanceDiagnostics.measure(PerfStage.OFFLINE_CORRECTION) { correctRecognizedLines(recognizedLines, it) } }.orEmpty()
-        val correctedLines = if (textCorrector == null) recognizedLines else recognizedLines.mapIndexed { index, line ->
-            val text = corrections[index].result.correctedText
-            if (text == line.text) line else line.copy(text = text)
+                diagramRegions =
+                    diagramRegions,
+                correctedLines = correctedLines,
+                textCorrections = corrections
+            )
+        } catch (error: Throwable) {
+            research?.failed(error)
+            throw error
         }
-        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordCorrections(textCorrector != null, corrections)
-        Log.i(RECOGNITION_LOG_TAG, "Offline correction enabled=${textCorrector != null} " +
-            "changedLines=${corrections.count { it.result.originalText != it.result.correctedText }}")
-
-        val structuredNote =
-            PerformanceDiagnostics.measure(PerfStage.STRUCTURING) { structurer.structure(
-                correctedLines
-            ) }
-
-        (lineRecognizer as? CrnnLineRecognizer)?.diagnostics?.recordStructured(structuredNote)
-        Log.i(RECOGNITION_LOG_TAG, "Structuring recognizedLines=${recognizedLines.size} blocks=${structuredNote.blocks.size} " +
-            "readable=${RecognitionReadability.hasReadableWriting(recognizedLines)} title=${org.json.JSONObject.quote(structuredNote.title)}")
-
-        RecognitionPipelineResult(
-            structuredNote =
-                structuredNote,
-
-            recognizedLines =
-                recognizedLines,
-
-            diagramRegions =
-                diagramRegions,
-            correctedLines = correctedLines,
-            textCorrections = corrections
-        )
     }
 
     fun close() {

@@ -1,0 +1,11 @@
+{
+  "tracks": "[Track(intercept=108.50813659601297, slope=0.00476252315239774, peer=28, top=340, bottom=1300, support=0.6962962962962963, third=48)]",
+  "detectAndVerifyNs": 260641400,
+  "fragments": "[true, true, true, true]",
+  "checks": [
+    "box=Rect(111, 879 - 121, 1051) count=534 dark=6.716292134831461 absolute=7.0177902621722845 strong=27 unavailable=false",
+    "box=Rect(112, 1064 - 116, 1085) count=40 dark=3.0375 absolute=3.5375 strong=0 unavailable=false",
+    "box=Rect(112, 1101 - 116, 1120) count=41 dark=4.609756097560975 absolute=4.682926829268292 strong=0 unavailable=false",
+    "box=Rect(111, 1180 - 115, 1198) count=39 dark=4.898980537534754 absolute=5.091288229842447 strong=0 unavailable=false"
+  ]
+}

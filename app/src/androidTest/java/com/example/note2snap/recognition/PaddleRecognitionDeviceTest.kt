@@ -10,7 +10,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.zip.GZIPInputStream
 
 /** Runs only on Android: native OpenCV pixels and bundled ORT CPU output against pinned host references. */
 @RunWith(AndroidJUnit4::class)
@@ -18,8 +17,25 @@ class PaddleRecognitionDeviceTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val assets get() = instrumentation.context.assets
     private fun floats(name: String): FloatArray {
-        val bytes = assets.open("paddle_reference/$name.f32.gz").use { input -> GZIPInputStream(input).use { it.readBytes() } }
+        // AAPT decompresses source .gz assets and packages them without the .gz suffix.
+        val bytes = assets.open("paddle_reference/$name.f32").use { it.readBytes() }
+        require(bytes.size % 4 == 0) { "Invalid golden float payload: $name" }
         return FloatArray(bytes.size / 4).also { ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(it) }
+    }
+
+    @Test fun packagedGoldenTensorPayloadsMatchManifestShapes() {
+        val manifest = assets.open("paddle_reference/manifest.json").use { JSONObject(it.bufferedReader().readText()) }
+        val fixtures = manifest.getJSONArray("fixtures")
+        for (index in 0 until fixtures.length()) {
+            val fixture = fixtures.getJSONObject(index)
+            fun elements(key: String): Int {
+                val shape = fixture.getJSONArray(key)
+                return (0 until shape.length()).fold(1) { total, axis -> total * shape.getInt(axis) }
+            }
+            val name = fixture.getString("name")
+            assertEquals(elements("inputShape"), floats(name).size)
+            assertEquals(elements("outputShape"), floats("$name-output").size)
+        }
     }
 
     /** Isolates actual APK dictionary loading from native model initialization. */

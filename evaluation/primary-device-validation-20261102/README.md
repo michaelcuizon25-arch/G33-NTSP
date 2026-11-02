@@ -1,0 +1,1 @@
+Research-only exports from device 5f4c58c6. Instrumentation fixture board_test_5.jpg is not the user's original four-sentence whiteboard. Historical evaluation/run01/records was absent; do not treat these exports as restored records.

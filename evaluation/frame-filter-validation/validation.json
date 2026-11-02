@@ -1,0 +1,246 @@
+{
+  "date": "2026-11-02",
+  "branch": "feature/ocr-accuracy-improvements",
+  "device": "5f4c58c6",
+  "beforeScan": "90bc382b-9eb9-4da4-993b-bfd729ed6038",
+  "afterScan": "f7f6bf3a-63a8-4c59-bc7d-f8bcf53a9e5b",
+  "sourceSha256": "236b9f79d837acbe5ef9ee08f17b01a13ba324e247466afb161a808ef561f9c6",
+  "modelSha256": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+  "dictionarySha256": "e025a66d31f327ba0c232e03f407ae8d105e1e709e7ccb3f408aa778c24e70d6",
+  "mode": "PADDLE_PRIMARY_WITH_CRNN_FALLBACK",
+  "revision": "frame-track-v1.1+side-border-587e0e6",
+  "correctionExecuted": true,
+  "counts": {
+    "beforeRegions": 8,
+    "afterRegions": 4,
+    "beforeNonblankOutputs": 7,
+    "afterNonblankOutputs": 4,
+    "beforeStructuredBlocks": 6,
+    "afterStructuredBlocks": 4,
+    "beforeFalseI": 3,
+    "afterFalseI": 0,
+    "rejectedRawFrameComponents": 0
+  },
+  "lines": [
+    {
+      "lineId": 1,
+      "regionId": 100000,
+      "box": [
+        264,
+        505,
+        1151,
+        587
+      ],
+      "cropWidth": 887,
+      "cropHeight": 82,
+      "crop": "line-1.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "The quck brown fo jumps ver e ",
+      "paddleElapsedNs": 1611000052,
+      "paddleFailure": null,
+      "outputIndices": [
+        0
+      ]
+    },
+    {
+      "lineId": 2,
+      "regionId": 100001,
+      "box": [
+        261,
+        601,
+        1318,
+        666
+      ],
+      "cropWidth": 1057,
+      "cropHeight": 65,
+      "crop": "line-2.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+      "paddleElapsedNs": 588176718,
+      "paddleFailure": null,
+      "outputIndices": [
+        1
+      ]
+    },
+    {
+      "lineId": 3,
+      "regionId": 100002,
+      "box": [
+        135,
+        697,
+        1305,
+        805
+      ],
+      "cropWidth": 1170,
+      "cropHeight": 108,
+      "crop": "line-3.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "he k  os   ",
+      "paddleElapsedNs": 356604114,
+      "paddleFailure": null,
+      "outputIndices": [
+        2
+      ]
+    },
+    {
+      "lineId": 4,
+      "regionId": 100003,
+      "box": [
+        262,
+        799,
+        1391,
+        879
+      ],
+      "cropWidth": 1129,
+      "cropHeight": 80,
+      "crop": "line-4.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.",
+      "paddleElapsedNs": 455622292,
+      "paddleFailure": null,
+      "outputIndices": [
+        3
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "outputIndex": 0,
+      "regionId": 100000,
+      "box": [
+        264,
+        505,
+        1151,
+        587
+      ],
+      "rawText": "The quck brown fo jumps ver e",
+      "correctedText": "The quck brown fo jumps ver e",
+      "correctionSkippedReason": null,
+      "suggestions": []
+    },
+    {
+      "outputIndex": 1,
+      "regionId": 100001,
+      "box": [
+        261,
+        601,
+        1318,
+        666
+      ],
+      "rawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+      "correctedText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+      "correctionSkippedReason": null,
+      "suggestions": []
+    },
+    {
+      "outputIndex": 2,
+      "regionId": 100002,
+      "box": [
+        135,
+        697,
+        1305,
+        805
+      ],
+      "rawText": "he k os",
+      "correctedText": "he k os",
+      "correctionSkippedReason": null,
+      "suggestions": []
+    },
+    {
+      "outputIndex": 3,
+      "regionId": 100003,
+      "box": [
+        262,
+        799,
+        1391,
+        879
+      ],
+      "rawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.",
+      "correctedText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.",
+      "correctionSkippedReason": null,
+      "suggestions": []
+    }
+  ],
+  "structuredNote": {
+    "title": "The quck brown fo jumps ver e",
+    "blocks": [
+      {
+        "rawText": "The quck brown fo jumps ver e",
+        "formattedText": "<big><b>The quck brown fo jumps ver e</b></big>",
+        "type": "SECTION_HEADER",
+        "box": [
+          264,
+          505,
+          1151,
+          587
+        ]
+      },
+      {
+        "rawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+        "formattedText": "<u><b>THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG</b></u>",
+        "type": "SECTION_HEADER",
+        "box": [
+          261,
+          601,
+          1318,
+          666
+        ]
+      },
+      {
+        "rawText": "he k os",
+        "formattedText": "he k os",
+        "type": "REGULAR_TEXT",
+        "box": [
+          135,
+          697,
+          1305,
+          805
+        ]
+      },
+      {
+        "rawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.",
+        "formattedText": "<u><b>THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.</b></u>",
+        "type": "SECTION_HEADER",
+        "box": [
+          262,
+          799,
+          1391,
+          879
+        ]
+      }
+    ]
+  },
+  "tests": {
+    "broaderFocusedPassed": 55,
+    "finalFocusedPassed": 16,
+    "fullSuite": {
+      "passed": 153,
+      "failed": 14,
+      "skipped": 1,
+      "note": "Existing CRNN diagnostic/structuring failures; full suite was run before final detector performance-only changes."
+    },
+    "finalDevice": {
+      "passed": 9,
+      "skipped": 1,
+      "note": "Original-source replay plus native companions; unrelated full fixture is opt-in and skipped."
+    }
+  },
+  "timing": {
+    "coldFrameDetectorMs": [
+      618.036302,
+      973.034323
+    ],
+    "finalResearchPipelineMs": 17908,
+    "note": "Variable cold research-export runs; no established end-to-end speedup."
+  },
+  "limits": [
+    "Lowercase OCR errors unchanged.",
+    "Ambiguous frame pixels remain in mixed third-line crop.",
+    "Manual editor UI not verified; isolated Room edit/save/reload passed without changing user notes.",
+    "Conservative near-vertical neutral grooved-frame heuristic; broader real-world coverage unproven."
+  ]
+}

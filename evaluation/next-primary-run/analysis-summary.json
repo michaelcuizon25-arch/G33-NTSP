@@ -1,0 +1,327 @@
+{
+  "scanId": "90bc382b-9eb9-4da4-993b-bfd729ed6038",
+  "status": "completed",
+  "sourceDimensions": [
+    4032,
+    3024
+  ],
+  "recognitionDimensions": [
+    1800,
+    1350
+  ],
+  "sourcePngSha256": "236b9f79d837acbe5ef9ee08f17b01a13ba324e247466afb161a808ef561f9c6",
+  "recognitionMode": "PADDLE_PRIMARY_WITH_CRNN_FALLBACK",
+  "correctionRequested": true,
+  "correctionLoaded": true,
+  "correctionExecuted": true,
+  "correctionChangedOutputs": 0,
+  "suggestionCount": 0,
+  "normalizedSentencePredictionsMatchUserSuppliedBaseline": [
+    true,
+    true,
+    true,
+    true
+  ],
+  "modelSha256": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+  "dictionarySha256": "e025a66d31f327ba0c232e03f407ae8d105e1e709e7ccb3f408aa778c24e70d6",
+  "lineDecisions": [
+    {
+      "lineId": 1,
+      "regionId": 100000,
+      "box": [
+        264,
+        505,
+        1151,
+        587
+      ],
+      "paddleRawText": "The quck brown fo jumps ver e ",
+      "crnnRawText": null,
+      "crnnRan": false,
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleAttemptMs": 1090.330989,
+      "crnnAttemptMs": null,
+      "outputs": [
+        {
+          "outputIndex": 0,
+          "regionId": 100000,
+          "box": [
+            264,
+            505,
+            1151,
+            587
+          ],
+          "rawText": "The quck brown fo jumps ver e",
+          "correctedText": "The quck brown fo jumps ver e",
+          "correctionSkippedReason": null,
+          "suggestions": []
+        }
+      ]
+    },
+    {
+      "lineId": 2,
+      "regionId": 100003,
+      "box": [
+        135,
+        601,
+        1318,
+        666
+      ],
+      "paddleRawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+      "crnnRawText": null,
+      "crnnRan": false,
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleAttemptMs": 670.181354,
+      "crnnAttemptMs": null,
+      "outputs": [
+        {
+          "outputIndex": 1,
+          "regionId": 100003,
+          "box": [
+            135,
+            601,
+            1318,
+            666
+          ],
+          "rawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+          "correctedText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+          "correctionSkippedReason": null,
+          "suggestions": []
+        }
+      ]
+    },
+    {
+      "lineId": 3,
+      "regionId": 100006,
+      "box": [
+        135,
+        697,
+        1305,
+        805
+      ],
+      "paddleRawText": "he k  os   ",
+      "crnnRawText": null,
+      "crnnRan": false,
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleAttemptMs": 353.094948,
+      "crnnAttemptMs": null,
+      "outputs": [
+        {
+          "outputIndex": 2,
+          "regionId": 100006,
+          "box": [
+            135,
+            697,
+            1305,
+            805
+          ],
+          "rawText": "he k os",
+          "correctedText": "he k os",
+          "correctionSkippedReason": null,
+          "suggestions": []
+        }
+      ]
+    },
+    {
+      "lineId": 4,
+      "regionId": 100008,
+      "box": [
+        134,
+        799,
+        1391,
+        879
+      ],
+      "paddleRawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+      "crnnRawText": null,
+      "crnnRan": false,
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleAttemptMs": 513.136927,
+      "crnnAttemptMs": null,
+      "outputs": [
+        {
+          "outputIndex": 3,
+          "regionId": 100008,
+          "box": [
+            134,
+            799,
+            1391,
+            879
+          ],
+          "rawText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+          "correctedText": "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+          "correctionSkippedReason": null,
+          "suggestions": []
+        }
+      ]
+    },
+    {
+      "lineId": 5,
+      "regionId": 100010,
+      "box": [
+        100,
+        810,
+        131,
+        1065
+      ],
+      "paddleRawText": "",
+      "crnnRawText": "",
+      "crnnRan": true,
+      "selectedEngine": "crnn_fallback",
+      "reason": "unusable_output",
+      "paddleAttemptMs": 205.430365,
+      "crnnAttemptMs": 1964.782186,
+      "outputs": []
+    },
+    {
+      "lineId": 6,
+      "regionId": 100011,
+      "box": [
+        102,
+        1058,
+        126,
+        1091
+      ],
+      "paddleRawText": "I",
+      "crnnRawText": null,
+      "crnnRan": false,
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleAttemptMs": 198.564688,
+      "crnnAttemptMs": null,
+      "outputs": [
+        {
+          "outputIndex": 4,
+          "regionId": 100011,
+          "box": [
+            102,
+            1058,
+            126,
+            1091
+          ],
+          "rawText": "I",
+          "correctedText": "I",
+          "correctionSkippedReason": null,
+          "suggestions": []
+        }
+      ]
+    },
+    {
+      "lineId": 7,
+      "regionId": 100013,
+      "box": [
+        103,
+        1090,
+        126,
+        1126
+      ],
+      "paddleRawText": "I",
+      "crnnRawText": null,
+      "crnnRan": false,
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleAttemptMs": 203.881823,
+      "crnnAttemptMs": null,
+      "outputs": [
+        {
+          "outputIndex": 5,
+          "regionId": 100013,
+          "box": [
+            103,
+            1090,
+            126,
+            1126
+          ],
+          "rawText": "I",
+          "correctedText": "I",
+          "correctionSkippedReason": null,
+          "suggestions": []
+        }
+      ]
+    },
+    {
+      "lineId": 8,
+      "regionId": 100015,
+      "box": [
+        102,
+        1174,
+        125,
+        1204
+      ],
+      "paddleRawText": "I",
+      "crnnRawText": null,
+      "crnnRan": false,
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleAttemptMs": 199.556615,
+      "crnnAttemptMs": null,
+      "outputs": [
+        {
+          "outputIndex": 6,
+          "regionId": 100015,
+          "box": [
+            102,
+            1174,
+            125,
+            1204
+          ],
+          "rawText": "I",
+          "correctedText": "I",
+          "correctionSkippedReason": null,
+          "suggestions": []
+        }
+      ]
+    }
+  ],
+  "falsePositiveLineIds": [
+    6,
+    7,
+    8
+  ],
+  "frameOnlyLineIds": [
+    5,
+    6,
+    7,
+    8
+  ],
+  "currentBorderThresholds": {
+    "imageWidth": 1800,
+    "imageHeight": 1350,
+    "medianTextHeight": 32,
+    "edgeBand": 12,
+    "maxStrokeWidth": 8,
+    "minimumHeight": 135,
+    "minimumAspectRatio": 12
+  },
+  "falsePositiveRawComponents": [
+    [
+      112,
+      1064,
+      116,
+      1085
+    ],
+    [
+      112,
+      1101,
+      116,
+      1120
+    ],
+    [
+      111,
+      1180,
+      115,
+      1198
+    ]
+  ],
+  "rootCause": "CCL accepts fragmented inset board-frame components as text; image-edge/tall-component filter does not match their position or length. Paddle usable-text selection retains I and therefore never requests CRNN. Correction and structuring preserve those predictions.",
+  "recommendation": "Use conservative image-context board-frame verification upstream of text grouping; require independent long-edge/collinear track support and abstain on ambiguity. Do not use character blacklists or CRNN blank as a veto.",
+  "unverified": [
+    "Exact byte identity with the earlier controlled source image",
+    "Current CRNN predictions on physical lines 6-8 (not run)",
+    "Effect of removing the frame from mixed text/frame crops",
+    "Generalization and glyph-preservation of a prospective context-aware filter"
+  ],
+  "productionCodeChangedThisInvestigation": false
+}

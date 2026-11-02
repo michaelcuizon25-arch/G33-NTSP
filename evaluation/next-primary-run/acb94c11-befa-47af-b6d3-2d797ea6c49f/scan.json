@@ -1,0 +1,9719 @@
+{
+  "schemaVersion": 1,
+  "scanId": "acb94c11-befa-47af-b6d3-2d797ea6c49f",
+  "status": "started",
+  "sourceWidth": 4032,
+  "sourceHeight": 3024,
+  "recognitionMode": "PADDLE_PRIMARY_WITH_CRNN_FALLBACK",
+  "correctionRequested": true,
+  "correctionLoaded": true,
+  "openCvRequested": false,
+  "borderFilterRevision": "side-border-587e0e6",
+  "coordinateSpace": "recognition image; right\/bottom exclusive",
+  "lines": [
+    {
+      "lineId": 1,
+      "regionId": 100001,
+      "box": [
+        206,
+        334,
+        959,
+        408
+      ],
+      "cropWidth": 753,
+      "cropHeight": 74,
+      "crop": "line-1.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "Mobile Application Development",
+      "paddleElapsedNs": 765694739,
+      "paddleFailure": null,
+      "outputIndices": [
+        0
+      ]
+    },
+    {
+      "lineId": 2,
+      "regionId": 100003,
+      "box": [
+        1696,
+        396,
+        1769,
+        431
+      ],
+      "cropWidth": 73,
+      "cropHeight": 35,
+      "crop": "line-2.png",
+      "selectedEngine": "crnn_fallback",
+      "reason": "unusable_output",
+      "paddleRawText": "",
+      "paddleElapsedNs": 213146093,
+      "paddleFailure": null,
+      "crnnRawText": "",
+      "crnnElapsedNs": 2142980833,
+      "crnnFailure": null,
+      "outputIndices": []
+    },
+    {
+      "lineId": 3,
+      "regionId": 100004,
+      "box": [
+        1641,
+        423,
+        1768,
+        450
+      ],
+      "cropWidth": 127,
+      "cropHeight": 27,
+      "crop": "line-3.png",
+      "selectedEngine": "crnn_fallback",
+      "reason": "unusable_output",
+      "paddleRawText": "",
+      "paddleElapsedNs": 277567344,
+      "paddleFailure": null,
+      "crnnRawText": "",
+      "crnnElapsedNs": 1209369270,
+      "crnnFailure": null,
+      "outputIndices": []
+    },
+    {
+      "lineId": 4,
+      "regionId": 100005,
+      "box": [
+        211,
+        434,
+        624,
+        505
+      ],
+      "cropWidth": 413,
+      "cropHeight": 71,
+      "crop": "line-4.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "LECTURE SERIES",
+      "paddleElapsedNs": 223522500,
+      "paddleFailure": null,
+      "outputIndices": [
+        1
+      ]
+    },
+    {
+      "lineId": 5,
+      "regionId": 100006,
+      "box": [
+        1745,
+        442,
+        1796,
+        487
+      ],
+      "cropWidth": 51,
+      "cropHeight": 45,
+      "crop": "line-5.png",
+      "selectedEngine": "paddle",
+      "reason": "usable_text",
+      "paddleRawText": "I",
+      "paddleElapsedNs": 760676614,
+      "paddleFailure": null,
+      "outputIndices": [
+        2
+      ]
+    },
+    {
+      "lineId": 6,
+      "regionId": 100007,
+      "box": [
+        1653,
+        464,
+        1767,
+        499
+      ],
+      "cropWidth": 114,
+      "cropHeight": 35,
+      "crop": "line-6.png",
+      "selectedEngine": "crnn_fallback",
+      "reason": "unusable_output",
+      "paddleRawText": "",
+      "paddleElapsedNs": 1575746457,
+      "paddleFailure": null,
+      "crnnRawText": "",
+      "crnnElapsedNs": 3712023801,
+      "crnnFailure": null,
+      "outputIndices": []
+    },
+    {
+      "lineId": 7,
+      "regionId": 100008,
+      "box": [
+        1716,
+        484,
+        1769,
+        512
+      ],
+      "cropWidth": 53,
+      "cropHeight": 28,
+      "crop": "line-7.png",
+      "selectedEngine": "pending",
+      "reason": null,
+      "paddleRawText": "",
+      "paddleElapsedNs": 493657708,
+      "paddleFailure": null
+    }
+  ],
+  "filterDecisions": [
+    {
+      "stage": "raw_component",
+      "box": [
+        593,
+        101,
+        594,
+        103
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1126,
+        105,
+        1127,
+        108
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1126,
+        109,
+        1130,
+        113
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        18,
+        118,
+        22,
+        122
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        599,
+        118,
+        600,
+        121
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        14,
+        124,
+        1786,
+        147
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        993,
+        131,
+        996,
+        132
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        600,
+        134,
+        603,
+        135
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        618,
+        134,
+        629,
+        135
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        943,
+        137,
+        946,
+        138
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        907,
+        138,
+        909,
+        141
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        952,
+        139,
+        967,
+        142
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1095,
+        140,
+        1096,
+        142
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        909,
+        142,
+        913,
+        144
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        932,
+        142,
+        936,
+        144
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        474,
+        150,
+        480,
+        153
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1622,
+        151,
+        1626,
+        153
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        481,
+        152,
+        490,
+        154
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        979,
+        152,
+        980,
+        154
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        491,
+        153,
+        493,
+        155
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        495,
+        154,
+        507,
+        157
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        979,
+        155,
+        980,
+        157
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        492,
+        158,
+        493,
+        160
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        469,
+        159,
+        471,
+        161
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        128,
+        164,
+        131,
+        166
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        975,
+        164,
+        978,
+        171
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        438,
+        169,
+        450,
+        180
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        863,
+        172,
+        864,
+        174
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        188,
+        185,
+        189,
+        187
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        272,
+        186,
+        278,
+        190
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        806,
+        188,
+        810,
+        191
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        294,
+        190,
+        299,
+        194
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        14,
+        196,
+        1786,
+        216
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        14,
+        219,
+        1786,
+        1340
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1170,
+        244,
+        1179,
+        246
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1661,
+        244,
+        1667,
+        246
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        834,
+        246,
+        846,
+        253
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        792,
+        247,
+        797,
+        254
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        863,
+        247,
+        869,
+        251
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        17,
+        250,
+        19,
+        252
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        56,
+        250,
+        59,
+        251
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        683,
+        251,
+        686,
+        252
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        14,
+        253,
+        254,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        683,
+        253,
+        689,
+        259
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        707,
+        255,
+        711,
+        257
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1575,
+        264,
+        1643,
+        271
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1697,
+        264,
+        1724,
+        270
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1725,
+        264,
+        1740,
+        270
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1742,
+        264,
+        1755,
+        270
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1446,
+        265,
+        1448,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1644,
+        265,
+        1660,
+        271
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1678,
+        265,
+        1685,
+        270
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1418,
+        266,
+        1429,
+        272
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1439,
+        266,
+        1441,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1659,
+        266,
+        1677,
+        271
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        89,
+        267,
+        93,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1170,
+        267,
+        1172,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1227,
+        267,
+        1229,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1321,
+        267,
+        1325,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1411,
+        267,
+        1413,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1450,
+        267,
+        1454,
+        268
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1443,
+        267,
+        1482,
+        273
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1482,
+        267,
+        1497,
+        270
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1525,
+        267,
+        1557,
+        272
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1557,
+        267,
+        1561,
+        269
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1562,
+        267,
+        1573,
+        271
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1686,
+        267,
+        1695,
+        270
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        115,
+        268,
+        121,
+        269
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        239,
+        268,
+        422,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        428,
+        268,
+        504,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        978,
+        268,
+        1293,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1277,
+        268,
+        1279,
+        269
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1292,
+        268,
+        1418,
+        273
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1430,
+        268,
+        1436,
+        272
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1500,
+        268,
+        1504,
+        272
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1505,
+        268,
+        1511,
+        272
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1511,
+        268,
+        1524,
+        271
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        421,
+        269,
+        426,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        429,
+        269,
+        430,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        502,
+        269,
+        504,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        507,
+        269,
+        591,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        593,
+        269,
+        620,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        621,
+        269,
+        657,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        709,
+        269,
+        850,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        496,
+        270,
+        500,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        660,
+        270,
+        682,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        683,
+        270,
+        707,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        868,
+        270,
+        869,
+        272
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        939,
+        270,
+        959,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        857,
+        271,
+        900,
+        276
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        907,
+        271,
+        935,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        936,
+        271,
+        939,
+        272
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        959,
+        271,
+        975,
+        275
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        915,
+        274,
+        918,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        921,
+        274,
+        932,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        711,
+        288,
+        713,
+        291
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        893,
+        289,
+        894,
+        291
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1755,
+        294,
+        1757,
+        296
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        600,
+        314,
+        602,
+        317
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        292,
+        340,
+        297,
+        344
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        556,
+        340,
+        578,
+        385
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        216,
+        341,
+        247,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        402,
+        341,
+        430,
+        389
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        691,
+        342,
+        718,
+        384
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        303,
+        343,
+        313,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        930,
+        343,
+        949,
+        382
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        485,
+        345,
+        494,
+        382
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        268,
+        346,
+        293,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        495,
+        346,
+        500,
+        351
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        785,
+        347,
+        792,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        586,
+        348,
+        591,
+        352
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        721,
+        350,
+        742,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        312,
+        351,
+        334,
+        378
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        292,
+        352,
+        300,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        247,
+        353,
+        267,
+        377
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        742,
+        353,
+        762,
+        380
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        763,
+        353,
+        782,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        506,
+        354,
+        530,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        497,
+        355,
+        502,
+        378
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        796,
+        355,
+        817,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        882,
+        355,
+        930,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        459,
+        356,
+        482,
+        402
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        533,
+        356,
+        556,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        584,
+        357,
+        592,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        593,
+        357,
+        613,
+        384
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        613,
+        358,
+        636,
+        384
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        820,
+        358,
+        842,
+        396
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        433,
+        359,
+        453,
+        402
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        844,
+        359,
+        879,
+        382
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        359,
+        1786,
+        361
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1742,
+        368,
+        1758,
+        375
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1768,
+        371,
+        1769,
+        373
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1730,
+        374,
+        1739,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        375,
+        1786,
+        378
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1721,
+        378,
+        1728,
+        381
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1056,
+        379,
+        1057,
+        381
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1126,
+        380,
+        1128,
+        381
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1768,
+        380,
+        1771,
+        381
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1713,
+        382,
+        1717,
+        384
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        252,
+        385,
+        254,
+        386
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1707,
+        385,
+        1709,
+        386
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        328,
+        387,
+        336,
+        389
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1758,
+        387,
+        1759,
+        389
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1692,
+        388,
+        1696,
+        391
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        776,
+        389,
+        779,
+        390
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        800,
+        389,
+        805,
+        391
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1738,
+        389,
+        1756,
+        397
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        771,
+        390,
+        775,
+        391
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1052,
+        391,
+        1053,
+        393
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        886,
+        392,
+        888,
+        393
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1107,
+        392,
+        1110,
+        393
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        518,
+        393,
+        529,
+        395
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        597,
+        393,
+        599,
+        395
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        729,
+        393,
+        737,
+        395
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1679,
+        393,
+        1685,
+        394
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        600,
+        394,
+        603,
+        395
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1731,
+        394,
+        1736,
+        399
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1664,
+        397,
+        1671,
+        400
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1654,
+        398,
+        1663,
+        403
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1721,
+        398,
+        1728,
+        400
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1718,
+        400,
+        1720,
+        401
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1711,
+        402,
+        1718,
+        404
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        824,
+        404,
+        826,
+        407
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1650,
+        404,
+        1653,
+        406
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        404,
+        1786,
+        407
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1642,
+        406,
+        1643,
+        408
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1700,
+        406,
+        1705,
+        409
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1706,
+        408,
+        1759,
+        425
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1761,
+        408,
+        1764,
+        409
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1686,
+        410,
+        1693,
+        412
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1625,
+        411,
+        1628,
+        413
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1675,
+        413,
+        1676,
+        415
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1767,
+        413,
+        1768,
+        416
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1619,
+        414,
+        1621,
+        415
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1666,
+        414,
+        1674,
+        418
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1614,
+        415,
+        1618,
+        418
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1603,
+        418,
+        1605,
+        420
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1659,
+        419,
+        1663,
+        421
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1653,
+        420,
+        1654,
+        423
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        322,
+        421,
+        323,
+        423
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1592,
+        422,
+        1597,
+        425
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1649,
+        422,
+        1652,
+        425
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        422,
+        1786,
+        425
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1700,
+        423,
+        1705,
+        426
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1643,
+        424,
+        1647,
+        426
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1693,
+        426,
+        1698,
+        428
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1629,
+        427,
+        1636,
+        430
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1686,
+        428,
+        1692,
+        430
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1707,
+        429,
+        1758,
+        444
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1623,
+        431,
+        1625,
+        432
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1642,
+        432,
+        1670,
+        443
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1675,
+        432,
+        1680,
+        434
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        432,
+        1786,
+        440
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1614,
+        433,
+        1617,
+        435
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1609,
+        435,
+        1611,
+        436
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        254,
+        440,
+        275,
+        479
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        221,
+        441,
+        252,
+        476
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        442,
+        1786,
+        445
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1629,
+        443,
+        1638,
+        447
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1639,
+        443,
+        1641,
+        444
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1702,
+        443,
+        1706,
+        444
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        277,
+        444,
+        302,
+        477
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1697,
+        444,
+        1700,
+        447
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1620,
+        446,
+        1625,
+        449
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1626,
+        446,
+        1628,
+        447
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1689,
+        446,
+        1693,
+        448
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1783,
+        446,
+        1786,
+        451
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        309,
+        448,
+        335,
+        484
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        373,
+        448,
+        399,
+        484
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1618,
+        448,
+        1620,
+        450
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1673,
+        448,
+        1686,
+        454
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        341,
+        449,
+        366,
+        481
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1645,
+        449,
+        1761,
+        477
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1607,
+        450,
+        1614,
+        453
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1615,
+        450,
+        1617,
+        451
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1650,
+        453,
+        1666,
+        460
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1767,
+        453,
+        1768,
+        457
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        402,
+        454,
+        419,
+        484
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        479,
+        454,
+        503,
+        490
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1596,
+        454,
+        1598,
+        456
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        454,
+        1786,
+        457
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        506,
+        457,
+        526,
+        491
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        527,
+        457,
+        552,
+        493
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1587,
+        457,
+        1589,
+        459
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        558,
+        458,
+        567,
+        490
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        571,
+        459,
+        589,
+        493
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1639,
+        459,
+        1643,
+        461
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        591,
+        460,
+        614,
+        499
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1581,
+        460,
+        1583,
+        461
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1644,
+        460,
+        1646,
+        461
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        461,
+        1786,
+        464
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1625,
+        463,
+        1632,
+        465
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1620,
+        464,
+        1623,
+        466
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1766,
+        464,
+        1770,
+        469
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1613,
+        468,
+        1615,
+        469
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1783,
+        468,
+        1786,
+        481
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1662,
+        470,
+        1757,
+        493
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1768,
+        473,
+        1769,
+        475
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1771,
+        473,
+        1772,
+        476
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1536,
+        475,
+        1539,
+        477
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1626,
+        477,
+        1644,
+        482
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1628,
+        478,
+        1630,
+        479
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1610,
+        481,
+        1620,
+        485
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1621,
+        482,
+        1623,
+        483
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1598,
+        484,
+        1607,
+        488
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        485,
+        1786,
+        486
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1769,
+        486,
+        1770,
+        488
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1582,
+        488,
+        1598,
+        492
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1767,
+        489,
+        1769,
+        496
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        489,
+        1786,
+        497
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1650,
+        490,
+        1661,
+        495
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1681,
+        490,
+        1759,
+        506
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1646,
+        493,
+        1648,
+        496
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1639,
+        494,
+        1645,
+        496
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1632,
+        496,
+        1638,
+        497
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        949,
+        497,
+        954,
+        500
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1621,
+        498,
+        1627,
+        501
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        563,
+        499,
+        565,
+        500
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        518,
+        500,
+        520,
+        501
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1608,
+        501,
+        1611,
+        502
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1614,
+        501,
+        1618,
+        502
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1785,
+        502,
+        1786,
+        506
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1609,
+        503,
+        1611,
+        504
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1766,
+        503,
+        1768,
+        506
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1591,
+        506,
+        1593,
+        507
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1668,
+        506,
+        1680,
+        509
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1584,
+        507,
+        1586,
+        508
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1625,
+        507,
+        1667,
+        517
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1784,
+        507,
+        1786,
+        530
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1689,
+        512,
+        1757,
+        525
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1607,
+        515,
+        1623,
+        520
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1593,
+        519,
+        1604,
+        522
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1587,
+        521,
+        1592,
+        523
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1107,
+        523,
+        1111,
+        525
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1125,
+        523,
+        1130,
+        525
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1675,
+        523,
+        1686,
+        526
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1652,
+        524,
+        1674,
+        530
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1627,
+        528,
+        1650,
+        534
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1693,
+        531,
+        1759,
+        542
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1768,
+        532,
+        1770,
+        533
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1611,
+        533,
+        1621,
+        537
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1609,
+        534,
+        1611,
+        535
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1585,
+        535,
+        1607,
+        541
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1598,
+        539,
+        1692,
+        554
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1765,
+        539,
+        1768,
+        550
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1575,
+        542,
+        1578,
+        543
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1685,
+        552,
+        1758,
+        562
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        810,
+        553,
+        827,
+        582
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1586,
+        554,
+        1592,
+        556
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1593,
+        554,
+        1596,
+        556
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        738,
+        556,
+        745,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        222,
+        557,
+        227,
+        595
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        614,
+        559,
+        634,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1634,
+        560,
+        1685,
+        568
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        524,
+        561,
+        530,
+        567
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        419,
+        563,
+        424,
+        566
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        538,
+        563,
+        560,
+        592
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        559,
+        563,
+        581,
+        593
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        773,
+        563,
+        793,
+        598
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        393,
+        564,
+        410,
+        599
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        287,
+        565,
+        294,
+        600
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        794,
+        565,
+        811,
+        584
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1607,
+        565,
+        1633,
+        571
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        638,
+        566,
+        672,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        748,
+        566,
+        766,
+        586
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        673,
+        568,
+        692,
+        587
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1579,
+        568,
+        1604,
+        574
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        295,
+        571,
+        315,
+        599
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        350,
+        571,
+        369,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        499,
+        571,
+        525,
+        595
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        529,
+        571,
+        538,
+        593
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1595,
+        571,
+        1758,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        374,
+        573,
+        396,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        416,
+        573,
+        422,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1484,
+        573,
+        1488,
+        576
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        425,
+        574,
+        467,
+        619
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        229,
+        575,
+        265,
+        610
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        317,
+        575,
+        350,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1764,
+        576,
+        1768,
+        595
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        266,
+        577,
+        285,
+        622
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1579,
+        586,
+        1592,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1593,
+        586,
+        1594,
+        588
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1714,
+        592,
+        1758,
+        598
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1618,
+        595,
+        1713,
+        604
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1764,
+        596,
+        1766,
+        598
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1578,
+        600,
+        1615,
+        606
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1618,
+        603,
+        1620,
+        604
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1575,
+        604,
+        1576,
+        607
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1285,
+        607,
+        1286,
+        611
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1597,
+        612,
+        1756,
+        620
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        232,
+        614,
+        236,
+        620
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1764,
+        614,
+        1767,
+        625
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1575,
+        619,
+        1582,
+        621
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1586,
+        619,
+        1589,
+        620
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1592,
+        619,
+        1594,
+        620
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1764,
+        627,
+        1766,
+        631
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1587,
+        632,
+        1758,
+        638
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        239,
+        635,
+        241,
+        636
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1584,
+        635,
+        1586,
+        638
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        868,
+        650,
+        870,
+        652
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        433,
+        651,
+        435,
+        653
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1597,
+        651,
+        1600,
+        652
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1621,
+        651,
+        1666,
+        655
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1691,
+        651,
+        1754,
+        657
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1601,
+        652,
+        1604,
+        653
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1609,
+        652,
+        1611,
+        653
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1675,
+        652,
+        1686,
+        655
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1670,
+        653,
+        1671,
+        655
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1347,
+        657,
+        1379,
+        698
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1430,
+        661,
+        1454,
+        696
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1206,
+        663,
+        1240,
+        697
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        913,
+        665,
+        939,
+        704
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1597,
+        667,
+        1600,
+        670
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        851,
+        668,
+        875,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1134,
+        668,
+        1139,
+        672
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1285,
+        670,
+        1289,
+        674
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1382,
+        670,
+        1407,
+        695
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        824,
+        671,
+        829,
+        675
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        377,
+        672,
+        383,
+        677
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        212,
+        673,
+        236,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        438,
+        673,
+        443,
+        678
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        809,
+        673,
+        816,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1171,
+        673,
+        1211,
+        711
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        239,
+        674,
+        257,
+        707
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        643,
+        674,
+        652,
+        708
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1410,
+        674,
+        1425,
+        696
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        938,
+        675,
+        960,
+        704
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        468,
+        676,
+        491,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1006,
+        676,
+        1032,
+        703
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1146,
+        676,
+        1170,
+        698
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1037,
+        677,
+        1054,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1074,
+        677,
+        1092,
+        701
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        261,
+        678,
+        266,
+        682
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        830,
+        678,
+        850,
+        703
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1134,
+        678,
+        1144,
+        702
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1283,
+        678,
+        1291,
+        700
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1053,
+        679,
+        1071,
+        702
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1294,
+        680,
+        1312,
+        697
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        274,
+        681,
+        291,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        655,
+        681,
+        671,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        385,
+        682,
+        430,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        444,
+        682,
+        467,
+        723
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        822,
+        682,
+        827,
+        703
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1594,
+        682,
+        1596,
+        683
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        326,
+        683,
+        349,
+        725
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        376,
+        683,
+        383,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        731,
+        683,
+        753,
+        711
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        783,
+        683,
+        805,
+        721
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        263,
+        684,
+        268,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        351,
+        684,
+        372,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        434,
+        684,
+        441,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        522,
+        684,
+        561,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        618,
+        684,
+        643,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1466,
+        685,
+        1472,
+        690
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        673,
+        686,
+        692,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        757,
+        686,
+        777,
+        727
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        562,
+        688,
+        581,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1660,
+        688,
+        1662,
+        689
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1681,
+        689,
+        1685,
+        691
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1686,
+        690,
+        1689,
+        692
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1733,
+        692,
+        1736,
+        693
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1727,
+        693,
+        1732,
+        695
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1739,
+        694,
+        1741,
+        695
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1593,
+        701,
+        1597,
+        703
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1604,
+        702,
+        1607,
+        703
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1611,
+        702,
+        1632,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1643,
+        704,
+        1664,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1668,
+        706,
+        1676,
+        707
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1678,
+        707,
+        1682,
+        708
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1694,
+        709,
+        1699,
+        711
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1707,
+        710,
+        1709,
+        713
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1711,
+        710,
+        1725,
+        715
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1056,
+        711,
+        1058,
+        712
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1700,
+        711,
+        1703,
+        713
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1561,
+        712,
+        1757,
+        737
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1729,
+        713,
+        1750,
+        718
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1568,
+        728,
+        1570,
+        730
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1573,
+        729,
+        1582,
+        732
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1583,
+        730,
+        1654,
+        741
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1655,
+        740,
+        1756,
+        757
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        372,
+        742,
+        395,
+        781
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1561,
+        742,
+        1564,
+        744
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1571,
+        744,
+        1757,
+        777
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        515,
+        745,
+        520,
+        749
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        444,
+        746,
+        464,
+        779
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1487,
+        746,
+        1511,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1763,
+        746,
+        1764,
+        749
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        576,
+        747,
+        602,
+        787
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1362,
+        747,
+        1384,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        652,
+        749,
+        662,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        739,
+        750,
+        771,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1317,
+        750,
+        1337,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1480,
+        750,
+        1485,
+        755
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        217,
+        751,
+        270,
+        793
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        518,
+        751,
+        521,
+        755
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        524,
+        752,
+        544,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1014,
+        752,
+        1055,
+        793
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        513,
+        753,
+        521,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1420,
+        753,
+        1425,
+        758
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        422,
+        754,
+        446,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        399,
+        755,
+        420,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        912,
+        755,
+        939,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1083,
+        755,
+        1122,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1131,
+        755,
+        1135,
+        760
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        827,
+        756,
+        832,
+        761
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        887,
+        756,
+        912,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1160,
+        756,
+        1186,
+        778
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        326,
+        757,
+        349,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        352,
+        757,
+        379,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        602,
+        758,
+        624,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        669,
+        758,
+        696,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        698,
+        758,
+        717,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1451,
+        759,
+        1469,
+        791
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        271,
+        760,
+        287,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        629,
+        760,
+        652,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        716,
+        760,
+        738,
+        785
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1231,
+        760,
+        1255,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1426,
+        760,
+        1447,
+        787
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1570,
+        760,
+        1572,
+        761
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        943,
+        761,
+        965,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1341,
+        761,
+        1362,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1512,
+        761,
+        1531,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1575,
+        761,
+        1577,
+        763
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1274,
+        762,
+        1292,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1579,
+        762,
+        1582,
+        763
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1134,
+        763,
+        1159,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1255,
+        763,
+        1274,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1418,
+        763,
+        1427,
+        791
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1476,
+        763,
+        1483,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1584,
+        763,
+        1587,
+        764
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1299,
+        764,
+        1320,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1593,
+        764,
+        1596,
+        765
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1124,
+        765,
+        1130,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1602,
+        765,
+        1621,
+        769
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1057,
+        766,
+        1082,
+        792
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1763,
+        766,
+        1764,
+        768
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        827,
+        767,
+        834,
+        793
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1593,
+        767,
+        1596,
+        768
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        836,
+        768,
+        860,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1622,
+        769,
+        1657,
+        778
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1661,
+        777,
+        1753,
+        796
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1727,
+        779,
+        1730,
+        781
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1600,
+        781,
+        1605,
+        783
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1625,
+        787,
+        1627,
+        789
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1632,
+        789,
+        1634,
+        790
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1636,
+        789,
+        1639,
+        790
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1645,
+        792,
+        1650,
+        794
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1662,
+        796,
+        1664,
+        798
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1674,
+        798,
+        1675,
+        800
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1668,
+        799,
+        1671,
+        800
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1679,
+        800,
+        1682,
+        801
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1684,
+        800,
+        1689,
+        802
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1690,
+        800,
+        1691,
+        804
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1692,
+        801,
+        1695,
+        804
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1696,
+        803,
+        1700,
+        806
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1705,
+        804,
+        1719,
+        809
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1723,
+        809,
+        1732,
+        811
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1743,
+        812,
+        1748,
+        816
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1709,
+        820,
+        1731,
+        828
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1309,
+        831,
+        1311,
+        832
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        352,
+        840,
+        362,
+        873
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        250,
+        842,
+        291,
+        882
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        230,
+        845,
+        254,
+        877
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        387,
+        845,
+        404,
+        874
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        361,
+        846,
+        385,
+        870
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        406,
+        847,
+        422,
+        876
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        329,
+        849,
+        352,
+        873
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        425,
+        866,
+        430,
+        870
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1694,
+        975,
+        1696,
+        978
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        687,
+        982,
+        689,
+        984
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1231,
+        1032,
+        1237,
+        1037
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1740,
+        1137,
+        1746,
+        1141
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1607,
+        1141,
+        1609,
+        1147
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1571,
+        1142,
+        1574,
+        1144
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1608,
+        1150,
+        1610,
+        1154
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1461,
+        1171,
+        1463,
+        1173
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        794,
+        1172,
+        796,
+        1179
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1465,
+        1174,
+        1468,
+        1176
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1470,
+        1176,
+        1473,
+        1178
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1602,
+        1181,
+        1606,
+        1188
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        594,
+        1221,
+        597,
+        1223
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1048,
+        1275,
+        1053,
+        1277
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        1289,
+        1289,
+        1293,
+        1294
+      ],
+      "accepted": true,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "raw_component",
+      "box": [
+        137,
+        1312,
+        139,
+        1314
+      ],
+      "accepted": false,
+      "medianTextHeight": 0
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1126,
+        109,
+        1130,
+        113
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        18,
+        118,
+        22,
+        122
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        952,
+        139,
+        967,
+        142
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        474,
+        150,
+        480,
+        153
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        481,
+        152,
+        490,
+        154
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        495,
+        154,
+        507,
+        157
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        975,
+        164,
+        978,
+        171
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        438,
+        169,
+        450,
+        180
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        272,
+        186,
+        278,
+        190
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        806,
+        188,
+        810,
+        191
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        294,
+        190,
+        299,
+        194
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1170,
+        244,
+        1179,
+        246
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1661,
+        244,
+        1667,
+        246
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        834,
+        246,
+        846,
+        253
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        792,
+        247,
+        797,
+        254
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        863,
+        247,
+        869,
+        251
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        14,
+        253,
+        254,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        683,
+        253,
+        689,
+        259
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1575,
+        264,
+        1643,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1697,
+        264,
+        1724,
+        270
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1725,
+        264,
+        1740,
+        270
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1742,
+        264,
+        1755,
+        270
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1644,
+        265,
+        1660,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1678,
+        265,
+        1685,
+        270
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1418,
+        266,
+        1429,
+        272
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1659,
+        266,
+        1677,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1443,
+        267,
+        1482,
+        273
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1482,
+        267,
+        1497,
+        270
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1525,
+        267,
+        1557,
+        272
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1562,
+        267,
+        1573,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1686,
+        267,
+        1695,
+        270
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        239,
+        268,
+        422,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        428,
+        268,
+        504,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        978,
+        268,
+        1293,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1292,
+        268,
+        1418,
+        273
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1430,
+        268,
+        1436,
+        272
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1500,
+        268,
+        1504,
+        272
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1505,
+        268,
+        1511,
+        272
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1511,
+        268,
+        1524,
+        271
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        507,
+        269,
+        591,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        593,
+        269,
+        620,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        621,
+        269,
+        657,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        709,
+        269,
+        850,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        660,
+        270,
+        682,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        683,
+        270,
+        707,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        939,
+        270,
+        959,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        857,
+        271,
+        900,
+        276
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        907,
+        271,
+        935,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        959,
+        271,
+        975,
+        275
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        292,
+        340,
+        297,
+        344
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        556,
+        340,
+        578,
+        385
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        216,
+        341,
+        247,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        402,
+        341,
+        430,
+        389
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        691,
+        342,
+        718,
+        384
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        303,
+        343,
+        313,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        930,
+        343,
+        949,
+        382
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        485,
+        345,
+        494,
+        382
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        268,
+        346,
+        293,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        495,
+        346,
+        500,
+        351
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        785,
+        347,
+        792,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        586,
+        348,
+        591,
+        352
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        721,
+        350,
+        742,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        312,
+        351,
+        334,
+        378
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        292,
+        352,
+        300,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        247,
+        353,
+        267,
+        377
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        742,
+        353,
+        762,
+        380
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        763,
+        353,
+        782,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        506,
+        354,
+        530,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        497,
+        355,
+        502,
+        378
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        796,
+        355,
+        817,
+        379
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        882,
+        355,
+        930,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        459,
+        356,
+        482,
+        402
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        533,
+        356,
+        556,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        584,
+        357,
+        592,
+        383
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        593,
+        357,
+        613,
+        384
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        613,
+        358,
+        636,
+        384
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        820,
+        358,
+        842,
+        396
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        433,
+        359,
+        453,
+        402
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        844,
+        359,
+        879,
+        382
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1742,
+        368,
+        1758,
+        375
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1730,
+        374,
+        1739,
+        379
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1721,
+        378,
+        1728,
+        381
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        328,
+        387,
+        336,
+        389
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1692,
+        388,
+        1696,
+        391
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1738,
+        389,
+        1756,
+        397
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        518,
+        393,
+        529,
+        395
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        729,
+        393,
+        737,
+        395
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1731,
+        394,
+        1736,
+        399
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1664,
+        397,
+        1671,
+        400
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1654,
+        398,
+        1663,
+        403
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1721,
+        398,
+        1728,
+        400
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1711,
+        402,
+        1718,
+        404
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1700,
+        406,
+        1705,
+        409
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1706,
+        408,
+        1759,
+        425
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1686,
+        410,
+        1693,
+        412
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1666,
+        414,
+        1674,
+        418
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1614,
+        415,
+        1618,
+        418
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1592,
+        422,
+        1597,
+        425
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1700,
+        423,
+        1705,
+        426
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1629,
+        427,
+        1636,
+        430
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1686,
+        428,
+        1692,
+        430
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1707,
+        429,
+        1758,
+        444
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1642,
+        432,
+        1670,
+        443
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        254,
+        440,
+        275,
+        479
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        221,
+        441,
+        252,
+        476
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1629,
+        443,
+        1638,
+        447
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        277,
+        444,
+        302,
+        477
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1620,
+        446,
+        1625,
+        449
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1783,
+        446,
+        1786,
+        451
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        309,
+        448,
+        335,
+        484
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        373,
+        448,
+        399,
+        484
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1673,
+        448,
+        1686,
+        454
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        341,
+        449,
+        366,
+        481
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1645,
+        449,
+        1761,
+        477
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1607,
+        450,
+        1614,
+        453
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1650,
+        453,
+        1666,
+        460
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        402,
+        454,
+        419,
+        484
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        479,
+        454,
+        503,
+        490
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        506,
+        457,
+        526,
+        491
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        527,
+        457,
+        552,
+        493
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        558,
+        458,
+        567,
+        490
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        571,
+        459,
+        589,
+        493
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        591,
+        460,
+        614,
+        499
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1625,
+        463,
+        1632,
+        465
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1766,
+        464,
+        1770,
+        469
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1783,
+        468,
+        1786,
+        481
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1662,
+        470,
+        1757,
+        493
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1626,
+        477,
+        1644,
+        482
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1610,
+        481,
+        1620,
+        485
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1598,
+        484,
+        1607,
+        488
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1582,
+        488,
+        1598,
+        492
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1767,
+        489,
+        1769,
+        496
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1650,
+        490,
+        1661,
+        495
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1681,
+        490,
+        1759,
+        506
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1639,
+        494,
+        1645,
+        496
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        949,
+        497,
+        954,
+        500
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1621,
+        498,
+        1627,
+        501
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1668,
+        506,
+        1680,
+        509
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1625,
+        507,
+        1667,
+        517
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1784,
+        507,
+        1786,
+        530
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1689,
+        512,
+        1757,
+        525
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1607,
+        515,
+        1623,
+        520
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1593,
+        519,
+        1604,
+        522
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1675,
+        523,
+        1686,
+        526
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1652,
+        524,
+        1674,
+        530
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1627,
+        528,
+        1650,
+        534
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1693,
+        531,
+        1759,
+        542
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1611,
+        533,
+        1621,
+        537
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1585,
+        535,
+        1607,
+        541
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1598,
+        539,
+        1692,
+        554
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1765,
+        539,
+        1768,
+        550
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1685,
+        552,
+        1758,
+        562
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        810,
+        553,
+        827,
+        582
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1586,
+        554,
+        1592,
+        556
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        738,
+        556,
+        745,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        222,
+        557,
+        227,
+        595
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        614,
+        559,
+        634,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1634,
+        560,
+        1685,
+        568
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        524,
+        561,
+        530,
+        567
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        419,
+        563,
+        424,
+        566
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        538,
+        563,
+        560,
+        592
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        559,
+        563,
+        581,
+        593
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        773,
+        563,
+        793,
+        598
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        393,
+        564,
+        410,
+        599
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        287,
+        565,
+        294,
+        600
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        794,
+        565,
+        811,
+        584
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1607,
+        565,
+        1633,
+        571
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        638,
+        566,
+        672,
+        588
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        748,
+        566,
+        766,
+        586
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        673,
+        568,
+        692,
+        587
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1579,
+        568,
+        1604,
+        574
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        295,
+        571,
+        315,
+        599
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        350,
+        571,
+        369,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        499,
+        571,
+        525,
+        595
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        529,
+        571,
+        538,
+        593
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1595,
+        571,
+        1758,
+        588
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        374,
+        573,
+        396,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        416,
+        573,
+        422,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1484,
+        573,
+        1488,
+        576
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        425,
+        574,
+        467,
+        619
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        229,
+        575,
+        265,
+        610
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        317,
+        575,
+        350,
+        597
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1764,
+        576,
+        1768,
+        595
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        266,
+        577,
+        285,
+        622
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1579,
+        586,
+        1592,
+        588
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1714,
+        592,
+        1758,
+        598
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1618,
+        595,
+        1713,
+        604
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1578,
+        600,
+        1615,
+        606
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1597,
+        612,
+        1756,
+        620
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        232,
+        614,
+        236,
+        620
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1764,
+        614,
+        1767,
+        625
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1575,
+        619,
+        1582,
+        621
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1587,
+        632,
+        1758,
+        638
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1621,
+        651,
+        1666,
+        655
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1691,
+        651,
+        1754,
+        657
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1675,
+        652,
+        1686,
+        655
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1347,
+        657,
+        1379,
+        698
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1430,
+        661,
+        1454,
+        696
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1206,
+        663,
+        1240,
+        697
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        913,
+        665,
+        939,
+        704
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        851,
+        668,
+        875,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1134,
+        668,
+        1139,
+        672
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1285,
+        670,
+        1289,
+        674
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1382,
+        670,
+        1407,
+        695
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        824,
+        671,
+        829,
+        675
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        377,
+        672,
+        383,
+        677
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        212,
+        673,
+        236,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        438,
+        673,
+        443,
+        678
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        809,
+        673,
+        816,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1171,
+        673,
+        1211,
+        711
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        239,
+        674,
+        257,
+        707
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        643,
+        674,
+        652,
+        708
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1410,
+        674,
+        1425,
+        696
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        938,
+        675,
+        960,
+        704
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        468,
+        676,
+        491,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1006,
+        676,
+        1032,
+        703
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1146,
+        676,
+        1170,
+        698
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1037,
+        677,
+        1054,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1074,
+        677,
+        1092,
+        701
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        261,
+        678,
+        266,
+        682
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        830,
+        678,
+        850,
+        703
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1134,
+        678,
+        1144,
+        702
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1283,
+        678,
+        1291,
+        700
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1053,
+        679,
+        1071,
+        702
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1294,
+        680,
+        1312,
+        697
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        274,
+        681,
+        291,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        655,
+        681,
+        671,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        385,
+        682,
+        430,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        444,
+        682,
+        467,
+        723
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        822,
+        682,
+        827,
+        703
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        326,
+        683,
+        349,
+        725
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        376,
+        683,
+        383,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        731,
+        683,
+        753,
+        711
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        783,
+        683,
+        805,
+        721
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        263,
+        684,
+        268,
+        706
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        351,
+        684,
+        372,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        434,
+        684,
+        441,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        522,
+        684,
+        561,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        618,
+        684,
+        643,
+        709
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1466,
+        685,
+        1472,
+        690
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        673,
+        686,
+        692,
+        705
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        757,
+        686,
+        777,
+        727
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        562,
+        688,
+        581,
+        710
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1611,
+        702,
+        1632,
+        706
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1643,
+        704,
+        1664,
+        706
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1711,
+        710,
+        1725,
+        715
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1561,
+        712,
+        1757,
+        737
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1729,
+        713,
+        1750,
+        718
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1573,
+        729,
+        1582,
+        732
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1583,
+        730,
+        1654,
+        741
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1655,
+        740,
+        1756,
+        757
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        372,
+        742,
+        395,
+        781
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1571,
+        744,
+        1757,
+        777
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        515,
+        745,
+        520,
+        749
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        444,
+        746,
+        464,
+        779
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1487,
+        746,
+        1511,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        576,
+        747,
+        602,
+        787
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1362,
+        747,
+        1384,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        652,
+        749,
+        662,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        739,
+        750,
+        771,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1317,
+        750,
+        1337,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1480,
+        750,
+        1485,
+        755
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        217,
+        751,
+        270,
+        793
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        518,
+        751,
+        521,
+        755
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        524,
+        752,
+        544,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1014,
+        752,
+        1055,
+        793
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        513,
+        753,
+        521,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1420,
+        753,
+        1425,
+        758
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        422,
+        754,
+        446,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        399,
+        755,
+        420,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        912,
+        755,
+        939,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1083,
+        755,
+        1122,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1131,
+        755,
+        1135,
+        760
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        827,
+        756,
+        832,
+        761
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        887,
+        756,
+        912,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1160,
+        756,
+        1186,
+        778
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        326,
+        757,
+        349,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        352,
+        757,
+        379,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        602,
+        758,
+        624,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        669,
+        758,
+        696,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        698,
+        758,
+        717,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1451,
+        759,
+        1469,
+        791
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        271,
+        760,
+        287,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        629,
+        760,
+        652,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        716,
+        760,
+        738,
+        785
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1231,
+        760,
+        1255,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1426,
+        760,
+        1447,
+        787
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        943,
+        761,
+        965,
+        784
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1341,
+        761,
+        1362,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1512,
+        761,
+        1531,
+        783
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1274,
+        762,
+        1292,
+        786
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1134,
+        763,
+        1159,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1255,
+        763,
+        1274,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1418,
+        763,
+        1427,
+        791
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1476,
+        763,
+        1483,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1299,
+        764,
+        1320,
+        788
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1124,
+        765,
+        1130,
+        789
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1602,
+        765,
+        1621,
+        769
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1057,
+        766,
+        1082,
+        792
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        827,
+        767,
+        834,
+        793
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        836,
+        768,
+        860,
+        794
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1622,
+        769,
+        1657,
+        778
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1661,
+        777,
+        1753,
+        796
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1696,
+        803,
+        1700,
+        806
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1705,
+        804,
+        1719,
+        809
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1723,
+        809,
+        1732,
+        811
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1743,
+        812,
+        1748,
+        816
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1709,
+        820,
+        1731,
+        828
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        352,
+        840,
+        362,
+        873
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        250,
+        842,
+        291,
+        882
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        230,
+        845,
+        254,
+        877
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        387,
+        845,
+        404,
+        874
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        361,
+        846,
+        385,
+        870
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        406,
+        847,
+        422,
+        876
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        329,
+        849,
+        352,
+        873
+      ],
+      "accepted": true,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        425,
+        866,
+        430,
+        870
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1231,
+        1032,
+        1237,
+        1037
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1740,
+        1137,
+        1746,
+        1141
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1607,
+        1141,
+        1609,
+        1147
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        794,
+        1172,
+        796,
+        1179
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1602,
+        1181,
+        1606,
+        1188
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "text_candidate",
+      "box": [
+        1289,
+        1289,
+        1293,
+        1294
+      ],
+      "accepted": false,
+      "medianTextHeight": 29
+    },
+    {
+      "stage": "primary_region",
+      "regionId": 100001,
+      "box": [
+        206,
+        334,
+        959,
+        408
+      ],
+      "reason": "accepted"
+    },
+    {
+      "stage": "primary_region",
+      "regionId": 100003,
+      "box": [
+        1696,
+        396,
+        1769,
+        431
+      ],
+      "reason": "accepted"
+    },
+    {
+      "stage": "primary_region",
+      "regionId": 100004,
+      "box": [
+        1632,
+        423,
+        1768,
+        450
+      ],
+      "reason": "accepted"
+    },
+    {
+      "stage": "primary_region",
+      "regionId": 100005,
+      "box": [
+        211,
+        434,
+        624,
+        505
+      ],
+      "reason": "accepted"
+    },
+    {
+      "stage": "primary_region",
+      "regionId": 100006,
+      "box": [
+        1635,
+        442,
+        1796,
+        487
+      ],
+      "reason": "accepted"
+    },
+    {
+      "stage": "primary_region",
+      "regionId": 100007,
+      "box": [
+        1652,
+        464,
+        1767,
+        499
+      ],
+      "reason": "accepted"
+    },
+    {
+      "stage": "primary_region",
+      "regionId": 100008,
+      "box": [
+        1671,
+        484,
+        1769,
+        512
+      ],
+      "reason": "accepted"
+    }
+  ],
+  "decodedSourcePngSha256": "1acb7b13ee2ffd32f0e1087947436c70a8b27bdb8b221a5143ca2f4b1ce82424",
+  "modelSha256": "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
+  "dictionarySha256": "e025a66d31f327ba0c232e03f407ae8d105e1e709e7ccb3f408aa778c24e70d6",
+  "recognitionWidth": 1800,
+  "recognitionHeight": 1350,
+  "regions": [
+    {
+      "regionId": 100001,
+      "box": [
+        206,
+        334,
+        959,
+        408
+      ],
+      "type": "TEXT",
+      "pixelArea": 7077
+    },
+    {
+      "regionId": 100003,
+      "box": [
+        1696,
+        396,
+        1769,
+        431
+      ],
+      "type": "TEXT",
+      "pixelArea": 162
+    },
+    {
+      "regionId": 100004,
+      "box": [
+        1632,
+        423,
+        1768,
+        450
+      ],
+      "type": "TEXT",
+      "pixelArea": 179
+    },
+    {
+      "regionId": 100005,
+      "box": [
+        211,
+        434,
+        624,
+        505
+      ],
+      "type": "TEXT",
+      "pixelArea": 3435
+    },
+    {
+      "regionId": 100006,
+      "box": [
+        1635,
+        442,
+        1796,
+        487
+      ],
+      "type": "TEXT",
+      "pixelArea": 338
+    },
+    {
+      "regionId": 100007,
+      "box": [
+        1652,
+        464,
+        1767,
+        499
+      ],
+      "type": "TEXT",
+      "pixelArea": 222
+    },
+    {
+      "regionId": 100008,
+      "box": [
+        1671,
+        484,
+        1769,
+        512
+      ],
+      "type": "TEXT",
+      "pixelArea": 237
+    },
+    {
+      "regionId": 100009,
+      "box": [
+        1615,
+        501,
+        1796,
+        536
+      ],
+      "type": "TEXT",
+      "pixelArea": 313
+    },
+    {
+      "regionId": 100011,
+      "box": [
+        1588,
+        527,
+        1778,
+        560
+      ],
+      "type": "TEXT",
+      "pixelArea": 254
+    },
+    {
+      "regionId": 4,
+      "box": [
+        1583,
+        540,
+        1770,
+        669
+      ],
+      "type": "NON_TEXT",
+      "pixelArea": 1091
+    },
+    {
+      "regionId": 100013,
+      "box": [
+        212,
+        547,
+        837,
+        628
+      ],
+      "type": "TEXT",
+      "pixelArea": 5383
+    },
+    {
+      "regionId": 100017,
+      "box": [
+        202,
+        651,
+        1464,
+        733
+      ],
+      "type": "TEXT",
+      "pixelArea": 9542
+    },
+    {
+      "regionId": 100018,
+      "box": [
+        1551,
+        704,
+        1767,
+        747
+      ],
+      "type": "TEXT",
+      "pixelArea": 771
+    },
+    {
+      "regionId": 100019,
+      "box": [
+        207,
+        734,
+        1767,
+        802
+      ],
+      "type": "TEXT",
+      "pixelArea": 11869
+    },
+    {
+      "regionId": 100021,
+      "box": [
+        220,
+        834,
+        432,
+        888
+      ],
+      "type": "TEXT",
+      "pixelArea": 1617
+    }
+  ]
+}

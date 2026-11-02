@@ -3,12 +3,23 @@ package com.example.note2snap.ccl
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
+import com.example.note2snap.diagnostics.PerformanceDiagnostics
+import com.example.note2snap.diagnostics.PerfStage
 import java.util.ArrayDeque
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
 class ConnectedComponentLabeler {
+
+    // Observational only; isolate failures and protect the algorithm\'s mutable Rects.
+    private fun recordResearchDecision(observer: ((String, Rect, Boolean, Int) -> Unit)?,
+                                       stage: String, box: Rect, accepted: Boolean, median: Int) {
+        if (observer == null) return
+        try { observer(stage, Rect(box), accepted, median) }
+        catch (_: Exception) { }
+        catch (_: LinkageError) { }
+    }
 
     private data class Component(
         val id: Int,
@@ -18,7 +29,8 @@ class ConnectedComponentLabeler {
 
     fun label(
         binary: Bitmap,
-        recognitionBitmap: Bitmap
+        recognitionBitmap: Bitmap,
+        researchDecision: ((String, Rect, Boolean, Int) -> Unit)? = null
     ): List<Region> {
 
         val imageWidth = binary.width
@@ -134,8 +146,10 @@ class ConnectedComponentLabeler {
                     imageHeight = imageHeight
                 )
             ) {
+                recordResearchDecision(researchDecision, "raw_component", box, false, 0)
                 continue
             }
+            recordResearchDecision(researchDecision, "raw_component", box, true, 0)
 
             components +=
                 Component(
@@ -164,16 +178,33 @@ class ConnectedComponentLabeler {
         // 3. TEXT CANDIDATES
         // =====================================================
 
+        val frameComponents = PerformanceDiagnostics.measure(PerfStage.FRAME_TRACK_FILTER) {
+            val frame = if (recognitionBitmap.width == imageWidth && recognitionBitmap.height == imageHeight)
+                FrameTrackFilter.detect(recognitionBitmap, components.map { it.box }, medianTextHeight, foreground) else null
+            frame?.tracks?.forEach { track ->
+                val edgeXs=listOf(track.x(track.top),track.x(track.bottom-1))
+                    .flatMap { listOf(it,it+track.peer,it+track.third) }
+                recordResearchDecision(researchDecision,"inset_frame_track",
+                    Rect((edgeXs.min()-6).coerceAtLeast(0),track.top,
+                        (edgeXs.max()+7).coerceAtMost(imageWidth),track.bottom),true,medianTextHeight)
+            }
+            components.filter { frame?.isFrameComponent(it.box) == true }.mapTo(mutableSetOf()) { it.id }
+        }
+
         val textCandidates =
             components.filter { component ->
 
-                !SideBorderGeometry.isClearFragment(component.box, imageWidth, imageHeight, medianTextHeight) &&
-                looksLikeTextComponent(
+                val border = SideBorderGeometry.isClearFragment(component.box, imageWidth, imageHeight, medianTextHeight)
+                val insetFrame = component.id in frameComponents
+                val accepted = !border && !insetFrame && looksLikeTextComponent(
                     component = component,
                     medianTextHeight = medianTextHeight,
                     imageWidth = imageWidth,
                     imageHeight = imageHeight
                 )
+                recordResearchDecision(researchDecision,
+                    if (border) "side_border_rejected" else if (insetFrame) "inset_frame_rejected" else "text_candidate", component.box, accepted, medianTextHeight)
+                accepted
             }
 
         // =====================================================
@@ -253,7 +284,7 @@ class ConnectedComponentLabeler {
         // Detached dots/accents belong to a nearby character, never to a standalone
         // OCR crop. Match against individual ink boxes rather than a wide line union.
         val groupedIds = lines.flatten().mapTo(mutableSetOf()) { it.id }
-        for (mark in components.filter { it.id !in groupedIds }) {
+        for (mark in components.filter { it.id !in groupedIds && it.id !in frameComponents }) {
             if (mark.box.width() > medianTextHeight / 2 ||
                 mark.box.height() > medianTextHeight / 2) continue
             val nearest = lines.mapNotNull { line ->

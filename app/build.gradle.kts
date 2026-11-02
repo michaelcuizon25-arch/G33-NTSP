@@ -36,6 +36,9 @@ android {
         // Research-only image/tensor/JSON exports; lightweight timings remain independent.
         buildConfigField("boolean", "ENABLE_CRNN_DIAGNOSTIC_EXPORTS",
             providers.gradleProperty("ENABLE_CRNN_DIAGNOSTIC_EXPORTS").orElse("false").get().toBooleanStrict().toString())
+        // Explicit research opt-in: exports contain handwriting and crop images.
+        buildConfigField("boolean", "ENABLE_PRIMARY_OCR_DIAGNOSTIC_EXPORTS",
+            providers.gradleProperty("ENABLE_PRIMARY_OCR_DIAGNOSTIC_EXPORTS").orElse("false").get().toBooleanStrict().toString())
         // Independent from OpenCV and the existing CRNN preprocessing-mode selector.
         buildConfigField("boolean", "ENABLE_OFFLINE_TEXT_CORRECTION",
             providers.gradleProperty("ENABLE_OFFLINE_TEXT_CORRECTION").orElse("false").get().toBooleanStrict().toString())

@@ -1,0 +1,14 @@
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":277439583,"startedNs":0,"stage":"IMAGE_RESIZE","count":1,"maxNs":277439583,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":1397108489,"startedNs":0,"stage":"PREPROCESSING","count":1,"maxNs":1397108489,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":1118262604,"startedNs":0,"stage":"ADAPTIVE_THRESHOLD","count":1,"maxNs":1118262604,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":1537374739,"startedNs":0,"stage":"CCL","count":1,"maxNs":1537374739,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":973034323,"startedNs":0,"stage":"FRAME_TRACK_FILTER","count":1,"maxNs":973034323,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":2713846197,"startedNs":0,"stage":"SEGMENTATION","count":4,"maxNs":1105418541,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":7408298226,"startedNs":0,"stage":"RECOGNITION","count":1,"maxNs":7408298226,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":811216718,"startedNs":0,"stage":"PADDLE_INITIALIZATION","count":1,"maxNs":811216718,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":359692239,"startedNs":0,"stage":"PADDLE_PREPROCESSING","count":4,"maxNs":279705729,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":1663197760,"startedNs":0,"stage":"PADDLE_INFERENCE","count":4,"maxNs":491790729,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":122979427,"startedNs":0,"stage":"PADDLE_CTC_DECODE","count":4,"maxNs":66086302,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":71013542,"startedNs":0,"stage":"OFFLINE_CORRECTION","count":1,"maxNs":71013542,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"STAGE","session":1,"flow":"PIPELINE","elapsedNs":33648386,"startedNs":0,"stage":"STRUCTURING","count":1,"maxNs":33648386,"failures":0,"mainThreadStarts":0}
+1793598079: I/NOTE2SNAP_PERF: {"kind":"TOTAL","session":1,"flow":"PIPELINE","elapsedNs":17907988327,"startedNs":607808400550198,"metrics":{"SOURCE_WIDTH":4032,"SOURCE_HEIGHT":3024,"RECOGNITION_WIDTH":1800,"RECOGNITION_HEIGHT":1350,"TEXT_REGIONS":4,"VISUAL_REGIONS":0,"PHYSICAL_LINES":4,"OPENCV_REQUESTED":0,"OPENCV_APPLIED":0,"CORRECTION_ENABLED":1}}
