@@ -4221,12 +4221,12 @@ class PdfViewerActivity : AppCompatActivity() {
 
         val (reason, tip) = when {
             calculatedScore < 70 -> Pair(
-                "Photo may be too far from the board. Small text or blur can cause character errors.",
-                "Hold the camera closer or zoom in when scanning."
+                "Photo may be taken beyond 2 meters from the board. Small text or blur can cause character errors.",
+                "Hold the camera closer (within 2 meters) or zoom in when scanning."
             )
             calculatedScore < 88 -> Pair(
-                "Camera was slightly far from the board. Some letters were confused due to small resolution.",
-                "Crop out empty margins before scanning."
+                "Camera was slightly beyond the 2-meter distance. Some letters were confused due to small resolution.",
+                "Move within 2 meters and crop out empty margins before scanning."
             )
             else -> Pair(
                 "Text was extracted clearly from the whiteboard.",

@@ -21,6 +21,7 @@ enum class ImageQualityIssue {
     TOO_DARK,
     TOO_BRIGHT,
     GLARE,
+    TOO_FAR,
     BOARD_NOT_CLEAR
 }
 
@@ -269,7 +270,20 @@ object ImageQualityValidator {
             )
         }
 
-        // 5. Masked Blur & Dirty Lens check
+        // 5. Distance / Small Text check (photo taken beyond 2 meters)
+        val textTooSmall = inkRatio > 0.0005 && inkRatio < 0.0035 && edgeStrength in 1.8..3.8 && contrast in 8.0..45.0
+        if (textTooSmall) {
+            return invalid(
+                ImageQualityIssue.TOO_FAR,
+                "Too far from whiteboard (Max 2m)",
+                "The photo was taken beyond the 2-meter scanning limit. Text is too small to read. Please move closer (within 2 meters) or use optical zoom.",
+                average,
+                contrast,
+                edgeStrength
+            )
+        }
+
+        // 6. Masked Blur & Dirty Lens check
         if (edgeStrength < 2.6) {
             val isSmudgedLens = contrast in 12.0..28.0
             val message = if (isSmudgedLens) {
@@ -394,6 +408,11 @@ enum class LiveCameraHint(
         title = "Strong glare detected",
         message = "Change your angle or reduce direct light on the board.",
         framesRequired = 7
+    ),
+    TOO_FAR(
+        title = "Too far from whiteboard (Max 2m)",
+        message = "Please move closer to the whiteboard (within 2 meters or less) so handwriting is large enough to scan accurately.",
+        framesRequired = 4
     )
 }
 
@@ -477,6 +496,11 @@ class LiveCameraQualityAnalyzer(
 
         // Flat scene (blank wall / empty board): nothing to judge sharpness on.
         if (m.contrast < MIN_CONTRAST_TO_JUDGE) return null
+
+        // Distance check: low/fine edge strength with low dark ink coverage and moderate contrast = too far away (e.g. over 2-3 meters)
+        if (!moving && m.contrast in 8.0..45.0 && m.edgeStrength in 1.2..2.9 && m.darkRatio < 0.04) {
+            return LiveCameraHint.TOO_FAR
+        }
 
         if (m.edgeStrength < BLUR_EDGE_STRENGTH) {
             if (moving) return null
