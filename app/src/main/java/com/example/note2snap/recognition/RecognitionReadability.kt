@@ -8,7 +8,9 @@ internal object RecognitionReadability {
     fun hasReadableWriting(lines: List<RecognizedLine>): Boolean =
         lines.any { line -> line.text.count { it.isLetterOrDigit() } >= 3 }
 
-    fun htmlContent(note: StructuredNote): String =
-        if (note.blocks.isEmpty()) "<h1>${TextUtils.htmlEncode(note.title)}</h1>"
-        else note.blocks.joinToString("<br/><br/>") { it.formattedText }
+    fun htmlContent(note: StructuredNote): String {
+        val titleHeader = "<h1>${TextUtils.htmlEncode(note.title)}</h1>"
+        if (note.blocks.isEmpty()) return titleHeader
+        return titleHeader + "<br/><br/>" + note.blocks.joinToString("<br/><br/>") { it.formattedText }
+    }
 }

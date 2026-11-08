@@ -51,33 +51,28 @@ class WhiteboardRuleEngineTest {
         )
 
         assertEquals(
-            BlockType.REGULAR_TEXT,
+            BlockType.KEY_DEFINITION,
             result.blocks[0].type
         )
 
         assertEquals(
-            BlockType.KEY_DEFINITION,
+            BlockType.SECTION_HEADER,
             result.blocks[1].type
         )
 
         assertEquals(
-            BlockType.SECTION_HEADER,
+            BlockType.BULLET_ITEM,
             result.blocks[2].type
         )
 
         assertEquals(
-            BlockType.BULLET_ITEM,
-            result.blocks[3].type
-        )
-
-        assertEquals(
             BlockType.SECTION_HEADER,
-            result.blocks[7].type
+            result.blocks[6].type
         )
 
         assertEquals(
             BlockType.KEY_DEFINITION,
-            result.blocks[8].type
+            result.blocks[7].type
         )
 
         assertTrue(

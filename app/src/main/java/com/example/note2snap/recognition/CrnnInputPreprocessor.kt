@@ -139,8 +139,8 @@ internal class CrnnInputPreprocessor {
                                 0.114f * b
                         ) / 255f
 
-                // Updated: do not subtract 0.5f.
-                inputBuffer.putFloat(gray)
+                // Normalize grayscale value to [-0.5, 0.5] range for CRNN model.
+                inputBuffer.putFloat(gray - 0.5f)
             }
         }
 

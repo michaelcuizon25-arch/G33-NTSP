@@ -753,7 +753,7 @@ class ConnectedComponentLabeler {
         val maxTextHeight =
             max(
                 medianTextHeight + 1,
-                (medianTextHeight * 6.0f).toInt()
+                (medianTextHeight * 4.8f).toInt()
             )
 
         if (
@@ -845,7 +845,7 @@ class ConnectedComponentLabeler {
         if (abs(a.centerY() - b.centerY()) > max(medianTextHeight * 0.85f, smallerHeight * 0.50f)) return false
         val joinedHeight = max(a.bottom, b.bottom) - min(a.top, b.top)
         if (joinedHeight > max(a.height(), b.height()) * 1.45f) return false
-        return calculateHorizontalGap(a, b) <= max(20, medianTextHeight * 5)
+        return calculateHorizontalGap(a, b) <= max(15, (medianTextHeight * 3.0f).toInt())
     }
 
     // =========================================================

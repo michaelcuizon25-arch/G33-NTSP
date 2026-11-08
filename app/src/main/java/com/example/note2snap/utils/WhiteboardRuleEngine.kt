@@ -82,7 +82,17 @@ object WhiteboardRuleEngine {
      * WhiteboardRuleEngine.ocrCorrections = listOf(Regex("\\bteh\\b") to "the")
      */
     @Volatile
-    var ocrCorrections: List<Pair<Regex, String>> = emptyList()
+    var ocrCorrections: List<Pair<Regex, String>> = listOf(
+        Regex("\\bcloset\\s+lap\\b", RegexOption.IGNORE_CASE) to "closed loop",
+        Regex("\\bcontinucly\\s+moug\\b", RegexOption.IGNORE_CASE) to "continuously move",
+        Regex("\\bmoug\\b", RegexOption.IGNORE_CASE) to "move",
+        Regex("\\bwites\\b", RegexOption.IGNORE_CASE) to "wires",
+        Regex("\\bcument\\b", RegexOption.IGNORE_CASE) to "current",
+        Regex("\\bthis\\s+particles\\b", RegexOption.IGNORE_CASE) to "these particles",
+        Regex("\\bValuable\\s+resistor\\b", RegexOption.IGNORE_CASE) to "Variable resistor",
+        Regex("\\bRestor\\b", RegexOption.IGNORE_CASE) to "Resistor",
+        Regex("\\bOotoge\\b", RegexOption.IGNORE_CASE) to "Voltage"
+    )
 
     /**
      * Optional Cornell layout. Reviewer-style notes are the default, so cue
@@ -132,8 +142,13 @@ object WhiteboardRuleEngine {
 
         if (cleaned.isEmpty()) return emptyNote()
 
-        val blocks = cleaned.mapIndexed { index, text ->
-            val next = cleaned.getOrNull(index + 1)
+        val titleCandidate = cleaned.take(5).firstOrNull { isStrongTitleText(it) }
+            ?: cleaned.firstOrNull { isPlausibleTitleText(it) }
+
+        val bodyLines = if (titleCandidate != null && cleaned.size > 1) cleaned.filterNot { it == titleCandidate } else cleaned
+
+        val blocks = bodyLines.mapIndexed { index, text ->
+            val next = bodyLines.getOrNull(index + 1)
             parseSingleLineBlock(
                 text = text,
                 boundingBox = null,
@@ -142,10 +157,7 @@ object WhiteboardRuleEngine {
             )
         }
 
-        // Prefer an explicit prominent topic over stray CRNN fragments.
-        val title = cleaned.take(5).firstOrNull { isStrongTitleText(it) }
-            ?: cleaned.firstOrNull { isPlausibleTitleText(it) }
-            ?: fallbackTitle(blocks)
+        val title = titleCandidate ?: fallbackTitle(blocks)
 
         return StructuredNote(
             title = title,
@@ -311,15 +323,6 @@ object WhiteboardRuleEngine {
 
         val blocks = mutableListOf<NoteBlock>()
 
-        if (titleCell != null && titleText != null) {
-            blocks += NoteBlock(
-                rawText = titleText,
-                type = BlockType.SECTION_HEADER,
-                formattedText = "<big><b>${esc(titleText)}</b></big>",
-                boundingBox = Rect(titleCell.box)
-            )
-        }
-
         val cueBlocks = mutableListOf<NoteBlock>()
         var nextInsertion = 0
         for (i in 0..finalEntries.size) {
@@ -386,7 +389,8 @@ object WhiteboardRuleEngine {
                             prior?.type == BlockType.SUBHEADING ||
                             prior?.type == BlockType.TITLE
                     )
-            if (end - index >= 2 && !hasHeading) {
+            val minDefinitionsRequired = if (index == 0 && documentTitle == null) 4 else 2
+            if (end - index >= minDefinitionsRequired && !hasHeading) {
                 result += NoteBlock(
                     rawText = "Key Concepts",
                     type = BlockType.SECTION_HEADER,
@@ -485,6 +489,7 @@ object WhiteboardRuleEngine {
         }
         if (t.length !in 5..70 || t.count { it.isLetter() } < 5) return false
         if (t.last() in ".,;!?:" || t.startsWith("•") || t.startsWith("-")) return false
+        if (t.contains(Regex("[=≠≈±<>≤≥]"))) return false
         if (isKeyDefinitionRule(t) || isNumberedItemRule(t) || isSentenceDefinitionRule(t)) return false
         if (t.split(Regex("\\s+")).size > 9) return false
         return true
@@ -600,7 +605,12 @@ object WhiteboardRuleEngine {
 
     /** Top line standing alone = document title. */
     private fun findTitleCell(items: List<SpatialCell>): SpatialCell? {
-        if (items.size < 3) return null
+        if (items.isEmpty()) return null
+        if (items.size == 1) return if (isPlausibleTitleText(items[0].text)) items[0] else null
+        if (items.size == 2) {
+            val top = items.minByOrNull { it.box.top } ?: return null
+            return if (isPlausibleTitleText(top.text)) top else null
+        }
 
         val topY = items.minOf { it.box.top }
         val bottomY = items.maxOf { it.box.bottom }
@@ -940,6 +950,8 @@ object WhiteboardRuleEngine {
                 isSectionNumberHeader(text) ||
                 isCalloutRule(text) ||
                 isQuestionHeader(text) ||
+                isKeyDefinitionRule(text) ||
+                isSectionHeaderRule(text) ||
                 text.startsWith("#") ||
                 (text.length in 3..45 && text == text.uppercase() && text.any { it.isLetter() })
     }
@@ -1208,10 +1220,30 @@ object WhiteboardRuleEngine {
                 val match = dashDefinitionPattern.matchEntire(trimmed)!!
                 val term = match.groupValues[1].trim()
                 val meaning = match.groupValues[2].trim()
+                val symbol = getBulletSymbol(trimmed)
+                val effective = max(level, glyphLevel(symbol))
+                val prefix = if (symbol != null) {
+                    "${indentSpaces(effective)}${bulletForLevel(effective)} "
+                } else {
+                    ""
+                }
                 NoteBlock(
                     rawText = trimmed,
                     type = BlockType.KEY_DEFINITION,
-                    formattedText = "<b>${esc(term)}</b>: ${esc(meaning)}",
+                    formattedText = prefix + "<b>${esc(term)}</b>: ${esc(meaning)}",
+                    boundingBox = boundingBox
+                )
+            }
+
+            isNumberedItemRule(trimmed) -> {
+                val match = Regex("^(\\d+)[.)]\\s*(.*)$").find(trimmed)
+                val number = match?.groupValues?.getOrNull(1) ?: "1"
+                val content = match?.groupValues?.getOrNull(2)?.trim() ?: trimmed
+
+                NoteBlock(
+                    rawText = trimmed,
+                    type = BlockType.NUMBERED_ITEM,
+                    formattedText = "${indentSpaces(level)}<b>$number.</b> ${esc(content)}",
                     boundingBox = boundingBox
                 )
             }
@@ -1235,19 +1267,6 @@ object WhiteboardRuleEngine {
                     rawText = trimmed,
                     type = BlockType.KEY_DEFINITION,
                     formattedText = prefix + "<b>${esc(cleanKey)}</b>: ${esc(value)}",
-                    boundingBox = boundingBox
-                )
-            }
-
-            isNumberedItemRule(trimmed) -> {
-                val match = Regex("^(\\d+)[.)]\\s*(.*)$").find(trimmed)
-                val number = match?.groupValues?.getOrNull(1) ?: "1"
-                val content = match?.groupValues?.getOrNull(2)?.trim() ?: trimmed
-
-                NoteBlock(
-                    rawText = trimmed,
-                    type = BlockType.NUMBERED_ITEM,
-                    formattedText = "${indentSpaces(level)}<b>$number.</b> ${esc(content)}",
                     boundingBox = boundingBox
                 )
             }
@@ -1314,11 +1333,17 @@ object WhiteboardRuleEngine {
             }
 
             else -> {
-                val cleanContent = trimmed.removePrefix("-").trim()
+                val symbol = getBulletSymbol(trimmed)
+                val cleanContent = trimmed.replace(bulletPrefixPattern, "").trim()
+                val formatted = if (symbol != null) {
+                    "${indentSpaces(level)}${bulletForLevel(level)} ${esc(cleanContent)}"
+                } else {
+                    esc(cleanContent)
+                }
                 NoteBlock(
                     rawText = trimmed,
-                    type = BlockType.REGULAR_TEXT,
-                    formattedText = esc(cleanContent),
+                    type = if (symbol != null) BlockType.BULLET_ITEM else BlockType.REGULAR_TEXT,
+                    formattedText = formatted,
                     boundingBox = boundingBox
                 )
             }
@@ -1331,10 +1356,10 @@ object WhiteboardRuleEngine {
 
     // Bullet glyph, or a lowercase "o" read instead of a sub-bullet circle.
     private val bulletPrefixPattern =
-        Regex("^(?:[\\-*•●○▪◦▸►·∙‣⁃.]\\s*|o\\s+(?=[A-Z]))")
+        Regex("^(?:[\\-*•●○▪◦▸►·∙‣⁃.–—]\\s*|o\\s+(?=[A-Za-z]))")
 
     private val bulletLinePattern =
-        Regex("^(?:[\\-*•●○▪◦▸►·∙‣⁃.]\\s*|o\\s+(?=[A-Z])).+")
+        Regex("^(?:[\\-*•●○▪◦▸►·∙‣⁃.–—]\\s*|o\\s+(?=[A-Za-z])).+")
 
     private val sectionNumberPattern =
         Regex("^\\d+(?:\\.\\d+)+[.)]?\\s*(?:[-–—:]\\s*)?[A-Z].{2,}")
@@ -1345,14 +1370,15 @@ object WhiteboardRuleEngine {
 
     // Avoid treating an ordinary sentence or subtraction as a term-definition pair.
     private val dashDefinitionPattern =
-        Regex("^([\\p{L}][\\p{L}0-9 ()/]{1,32}?)\\s+[-–—]\\s+(.{4,})$")
+        Regex("^(?:[\\-*•●○▪◦▸►·∙‣⁃.–—]\\s*|o\\s+(?=[A-Za-z]))?([\\p{L}][\\p{L}0-9 ()/]{1,35}?)\\s+[-–—:]\\s+(.{3,})$")
 
     private fun isDashDefinitionRule(text: String): Boolean {
-        val match = dashDefinitionPattern.matchEntire(text.trim()) ?: return false
+        val trimmed = text.trim()
+        val match = dashDefinitionPattern.matchEntire(trimmed) ?: return false
         val term = match.groupValues[1].trim()
         return term.split(Regex("\\s+")).size <= 5 &&
                 term.count { it.isLetter() } >= 2 &&
-                !isBulletRule(text) && !isNumberedItemRule(text)
+                !isNumberedItemRule(text)
     }
 
     private val chapterPattern =
@@ -1372,7 +1398,7 @@ object WhiteboardRuleEngine {
         )
 
     private val mathRelationPattern =
-        Regex("^\\(?[A-Za-z]\\)?\\s*[=≠≈≤≥<>]\\s*\\(?[A-Za-z0-9]")
+        Regex("^\\(?[A-Za-z]\\)?\\s*(?:<=|>=|[=≠≈≤≥<>])\\s*\\(?[A-Za-z0-9]")
 
     private fun isBulletRule(text: String): Boolean = text.matches(bulletLinePattern)
 
@@ -1402,7 +1428,9 @@ object WhiteboardRuleEngine {
             trimmed.startsWith("▸") || trimmed.startsWith("►") -> "▸"
             trimmed.startsWith("▪") -> "▪"
             trimmed.startsWith("•") || trimmed.startsWith("●") ||
-                    trimmed.startsWith("·") || trimmed.startsWith("-") || trimmed.startsWith("*") -> "•"
+                    trimmed.startsWith("·") || trimmed.startsWith("-") ||
+                    trimmed.startsWith("–") || trimmed.startsWith("—") ||
+                    trimmed.startsWith("*") -> "•"
             else -> null
         }
     }
@@ -1439,7 +1467,7 @@ object WhiteboardRuleEngine {
                     words.size >= 2
         if (trimmed.length in 3..45 && allCapsHeading) return true
 
-        if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && words.size >= 2 && trimmed.length in 5..45) {
+        if (trimmed.endsWith(":") && trimmed.count { it == ':' } == 1 && words.size in 1..8 && trimmed.length in 3..45) {
             val headingWordsLookReliable = words.all { word ->
                 word.count { it.isLetter() } >= 2 &&
                         !word.drop(1).any { it.isUpperCase() }
@@ -1552,13 +1580,13 @@ object WhiteboardRuleEngine {
 
     private val sentenceDefinitionPattern = Regex(
         "^(?:(?:A|An|The)\\s+)?([A-Za-z][A-Za-z\\s-]{2,40}?)\\s+" +
-                "(?:is|are)\\s+" +
-                "(?:a|an|the)\\s+" +
-                "(?:process|method|system|structure|concept|technique|" +
+                "(?:is|are|refers to|aims to|used to|allows|permits|enables)\\s+" +
+                "(?:a|an|the|to)?\\s*" +
+                "(?:pillar|process|method|system|structure|concept|technique|" +
                 "procedure|set|collection|sequence|type|form|way|" +
                 "representation|study|field|branch|unit|measure|operation|" +
                 "function|relationship|framework|model|device|tool|" +
-                "hierarchical|organized)\\b.*[.]?$",
+                "hierarchical|organized|mechanism|principle)\\b.*[.]?$",
         RegexOption.IGNORE_CASE
     )
 

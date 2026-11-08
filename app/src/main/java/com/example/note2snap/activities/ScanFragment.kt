@@ -2463,6 +2463,16 @@ class ScanFragment : Fragment() {
                 // The rule engine supplies HTML-formatted blocks for the editor/PDF viewer.
                 val htmlContent = RecognitionReadability.htmlContent(structured)
 
+                val diagramHtml = detectDiagramHtml(sourceFilePath)
+
+                val fullContent = buildString {
+                    append(htmlContent)
+                    if (diagramHtml.isNotBlank()) {
+                        append("<br/><br/><b>Detected Diagrams</b><br/>")
+                        append(diagramHtml)
+                    }
+                }
+
                 Log.d(
                     "NOTE2SNAP_PIPELINE",
                     "Epoch 3 scan: ${scanResult.second.size} recognized lines, " +
@@ -2470,7 +2480,7 @@ class ScanFragment : Fragment() {
                 )
 
                 finishAnalyzingAndNavigate(
-                    content = htmlContent,
+                    content = fullContent,
                     imagePath = sourceFilePath,
                     titleOverride = structured.title
                 )
@@ -2521,14 +2531,14 @@ class ScanFragment : Fragment() {
                         val imageArea = source.width.toFloat() * source.height.toFloat()
                         val areaRatio = if (imageArea > 0f) boxArea / imageArea else 0f
 
-                        box.width() >= 35 &&
-                                box.height() >= 30 &&
-                                areaRatio in 0.004f..0.60f
+                        box.width() >= 25 &&
+                                box.height() >= 20 &&
+                                areaRatio in 0.001f..0.70f
                     }
-                    .sortedByDescending {
-                        it.boundingBox.width() * it.boundingBox.height()
+                    .sortedBy {
+                        it.boundingBox.top
                     }
-                    .take(3)
+                    .take(6)
 
             if (regions.isEmpty()) {
                 ""
@@ -2549,12 +2559,18 @@ class ScanFragment : Fragment() {
                                 "diagram_${System.currentTimeMillis()}_$index.png"
                             )
 
+                        val enhancedCrop = com.example.note2snap.preprocessing.DiagramPngEnhancer.enhanceDiagramCrop(region.croppedBitmap)
+
                         FileOutputStream(file).use { stream ->
-                            region.croppedBitmap.compress(
+                            enhancedCrop.compress(
                                 Bitmap.CompressFormat.PNG,
                                 100,
                                 stream
                             )
+                        }
+
+                        if (enhancedCrop !== region.croppedBitmap) {
+                            enhancedCrop.recycle()
                         }
 
                         "<p><img src='file://${file.absolutePath}' alt='Detected whiteboard diagram'/></p>"

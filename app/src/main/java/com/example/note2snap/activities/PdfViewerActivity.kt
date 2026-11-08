@@ -4072,9 +4072,13 @@ class PdfViewerActivity : AppCompatActivity() {
                     "<br/>"
                 )
 
+        val textOnlyHtml = htmlFormatted
+            .replace(Regex("<p>\\s*<img[^>]*>\\s*</p>", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("<img[^>]*>", RegexOption.IGNORE_CASE), "")
+
         tvPdfContent?.text =
             HtmlCompat.fromHtml(
-                htmlFormatted,
+                textOnlyHtml,
                 HtmlCompat
                     .FROM_HTML_MODE_COMPACT
             )

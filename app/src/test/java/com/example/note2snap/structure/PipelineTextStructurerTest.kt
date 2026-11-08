@@ -113,54 +113,38 @@ class PipelineTextStructurerTest {
             result.title
         )
 
-
         assertEquals(
-            4,
+            3,
             result.blocks.size
-        )
-
-        assertEquals(
-            "Binary Tree",
-            result.title
-        )
-
-        assertEquals(
-            BlockType.SECTION_HEADER,
-            result.blocks[0].type
-        )
-
-        assertEquals(
-            "Binary Tree",
-            result.blocks[0].rawText
         )
 
 // Two recognized fragments should become
 // one readable paragraph.
         assertEquals(
             BlockType.KEY_DEFINITION,
-            result.blocks[1].type
+            result.blocks[0].type
         )
 
         assertEquals(
             "A binary tree is a hierarchical data structure in which each node",
-            result.blocks[1].rawText
+            result.blocks[0].rawText
         )
 
 // Section heading should remain identifiable.
         assertEquals(
             BlockType.SECTION_HEADER,
-            result.blocks[2].type
+            result.blocks[1].type
         )
 
         assertEquals(
             "Properties:",
-            result.blocks[2].rawText
+            result.blocks[1].rawText
         )
 
 // Explicit bullet should remain a bullet.
         assertEquals(
             BlockType.BULLET_ITEM,
-            result.blocks[3].type
+            result.blocks[2].type
         )
 
 // All blocks should preserve their coordinates.

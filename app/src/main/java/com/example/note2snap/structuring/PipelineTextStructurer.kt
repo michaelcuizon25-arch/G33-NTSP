@@ -137,25 +137,14 @@ class PipelineTextStructurer {
             it.boundingBox.top
         }
 
-        val columnStartDifference =
-            abs(leftTop - rightTop)
-
-        // Read one column completely before the
-        // other if their starting positions differ.
-        if (
-            columnStartDifference >
-            medianHeight * 4
-        ) {
-            return if (leftTop < rightTop) {
-                sortByRows(leftColumn) +
-                        sortByRows(rightColumn)
-            } else {
-                sortByRows(rightColumn) +
-                        sortByRows(leftColumn)
-            }
+        // When two distinct columns exist on the whiteboard, read the left column
+        // completely before the right column (or vice versa based on top position)
+        // to prevent horizontally jumbling separate column contents.
+        return if (leftTop <= rightTop + medianHeight * 3) {
+            sortByRows(leftColumn) + sortByRows(rightColumn)
+        } else {
+            sortByRows(rightColumn) + sortByRows(leftColumn)
         }
-
-        return sortByRows(lines)
     }
 
     /**
