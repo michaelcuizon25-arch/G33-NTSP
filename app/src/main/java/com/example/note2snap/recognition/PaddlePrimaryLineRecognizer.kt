@@ -20,7 +20,8 @@ internal class PaddlePrimaryLineRecognizer(
     internal val diagnostics: PrimaryOcrDiagnostics? = null
 ) : LineRecognizer {
     constructor(context: Context, mode: CrnnPreprocessingMode) : this(
-        { PaddleOcrLineRecognizer(context.applicationContext) },
+        { PaddleOcrLineRecognizer(context.applicationContext,
+            refineCrops = com.example.note2snap.BuildConfig.ENABLE_PADDLE_CROP_REFINEMENT) },
         {
             val runtime = TensorFlowLiteCrnnRuntime(context.applicationContext)
             try {
@@ -82,7 +83,11 @@ internal class PaddlePrimaryLineRecognizer(
                     var fallbackReason = "unusable_output"
                     val paddleStarted = System.nanoTime()
                     var paddleFailure: Throwable? = null
-                    val prediction = try { paddle().recognizeLine(line.bitmap).prediction }
+                    val prediction = try {
+                        val result = paddle().recognizeLine(line.bitmap)
+                        diagnostics?.refinement(id, line.bitmap, line.boundingBox, result.cropRefinement, result.refinementNs)
+                        result.prediction
+                    }
                     catch (error: CancellationException) { throw error }
                     catch (error: Exception) { paddleFailure = error; fallbackReason = error.javaClass.simpleName; Log.w(TAG, "Paddle line failed; using CRNN region=${region.id}", error); null }
                     catch (error: LinkageError) { paddleFailure = error; fallbackReason = error.javaClass.simpleName; Log.w(TAG, "Paddle runtime unavailable; using CRNN", error); null }

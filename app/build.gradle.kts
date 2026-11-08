@@ -36,6 +36,9 @@ android {
         // Research-only image/tensor/JSON exports; lightweight timings remain independent.
         buildConfigField("boolean", "ENABLE_CRNN_DIAGNOSTIC_EXPORTS",
             providers.gradleProperty("ENABLE_CRNN_DIAGNOSTIC_EXPORTS").orElse("false").get().toBooleanStrict().toString())
+        // Experimental per-line Paddle input refinement; source boxes and CRNN inputs stay intact.
+        buildConfigField("boolean", "ENABLE_PADDLE_CROP_REFINEMENT",
+            providers.gradleProperty("ENABLE_PADDLE_CROP_REFINEMENT").orElse("false").get().toBooleanStrict().toString())
         // Explicit research opt-in: exports contain handwriting and crop images.
         buildConfigField("boolean", "ENABLE_PRIMARY_OCR_DIAGNOSTIC_EXPORTS",
             providers.gradleProperty("ENABLE_PRIMARY_OCR_DIAGNOSTIC_EXPORTS").orElse("false").get().toBooleanStrict().toString())

@@ -50,6 +50,8 @@ internal class PrimaryOcrDiagnostics(
             .put("correctionRequested", BuildConfig.ENABLE_OFFLINE_TEXT_CORRECTION)
             .put("correctionLoaded", correctionLoaded)
             .put("openCvRequested", BuildConfig.ENABLE_OPENCV_ENHANCEMENT)
+            .put("cropRefinementRequested", BuildConfig.ENABLE_PADDLE_CROP_REFINEMENT)
+            .put("cropRefinementRevision", PaddleCropRefiner.REVISION)
             .put("borderFilterRevision", "frame-track-v1.1+side-border-587e0e6")
             .put("coordinateSpace", "recognition image; right/bottom exclusive")
             .put("lines", lines).put("filterDecisions", decisions)
@@ -97,6 +99,26 @@ internal class PrimaryOcrDiagnostics(
             .put("cropHeight", crop.bitmap.height).put("crop", "line-$id.png")
             .put("selectedEngine", if (rejection == null) "pending" else "skip")
             .put("reason", rejection ?: JSONObject.NULL))
+        flush()
+    }
+
+    fun refinement(id: Int, original: Bitmap, sourceBox: Rect,
+                   decision: PaddleCropRefinement?, elapsedNs: Long) = observe {
+        if (!active || decision == null) return@observe
+        val record = JSONObject().put("applied", decision.applied).put("reason", decision.reason)
+            .put("elapsedNs", elapsedNs).put("analysisScratchBytes", decision.scratchBytes)
+            .put("originalSourceBox", box(sourceBox)).put("localInputBox", box(decision.localBox))
+            .put("modelInputSourceBox", box(Rect(sourceBox.left, sourceBox.top + decision.top,
+                sourceBox.right, sourceBox.top + decision.bottom)))
+            .put("sourceBoxPreserved", true)
+        if (decision.applied) {
+            val crop = Bitmap.createBitmap(original, 0, decision.top, original.width, decision.inputHeight)
+            try {
+                png("line-$id-paddle-refined.png", crop)
+                record.put("inputCrop", "line-$id-paddle-refined.png")
+            } finally { if (crop !== original) crop.recycle() }
+        } else record.put("inputCrop", "line-$id.png")
+        row(id)?.put("cropRefinement", record)
         flush()
     }
 

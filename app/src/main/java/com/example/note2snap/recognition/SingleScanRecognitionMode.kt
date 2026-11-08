@@ -10,6 +10,7 @@ internal fun configuredSingleScanRecognizer(context: Context, mode: CrnnPreproce
     val selection = SingleScanRecognitionMode.valueOf(BuildConfig.SINGLE_SCAN_RECOGNITION_MODE)
     Log.i(RECOGNITION_LOG_TAG, "Single scan recognitionMode=$selection " +
         "correctionRequested=${BuildConfig.ENABLE_OFFLINE_TEXT_CORRECTION} " +
+        "cropRefinement=${BuildConfig.ENABLE_PADDLE_CROP_REFINEMENT} " +
         "primaryExports=${BuildConfig.ENABLE_PRIMARY_OCR_DIAGNOSTIC_EXPORTS} borderFilter=frame-track-v1.1+side-border-587e0e6")
     return when (selection) {
         SingleScanRecognitionMode.CRNN_ONLY -> CrnnLineRecognizer(context, mode)
